@@ -175,10 +175,15 @@ describe('🪢 la corde par employé', () => {
     // truqueur qui lirait l'inspecteur calculé s'y laisserait prendre
     expect(i).toMatch(/flex:\s*1\s+1\s+0/)
     expect(nud(i)).not.toContain('left:')
-    // le cercle se centre sur la colonne par le pseudo-élément, pas par un
-    // pourcentage recopié du nombre de jours
+    // et l'anneau ne se centre PAS sur sa colonne : relevé 08/12, les six trous
+    // du dessin sont à x 474, 596, 716, 832, 947, 1062 — les BORNES des
+    // cellules — quand les étiquettes restent centrées dans les leurs (411,
+    // 534, 656…). Un `left: 50%` posait donc chaque anneau sous le chiffre du
+    // jour, un demi-jour à droite de son tracé : c'est le décalage que le
+    // fondateur voyait de travers. L'anneau naît à `left: 0`, à cheval sur la
+    // borne, et `translateX(-50%)` le partage entre les deux journées.
     const anneau = nud(declarations('.abs-corde-anneaux i::before', CORDE))
-    expect(anneau).toContain('left:50%')
+    expect(anneau).toContain('left:0')
     expect(anneau).toContain('translateX(-50%)')
   })
 
@@ -241,13 +246,30 @@ describe('🪢 la corde par employé', () => {
     // `descente`, c'est `rang` qui la descend — pas un décalage constant
     expect(declarations('.abs-corde-planche', CORDE)).toContain('--abs-corde-rang, 0')
   })
-  it('7. la position de la planche vient du pourcentage de la période', () => {
-    // a1 : lundi 19 → mercredi 21, index 0 à 2 sur 7 jours
-    expect(grille).toContain('left:calc(0% + 2px)')
-    expect(grille).toContain('width:calc(42')
-    // en mode jour, la planche occupe toute lʼunique colonne
-    expect(grilleJour).toContain('left:calc(0% + 2px)')
-    expect(grilleJour).toContain('width:calc(100% - 4px)')
+  it('7. la planche accroche ses cordons aux centres de ses jours de rive', () => {
+    // a1 : lundi 19 → mercredi 21, index 0 à 2 sur 7 jours. Le dessin ne pose
+    // pas la carte sur les cellules : il la pend aux CENTRES du premier et du
+    // dernier jour, et l'aile (12 px) déborde de chaque cordon — mesuré carte de
+    // x 524 a 790 pour des cordons a 536 et 776. Les deux rives se lisent donc
+    // en `left` ET `right` : une largeur recopiee ferait deborder la carte d'un
+    // demi-jour des deux cotes, et la coupe de fenetre n'aurait plus ou s'accrocher.
+    expect(grille).toContain('left:calc(7.142857142857142% - var(--abs-corde-aile))')
+    // rive gauche au centre du lundi (0,5 / 7 = 7,14 %), rive droite au centre
+    // du mercredi (3,5 / 7 = 50 %, donc 64,29 % depuis le bord droit)
+    expect(grille).toContain('right:calc(64.28571428571428% - var(--abs-corde-aile))')
+    expect(declarations('.abs-corde-planche', CORDE)).toContain('--abs-corde-aile')
+    // en vue mensuelle, les quatre planches sont entieres : les huit rives se
+    // hangent aux centres de jour, pas une seule ne se colle au bord
+    expect((grilleMois.match(/left:calc\([^)]*--abs-corde-aile\)/g) || [])).toHaveLength(4)
+    expect((grilleMois.match(/right:calc\([^)]*--abs-corde-aile\)/g) || [])).toHaveLength(4)
+    expect(grilleMois).not.toContain('left:2px')
+    // une periode coupee par la fenetre, elle, touche le bord : c'est la branche
+    // `seg.coupeeAvant` du composant, et pas une cote de plus a recopier
+    expect(COMPOSANT).toContain('left: nbJours === 1 || seg.coupeeAvant')
+    expect(COMPOSANT).toContain('right: nbJours === 1 || seg.coupeeAprès')
+    // en mode jour, la colonne unique EST le champ : les deux rives au bord
+    expect(grilleJour).toContain('left:2px')
+    expect(grilleJour).toContain('right:2px')
     expect(grilleJour).toContain('data-anneau="travaillé"')
     expect((grilleJour.match(/data-anneau=/g) || [])).toHaveLength(3) // un anneau par ligne
   })
@@ -289,15 +311,24 @@ describe('🪢 la corde par employé', () => {
     // plus au dessin. Ces nombres sont LA cote, pas une intention.
     const jetons = declarations('.abs-cal', CORDE)
     const cote = (nom) => jeton(jetons, nom)
-    expect(cote('--abs-corde-repos')).toBe(50) // le pas d'une ligne
-    expect(cote('--abs-corde-carte')).toBe(46) // la hauteur de la carte
-    expect(cote('--abs-corde-descente')).toBe(21) // son haut sous le fil : 26 px
-    // du trait au bord de carte (2 + 3 + 21), mesuré y 180 → y 206
-    expect(cote('--abs-corde-fil')).toBe(3) // le trait tendu (y 180, 181, 182)
+    expect(cote('--abs-corde-repos')).toBe(50) // le pas d'une ligne (dessin : 48,5)
+    expect(cote('--abs-corde-carte')).toBe(46) // la hauteur de la carte (214..258)
+    expect(cote('--abs-corde-descente')).toBe(14) // le fil (198) au bord haut (214)
+    // LE FIL NE COLLE PAS AU HAUT DE LA BANDE : il court a y 196 dans une ligne
+    // qui commence a 175. Pose a 2 px, il montait toute la pile de dix-neuf
+    // pixels — les anneaux sous la regle, la jauge flotter sous la carte.
+    expect(cote('--abs-corde-fil-top')).toBe(21)
+    expect(cote('--abs-corde-fil')).toBe(3) // le trait tendu (y 196, 197, 198)
     expect(cote('--abs-corde-encre')).toBe(3) // le contour de la carte
-    expect(cote('--abs-corde-cordons')).toBe(4)
-    expect(cote('--abs-corde-anneau')).toBe(9)
-    expect(cote('--abs-corde-jauge')).toBe(74)
+    expect(cote('--abs-corde-cordons')).toBe(3) // x 535..537
+    expect(cote('--abs-corde-coin')).toBe(12) // 536 − 524
+    expect(cote('--abs-corde-aile')).toBe(12) // la carte deborde son cordon
+    expect(cote('--abs-corde-anneau')).toBe(10) // le trou : le fil s'interrompt
+    expect(cote('--abs-corde-cercle')).toBe(3) // 16 × 15 hors-tout
+    expect(cote('--abs-corde-jauge')).toBe(74) // dessin : x 1190..1261, soit 72
+    expect(cote('--abs-corde-jauge-hauteur')).toBe(15) // y 190..204
+    expect(cote('--abs-corde-entete')).toBe(76) // y 96..172
+    expect(cote('--abs-corde-lavage')).toBe(1) // x 595..715 : une colonne, pas 1,5
     // la carte DÉBORDE exprès de sa ligne : 46 dans 50, descendue de 26, elle
     // passe devant le fil du voisin. La réduire pour la faire tenir, c'était
     // exactement la trahison reprochée.
@@ -357,8 +388,14 @@ describe('🪢 la corde par employé', () => {
     expect(CORDE).not.toMatch(/#[0-9A-Fa-f]{3,8}\b/)
     expect(CORDE).not.toMatch(/rgba?\(/)
     expect(CORDE).not.toContain('blur(')
+    // un rayon multiple se lit coin par coin : le lavage de l'entête est arrondi
+    // du haut et droit du bas (il se recoud a la bande), et `0` n'est pas un
+    // rayon hors liste — c'est l'absence de rayon
+    const autorisés = ['var(--charte-rayon-champ)', 'var(--charte-rayon-carte)', 'var(--charte-rayon-pilule)']
     for (const r of [...CORDE.matchAll(/border-radius:\s*([^;]+);/g)].map((m) => m[1].trim())) {
-      expect(['var(--charte-rayon-champ)', 'var(--charte-rayon-carte)', 'var(--charte-rayon-pilule)']).toContain(r)
+      for (const coin of r.split(/\s+/)) {
+        expect(coin === '0' || autorisés.includes(coin)).toBe(true)
+      }
     }
   })
 
@@ -413,8 +450,11 @@ describe('🪢 la corde par employé', () => {
     expect(COMPOSANT).toMatch(
       /minWidth: LARGEUR_EMPLOYE \+ nbJours \* largeurJour \+ LARGEUR_SOLDE/,
     )
-    // la colonne du solde a UNE valeur, et c'est la cote du dessin : ornère de
-    // 104 px (x 1226 → 1329) plus le nombre jusqu'à x 1361
+    // la colonne du solde a UNE valeur : la barre du dessin fait 72 px (x 1190
+    // → 1261), le nombre s'écrit à côté jusqu'à x 1319, et la colonne mesurée en
+    // fait cent quatre-vingt-quatorze sur un canevas de 1 376 — seize pour cent
+    // du champ, soit 136 ici. Élargir la colonne pour loger un corps de lettre
+    // qu'on n'a pas mesuré, c'est dériver le partage des jours.
     expect(COMPOSANT).toContain('const LARGEUR_SOLDE = 136')
     // le dessin ne sépare pas les jours par un filet
     expect(nud(declarations('.abs-cal-jour', CORDE))).not.toContain('border-left')
@@ -460,15 +500,27 @@ describe('🪢 la corde par employé', () => {
     // le prénom se borne : la vignette large ne pousse pas la ligne à deux étages
     expect(nud(declarations('.abs-corde-nom', CORDE))).toContain('text-overflow:ellipsis')
     const entête = nud(declarations('.abs-cal-entete', CORDE))
-    expect(entête).toContain('min-height:var(--abs-corde-repos)')
+    // 76 px, pas le pas d'une ligne : le dessin joue son entête sur un registre
+    // large parce que ses étiquettes sont à la taille de titre (capitales de
+    // 16 px mesurées dans « L 23 »). Le filet du bas EST la règle du dessin.
+    expect(entête).toContain('min-height:var(--abs-corde-entête)')
     expect(entête).toContain('border-bottom:var(--charte-trait)solidvar(--charte-bordure)')
+    // et l'échelle de lettre suit la cote : entête, prénom, carte, nombre du
+    // solde — les quatre se lisent au titre, jamais au micro
+    for (const sel of ['.abs-cal-entete-employes', '.abs-cal-jour-nom', '.abs-cal-jour-num', '.abs-corde-nom', '.abs-corde-planche', '.abs-corde-nombre']) {
+      expect(nud(declarations(sel, CORDE))).toContain('font-size:var(--charte-taille-titre)')
+    }
+    // le chiffre n'est plus en mono : le dessin écrit la lettre et le nombre du
+    // même coup de plume, à la police du corps
+    expect(nud(declarations('.abs-cal-jour-num', CORDE))).not.toContain('var(--charte-mono)')
   })
 
   it('19. aujourdʼhui se lave, ça ne se devine pas', () => {
     // le dessin ne laisse pas un cheveu pâle dans une case : la journée est
-    // lavée d'ambre sur une largeur et demie de jour, du haut en bas de la
-    // ligne, et un trait court dedans. Ma version précédente — 2 px à 45 %
-    // d'opacité sur une seule case — mesurée, ne se voyait pas.
+    // lavée d'ambre sur UNE colonne, du haut de l'entête au bas de la pile, et
+    // un trait de la graisse du fil court dedans. Ma version de la veille — une
+    // largeur et demie de jour, née sous la règle — mesurée, débordait de
+    // soixante pixels sur la voisine et ne teintait pas l'étiquette du jour.
     const lavage = nud(declarations('.abs-corde-lavage', CORDE))
     expect(lavage).toContain('top:0')
     expect(lavage).toContain('bottom:0')
@@ -484,7 +536,59 @@ describe('🪢 la corde par employé', () => {
     // le même anneau que les cartes, sinon le repère ment sur le jour
     const mêmeLeft = COMPOSANT.match(/left: `\$\{\(\(indexAujourdhui \+ 0\.5\) \/ nbJours\) \* 100\}%`/g) || []
     expect(mêmeLeft).toHaveLength(2)
-    // le trait du jour est plus fin que le fil : 2 px mesurés dans le lavage
-    expect(nud(declarations('.abs-corde-aujourdhui', CORDE))).toContain('width:var(--charte-trait)')
+    // le trait du jour a la graisse du fil, pas celle du filet : x 656, 657, 658
+    expect(nud(declarations('.abs-corde-aujourdhui', CORDE))).toContain('width:var(--abs-corde-fil)')
+    // et le lavage monte dans l'entête : le rectangle du dessin court de y 120
+    // à la règle (172), arrondi du haut — et c'est l'encre qui passe DESSUS, pas
+    // l'inverse. Un `z-index: -1` l'aurait téléporté derrière le fond du champ
+    // (le pseudo ne crée pas de contexte, le sable de `.abs-cal-scroll` l'aurait
+    // recouvert) : ce sont les deux étiquettes qui se positionnent, et elles
+    // relisent le trait par-dessus le lavage.
+    const lavageEntête = nud(declarations(".abs-cal-jour[data-aujourdhui='vrai']::before", CORDE))
+    expect(lavageEntête).toContain('top:var(--abs-corde-descente-lavage)')
+    expect(lavageEntête).toContain('bottom:0')
+    expect(lavageEntête).toContain('opacity:0.14')
+    expect(lavageEntête).not.toContain('z-index')
+    for (const sel of ['.abs-cal-jour-nom', '.abs-cal-jour-num']) {
+      expect(nud(declarations(sel, CORDE))).toContain('position:relative')
+    }
+  })
+
+  it('20. la jauge est posée SUR le fil, pas au milieu de la ligne', () => {
+    // relevé 08/12 : la barre du dessin va de y 190 a y 204 pour un fil a
+    // 196-198 — son axe est CELUI du trait tendu. centree dans la bande, elle
+    // flottait a soixante-douze pixels, a mi-hauteur de la carte, et le nombre
+    // avec elle. Le `padding-top` se déduit du même fil-top que l'anneau : deux
+    // cotes ecrites a la main se contredisent a la premiere retouche.
+    const solde = declarations('.abs-corde-solde', CORDE)
+    expect(nud(solde)).toContain('align-items:flex-start')
+    expect(nud(solde)).toContain(
+      'padding:calc(var(--abs-corde-fil-top)+var(--abs-corde-fil)/2-var(--abs-corde-jauge-hauteur)/2)',
+    )
+    // une BARRE cerclée d'encre, pas une ornière pointillée : le dessin remplit
+    // (161, 93, 47) = `--charte-aplat` et laisse (209, 199, 187) = le filet
+    const jauge = nud(declarations('.abs-corde-jauge', CORDE))
+    expect(jauge).toContain('border:var(--charte-trait)solidvar(--charte-encre)')
+    expect(jauge).not.toContain('dashed')
+    expect(jauge).toContain('background:var(--charte-bordure)')
+    expect(nud(declarations('.abs-corde-jauge i', CORDE))).toContain('background:var(--charte-aplat)')
+    // et le nombre reste écrit A COTE, en encre, a la taille du dessin
+    const nombre = nud(declarations('.abs-corde-nombre', CORDE))
+    expect(nombre).toContain('color:var(--charte-encre)')
+    expect(nombre).not.toContain('var(--charte-mono)')
+  })
+
+  it('21. les cotes du dessin ne se recopient pas dʼune memoire', () => {
+    // la loi de ce fichier : une cote est une MESURE de `maquettes/absences-grille-1-corde.png`,
+    // relevee sur l'image. Ces cinq nombres sont la mesure du 08/12 ; ils
+    // remplacent les miens de la veille (fil a 2, descente a 21, anneau a 9,
+    // cordons a 4 et a 6, lavage a 1,5), qui etaient ma confort, pas le dessin.
+    const jetons = declarations('.abs-cal', CORDE)
+    expect(jeton(jetons, '--abs-corde-descente-lavage')).toBe(24)
+    expect(CORDE).not.toContain('--abs-corde-fil-top: 2px')
+    expect(CORDE).not.toContain('--abs-corde-lavage: 1.5')
+    // la carte pend de 14 sous le fil et fait 46 : elle ne tient plus dans sa
+    // ligne de 50 — le debord est la loi du dessin, pas un accident a corriger
+    expect(jeton(jetons, '--abs-corde-descente') + jeton(jetons, '--abs-corde-carte')).toBe(60)
   })
 })

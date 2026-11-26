@@ -363,6 +363,10 @@ La version du 10/12 ne reproduisait pas la maquette : elle l'**interprétait**. 
 | la vignette de tête | 78 × 35, **teintée** (230, 218, 193), aucun trait d'encre sur son bord | `--abs-corde-figure-largeur/hauteur` |
 | le solde | ornière de 104 × 18 (x 1226→1329), nombre jusqu'à x 1361 → **colonne de 136** | `LARGEUR_SOLDE`, `--abs-corde-jauge` |
 | aujourd'hui | toute la **colonne** lavée (224, 200, 174) sur ≈1,5 jour + un trait de 2 px | `--abs-corde-lavage`, `--charte-trait` |
+
+> ⚠️ Ce tableau est la mesure du 26/11. Cinq de ses lignes ont été **re-mesurées le
+> 08/12** et corrigées : voir « Seconde copie à la cote », à la fin du document.
+> Elles sont laissées telles quelles pour que l'erreur reste lisible.
 | le fond | bandes alternées (243, 234, 218) ↔ (232, 219, 193), **aucune carte blanche** | `.abs-cal-scroll`, `--abs-corde-fond` |
 | l'entête | « L 23 » sur une ligne, filet de 2 px dessous, **aucun séparateur vertical** | `.abs-cal-entete` |
 
@@ -413,3 +417,56 @@ Rien de ce qui suit n'a été fait — c'est la porte qu'il ouvrira après avoir
 2. **l'échelle typographique** : le dessin écrit le chiffre du jour à 15 px et son titre à 20 ; la maison n'a que 20 / 14 / 11 / 9,5. La copie a pris 14 — le 15 est hors liste et ne se décrète pas ici.
 3. **la densité** : 50 px par ligne, c'est la cote du dessin ; la grille d'avant en faisait 78 et la corde de la veille 44. Le choix d'identité est à poser une fois la copie actée.
 4. **les teintes relevées** (crème 241/235/214, sables 243/234/218 et 232/219/193) sont exprimées en `--charte-*` existants, jamais en hex. Si la passe identité veut ses tons exacts, c'est une décision de palette, pas un `#…` de plus.
+
+---
+
+# Seconde copie à la cote (08/12) — « encore une fois, compare »
+
+Il a redit la consigne en une image : poser le rendu à côté du dessin et **mesurer**,
+encore. La passe du 26/11 avait corrigé quatre cotes ; elle en avait manqué cinq
+autres, et surtout elle avait **recopié sa propre mesure de la veille** au lieu de
+remonter à l'image. Le canevas non plus n'est plus le même — le dessin a été
+réexporté en **1 376 × 768** (1 422 × 800 la dernière fois) : toute cote sortie de
+mémoire est donc fausse par construction, y compris les miennes de la semaine
+dernière.
+
+Le tableau ci-dessus (celui du 26/11) garde ses chiffres **tels qu'ils ont été posés
+ce jour-là** ; les cinq lignes qui suivent les remplacent. C'est écrit exprès : un
+document qui réécrit son histoire ne permet plus de savoir quelle erreur a été faite.
+
+| ce qui était posé | la mesure du 08/12 | ce que ça déplace |
+|---|---|---|
+| `--abs-corde-fil-top: 2px` — le fil collé au haut de la bande | le fil est à **y 196 dans une ligne qui commence à 175 : 21 px** | cote **1** de tout le reste : l'anneau, la carte, le nœud, la jauge se règlent sur lui. Posé à 2, l'anneau rasait la règle, la jauge flottait 18 px plus bas, et le trait du jour traversait l'anneau au lieu de passer entre deux |
+| un anneau **au centre** du jour (`left: 50%`) | les six trous du dessin sont à **x 474, 596, 716, 832, 947, 1062 : les bornes des cellules**, alors que les étiquettes sont centrées (411, 534, 656, 773, 887, 1003, 1119) | un demi-jour d'écart, à peu près 56 px. L'anneau naît à `left: 0` et `translateX(-50%)` le partage entre deux journées — le trou est bien peint de la teinte de la bande, vérifié : à chaque anneau, l'encre du fil s'interrompt de x 470 à 479 |
+| `--abs-corde-descente: 21px`, carte à 46 | le bord haut de carte est à **y 214 sous un fil à 198 → 14 px**, la carte fait **45** (214..258) | la carte pend de quatorze, et `--abs-corde-débord` se recalcule tout seul (21 + 3 + 14 + 46 − 50 = **34** : la
+  carte déborde de trente-quatre pixels sa ligne de 50, exactement les 258 − 223,5
+  du dessin) |
+| cordons « ≈40 × 45 à 6 px des coins », carte posée **sur les cellules** | cordons **à x 536 et 776**, soit **12 px du bord** (la carte va de 524 à 790), épais de **3** ; et les cordons tombent aux **centres** des jours de rive, la carte débordant de **12 px d'aile** de chaque côté | la planche ne couvre plus les cellules : `left` et `right` se hangent aux centres (une largeur recopiée la faisait déborder d'un demi-jour des deux côtés), et une période coupée par la fenêtre reste collée au bord — les deux rives se lisent dans le même `style` |
+| ornière pointillée de **104 × 18**, nombre en `--charte-texte` à 14 px | **barre pleine de 72 × 15** (x 1190..1261, y 190..204), cerclée d'**encre** de 2, fond de piste (209, 199, 187), remplissage (161, 93, 47) = `--charte-aplat`, nombre **à côté** (x 1270..1319, 15 px de haut d'encre) | la jauge n'est plus une ornière : c'est une barre, posée **sur le fil** — son `padding-top` se déduit du même `--abs-corde-fil-top`, pas d'un centrage dans la bande |
+| lavage « ≈1,5 jour », né sous la règle, trait de 2 px | le lavage fait **une colonne** (x 595..715 pour 118) et **commence dans l'entête**, en rectangle arrondi du haut de y 120 à la règle (172) ; le trait du jour fait **3 px** (x 656..658) | `--abs-corde-lavage: 1`, `--abs-corde-entête: 76`, un `::before` sur la case du jour, et le trait du jour prend `--abs-corde-fil` comme graisse. L'opacité aussi est mesurée : le ton (237, 213, 193) sur la bande (243, 234, 216) = l'ambre à **0,14** |
+| typo : entête en micro (11), prénom et carte en corps (14) | **tout le dessin est à ~20 px** : capitales de 16 px dans « L 23 », 17 dans « Congé · 3 j », 15 dans « 30/30 » | entête, prénom, carte et nombre du solde passent en `--charte-taille-titre`. Le point 2 de la liste « identité » du 26/11 est tranché par la mesure, pas par moi |
+
+## Ce que la re-mesure n'a pas suivi, et pourquoi
+
+* **le nom du jour** : je croyais le chiffre du dessin en mono. Il ne l'est pas — les
+  capitales de « L 23 » et les chiffres de « 23 » ont la même plume. Le `--charte-mono`
+  est sorti de l'entête et du nombre du solde ; il reste partout ailleurs.
+* **les colonnes de service** : le dessin fait une colonne d'employés de 352 et un
+  solde de 194 sur un canevas de 1 376. Les garder telles quelles sur un rendu de
+  1 157 eût écrasé les jours (87 px par colonne au lieu de 112,5). La cote qui porte
+  l'alignement — le **pas de jour** — est la bonne : 112,5 rendus pour 118 dessinés,
+  soit 4,6 %. Les deux colonnes collantes gardent 236 et 136, et la règle « un seul
+  modèle de largeur » les tient d'aplomb.
+* **les disques pleins** : le dessin remplit l'anneau de certains jours (x 23, 27, 28,
+  29 pleins ; 24, 25, 26 creux). Ce n'est pas un état de plus à inventer : la maison
+  a déjà `data-anneau="chômé"` (week-end et férié d'entreprise), et c'est ce qui
+  remplit. Le patron du dessin ne dit rien d'autre que cela, je ne lui en prête pas.
+
+## Les chiffres du contrôle (08/12)
+
+| mesure | base `34a5400` | **la seconde copie** |
+|---|---|---|
+| `npx vitest run` | 200 fichiers · 2 837 ✓ | **200 · 2 839 ✓** (0 échec) — corde **24** verrous (+2 : la jauge sur le fil, la cote qui ne se recopie pas d'une mémoire), tringle 23 intacts, et le verrou 18 des modes rebasé sur les deux rives |
+| `npx vite build` | ✓ | ✓ (22 entrées precachees) |
+| `npm run charte` | 4 488 · 126 · 332 · 63/42/27 | à vérifier ci-dessous, aucun hex ajouté |
+| portée du patch | — | `AbsencesCalendrier.jsx` (les deux rives de la planche, la branche `nbJours === 1`), `AbsencesAfroTech.css` (rubrique de corde : six cotes, l'entête à 76, le lavage dans l'entête, la barre du solde, quatre tailles de lettre), `absencesCalendrierCorde.test.jsx`, `absencesCalendrierModes.test.jsx` |

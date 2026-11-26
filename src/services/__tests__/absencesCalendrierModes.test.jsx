@@ -261,12 +261,24 @@ it('17. le mode jour dresse la feuille du jour : absents et présents', () => {
 })
 
 it('18. une barre est positionnée en pourcentage de la période', () => {
-  // en mode jour, la barre occupe toute la largeur de l’unique colonne
-  expect(grilleJour).toContain('left:calc(0% + 2px)')
-  expect(grilleJour).toContain('width:calc(100% - 4px)')
-  // en mode semaine, a1 va du lundi 19 au mercredi 21 → index 0 → 2
-  expect(grilleSemaine).toContain('left:calc(0% + 2px)')
-  expect(grilleSemaine).toContain('width:calc(42')
+  // en mode jour, la colonne unique EST le champ : la barre se colle aux deux
+  // bords — la loi des centres n'a plus de sens quand une journée vaut toute la
+  // piste, et le plancher de largeur ne doit jamais la faire déborder
+  expect(grilleJour).toContain('left:2px')
+  expect(grilleJour).toContain('right:2px')
+  // en mode semaine, a1 va du lundi 19 au mercredi 21 (index 0 → 2) : ses deux
+  // cordons tombent aux CENTRES de ces deux jours, l'aile de douze pixels
+  // débordant de chaque côté — cote relevée le 08/12 sur le dessin (carte de
+  // x 524 à 790, cordons à 536 et 776), qui remplace la carte posée sur les
+  // bords des cellules et débordant d'un demi-jour de chaque rive
+  expect(grilleSemaine).toContain('left:calc(7.142857142857142% - var(--abs-corde-aile))')
+  expect(grilleSemaine).toContain('right:calc(64.28571428571428% - var(--abs-corde-aile))')
+  // la période coupée par la fenêtre, elle, touche le bord SANS quitter la loi
+  // des centres de l'autre côté : le 15 → 23 de Mamadou déborde la semaine par
+  // la gauche (rive collée à 2 px) et s'accroche au centre du vendredi 23 à
+  // droite. Écrire les deux rives dans le même `style`, c'est ce qui rend la
+  // coupe lisible au lieu de la deviner.
+  expect(grilleSemaine).toMatch(/left:2px;right:calc\(\d+(?:\.\d+)?% - var\(--abs-corde-aile\)\)/)
 })
 
 it('19. le dépôt suit le mode : une case de la période est surlignée', () => {
