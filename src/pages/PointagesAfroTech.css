@@ -2790,7 +2790,7 @@
   --pv-papier: var(--charte-surface);
   --pv-lavis: var(--charte-surface2);
   --pv-terre: var(--charte-aplat);
-  --pv-indigo: var(--charte-espresso);
+  --pv-indigo: var(--charte-indigo);
   --pv-texte-doux: var(--charte-douce);
   min-height: 100vh;
   color: var(--pv-text);
@@ -2826,7 +2826,7 @@
   --pv-papier: var(--charte-surface);
   --pv-lavis: var(--charte-surface2);
   --pv-terre: var(--charte-aplat);
-  --pv-indigo: var(--charte-espresso);
+  --pv-indigo: var(--charte-indigo);
   --pv-texte-doux: var(--charte-douce);
 }
 
@@ -2857,40 +2857,698 @@
 /*  Les deux teintes que cette maquette ajoute et que la page n'avait pas :
     un indigo profond (le noyau de la maquette) et un espresso de trait. On
     les pose en variables locales du bandeau, dérivées du thème. */
+/*  ═══ LE BANDEAU, À L'ÉCHELLE DE LA MAQUETTE ═══════════════════════════
+    Tout ce qui suit est mesuré sur image-23.png (1420 × 306) et ramené au
+    ratio : voir docs/maquettes/pauses-bandeau-spec.md.
+
+    ⚠️ CE N'EST PAS UNE GRILLE, C'EST UNE ILLUSTRATION. Les pièces s'y
+    CHEVAUCHENT : le sticker mord le titre, l'étiquette de date chevauche la
+    pilule du mode, les ficelles sortent du cadre. Une mise en page en flux
+    ne peut pas rendre ça — additionnées, les largeurs dépassent 1420 et le
+    bandeau casse sur deux lignes (c'est ce qui m'est arrivé). On pose donc
+    chaque pièce à ses coordonnées, dans un cadre de 306 px de haut et de
+    1420 de large, et le flux ne sert qu'en dessous de 1181 px. */
 .pauses-v2-topbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 18px 22px;
-  padding: 14px 4px 18px;
-  margin-bottom: 16px;
+  position: relative;
+  max-width: 1420px;
+  height: 306px;
+  margin: 0 auto 16px;
+  background: var(--pv-papier);
 }
 
+/* l'enseigne occupe le tiers gauche, ses pièces se chevauchent */
 .pauses-v2-brand {
-  display: flex;
+  position: absolute;
+  left: 35px;
+  top: 57px;
+  width: 690px;
+  height: 191px;
+}
+.pauses-v2-back-btn {
+  position: absolute;
+  left: 0;
+  top: 60px;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 999px;
+  border: 2px solid var(--pv-traif);
+  background: var(--pv-papier);
+  color: var(--pv-traif);
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--pv-traif);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.pauses-v2-back-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--pv-traif); }
+.pauses-v2-back-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--pv-traif); }
+.pauses-v2-sceau {
+  position: absolute;
+  left: 86px;
+  top: 0;
+  display: grid;
+  place-items: center;
+  /*  La maquette va de y=57 à y=248 : 191 px de haut, et le pied occupe
+      un peu plus de la moitié du disque. */
+  width: 191px;
+  height: 191px;
+  border: 2px solid var(--pv-traif);
+  border-radius: 999px;
+  background: var(--pv-papier);
+}
+/*  Le second trait, à 9 px du bord : c'est lui qui fait « gravure » plutôt
+   que « disque ». Il est décoratif et ne prend aucun clic. */
+.pauses-v2-sceau::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border: 1.5px solid var(--pv-traif);
+  border-radius: 999px;
+  pointer-events: none;
+}
+.pauses-v2-pied {
+  /*  Le pied occupe 67 × 114 dans le disque, posé à (183,105) — donc
+      décalé à DROITE et en HAUT du centre, pas centré. */
+  width: 67px;
+  height: 114px;
+  justify-self: start;
+  align-self: start;
+  /*  le pied est posé à (183,105) dans la page, le sceau à (121,57) :
+      62 px à droite et 48 px sous le coin du disque, bordures comprises. */
+  margin: 46px 0 0 60px;
+  color: var(--pv-traif);
+}
+/*  La marque s'ancre au MÊME point que le sceau (121, plus ses 191 px de
+    large) : le titre part de là et déborde à droite. La maquette laisse le
+    sceau DÉBORDER sous le titre — les deux se chevauchent, c'est voulu.
+    Le titre commence à x=338 (composante connexe du P sur la maquette). */
+.pauses-v2-marque {
+  position: absolute;
+  left: 297px;   /* 35 (brand) + 297 = 332 ; le P déborde de 6 px sur sa boîte */
+  top: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  cursor: pointer;
+}
+/*  ⚠️ LA MAQUETTE EST EN GROTESQUE CONDENSÉ. « PAUSES » y mesure 405 × 113 :
+   des lettres de 49 px de large pour 113 de capitale, soit un rapport de
+   0,45 par lettre. IBM Plex Sans, lui, est large — à la même hauteur il
+   demanderait 626 px. On le condense donc de 0,65, ce qui rend le rapport
+   de la maquette sans changer de fonte. La ligne porte une largeur FIXE :
+   `transform` ne change pas la boîte, et sans ça le sticker se placerait
+   sur les 626 px du texte non transformé. */
+.pauses-v2-titre-ligne {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  width: 324px;   /* P→S : de 338 à 648 dans la maquette */
+  height: 113px;
+  overflow: visible;
+}
+.pauses-v2-titre {
+  font-size: 141px;
+  font-weight: 700;
+  line-height: 0.72;
+  letter-spacing: 0.012em;
+  text-transform: uppercase;
+  color: var(--pv-traif);
+  /*  Condensé à 0,62 : les lettres de la maquette font 50 de large pour
+      une capitale de 100, IBM Plex en demande ~80 à la même hauteur. */
+  transform: scaleX(0.62);
+  transform-origin: left top;
+  white-space: nowrap;
 }
 
-.pauses-v2-date-trigger {
+/* le centre : l'étiquette pendue puis la pilule, qui se chevauchent */
+.pauses-v2-etiquettes {
+  position: absolute;
+  left: 717px;
+  top: 0;
+  width: 520px;
+  height: 306px;
+}
+.pauses-v2-pendue {
+  position: absolute;
+  left: 0;
+  top: 51px;
+  isolation: isolate;
+  padding: 0;
+  display: block;
+}
+/*  L'ÉTIQUETTE — 304 × 98, pilule, contour 2 px. Sa largeur réelle dépend
+   du texte de la période : on borne et on laisse respirer. */
+.pauses-v2-etiquette-date {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 2px 6px;
-  color: var(--pv-text);
-  font-size: 0.8rem;
-  font-weight: 700;
-  border: none;
-  background: transparent;
+  gap: 9px;
+  width: 304px;
+  min-height: 98px;
+  padding: 0 15px;
+  gap: 30px;
+  border: 2px solid var(--pv-traif);
+  border-radius: 999px;
+  background: var(--pv-papier);
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+/*  L'ŒILLET — le trou poinçonné, et un bouton : période précédente. */
+.pauses-v2-oeillet--d {
+  margin-left: auto;
+}
+.pauses-v2-oeillet {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  padding: 0;
+  border: 2px solid var(--pv-traif);
+  border-radius: 999px;
+  background: var(--pv-lavis);
   cursor: pointer;
 }
+.pauses-v2-oeillet:hover { background: var(--pv-terre); }
+.pauses-v2-date-trigger {
+  border: 0;
+  background: transparent;
+  color: var(--pv-traif);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/*  LES DEUX FLÈCHES — deux cercles séparés, à droite de l'étiquette. */
+.pauses-v2-sens {
+  position: absolute;
+  left: 272px;
+  top: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.pauses-v2-pastille {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  flex: 0 0 43px;
+  padding: 0;
+  border: 2px solid var(--pv-traif);
+  border-radius: 999px;
+  background: var(--pv-papier);
+  color: var(--pv-traif);
+  cursor: pointer;
+  transition: transform 140ms ease, background-color 140ms ease;
+}
+.pauses-v2-pastille:hover { background: var(--pv-lavis); transform: scale(1.05); }
 
-/*  L'ancien `.pauses-v2-add-btn` (dégradé, ombre floue, rayon 10) vivait ici.
-    Il est supprimé : le bandeau du 25/11 le redessine en pilule terracotta à
-    contour 2 px et ombre dure, et c'est cette règle-là qui fait foi. Deux
-    définitions pour le même bouton, c'était la porte ouverte aux retours. */
+/*  LES FICELLES — la maquette en montre DEUX, et elles ne poussent pas du
+    même coin : la première sort à GAUCHE de l'étiquette et monte, la seconde
+    sort à DROITE (à côté du second œillet) et monte aussi. Ce sont deux
+    brins de corde, pas une boucle. On les dessine en `border` partiel :
+    seuls le haut et un côté sont tracés, ce qui suffit à lire la corde. */
+.pauses-v2-ficelle {
+  position: absolute;
+  border: 2px solid var(--pv-traif);
+  border-bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.pauses-v2-ficelle--g {
+  left: 14px;
+  top: -26px;
+  width: 26px;
+  height: 28px;
+  border-bottom: 0;
+  border-radius: 999px 999px 0 0;
+  transform: rotate(-18deg);
+}
+.pauses-v2-ficelle--d {
+  left: 236px;
+  top: -30px;
+  width: 24px;
+  height: 30px;
+  border-bottom: 0;
+  border-radius: 999px 999px 0 0;
+  transform: rotate(24deg);
+}
+
+/*  LA PILULE DU MODE — une seule, pleine terre, 150 × 50. */
+.pauses-v2-modes {
+  position: absolute;
+  left: 156px;
+  top: 120px;
+  margin: 0;
+}
+.pauses-v2-mode {
+  padding: 8px 12px;
+  border: 2px solid var(--pv-traif);
+  border-radius: 999px;
+  background: var(--pv-terre);
+  color: var(--charte-blanc);
+  font-family: var(--charte-police);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+.pauses-v2-mode:hover { transform: translateY(-1px); }
+.pauses-v2-mode.is-active {
+  background: var(--pv-terre);
+  color: var(--charte-blanc);
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+.pauses-v2-menu-modes {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 148px;
+  padding: 6px;
+  border: 2px solid var(--pv-traif);
+  border-radius: var(--charte-rayon-badge);
+  background: var(--pv-papier);
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+.pauses-v2-menu-mode {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--pv-traif);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.pauses-v2-menu-mode:hover { background: var(--pv-lavis); }
+.pauses-v2-menu-mode.is-active { background: var(--pv-terre); color: var(--pv-papier); }
+.pauses-v2-menu-mode--auj { border-top: 1.5px dashed var(--pv-traif); margin-top: 4px; }
+
+/*  LE RANG DES ANNEXES — la pilule entreprise puis le cercle CSV. */
+.pauses-v2-annexes {
+  position: absolute;
+  left: 32px;
+  top: 203px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+/*  Le CSV est sur SON propre rang : la maquette le pose à (1089,208), sous
+    le bouton d'ajout, et non à côté du select. On l'ancre au bandeau. */
+.pauses-v2-annexes--csv {
+  left: 372px;   /* 717 (conteneur) + 372 = 1089, comme la maquette */
+  top: 208px;
+  gap: 0;
+}
+.pauses-v2-entreprise {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.pauses-v2-entreprise select {
+  appearance: none;
+  width: 325px;
+  min-height: 56px;
+  padding: 0 34px 0 12px;
+  border: 2px solid var(--pv-traif);
+  border-radius: 999px;
+  background: var(--pv-papier);
+  color: var(--pv-traif);
+  /*  Mesuré : « TOUTES LES ENTREPRISES » fait 237 px en Plex 16/700. Avec
+      12 px à gauche et 34 à droite (le rond du chevron), il reste 279 px
+      pour 325 de pilule — le libellé respire, et il ne touche plus le rond. */
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+.pauses-v2-entreprise .pauses-v2-entreprise-chevron {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1.5px solid var(--pv-traif);
+  background: var(--pv-papier);
+  pointer-events: none;
+}
+.pauses-v2-entreprise svg { color: var(--pv-traif); }
+/*  « CSV » : un CERCLE de 65 px, comme sur la maquette — pas une pilule. */
+.pauses-v2-pastille--csv {
+  width: 65px;
+  height: 65px;
+  align-self: center;
+  margin: 0;
+  flex: 0 0 65px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+
+/* la droite : le profil au-dessus, le bouton dessous */
+/*  ═══ LE STICKER — grand, incliné, il mord le S et déborde vers
+    l'étiquette. Liseré kente en HAUT et en BAS, comme la maquette. ═══ */
+.pauses-v2-sticker {
+  position: absolute;
+  left: 262px;
+  top: 58px;
+  padding: 5px 12px 6px;
+  border: 2px solid var(--pv-traif);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--pv-papier);
+  background-image:
+    repeating-linear-gradient(
+      -38deg,
+      var(--pv-indigo) 0 6px,
+      var(--pv-papier) 6px 9px,
+      var(--pv-terre) 9px 15px,
+      var(--pv-papier) 15px 18px
+    ),
+    repeating-linear-gradient(
+      -38deg,
+      var(--pv-indigo) 0 6px,
+      var(--pv-papier) 6px 9px,
+      var(--pv-terre) 9px 15px,
+      var(--pv-papier) 15px 18px
+    );
+  background-size: 100% 5px, 100% 5px;
+  background-position: 0 0, 0 100%;
+  background-repeat: no-repeat;
+  color: var(--pv-traif);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transform: rotate(-7deg);
+  box-shadow: 2px 2px 0 var(--pv-traif);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.pauses-v2-devise {
+  display: block;
+  margin-top: 2px;
+  width: 361px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.115em;
+  text-transform: uppercase;
+  color: var(--pv-traif);
+  white-space: nowrap;
+}
+
+/*  ═══ À DROITE — le profil AU-DESSUS, l'ajout DESSOUS ═══ */
+.pauses-v2-bord {
+  position: absolute;
+  right: 28px;
+  top: 29px;
+  width: 299px;
+  height: 210px;
+}
+.pauses-v2-identite {
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.pauses-v2-identite .pauses-v2-avatar {
+  width: 67px;
+  height: 67px;
+  flex: 0 0 67px;
+  border: 3px solid var(--pv-indigo);
+  border-radius: 999px;
+  background: var(--pv-indigo);
+  color: var(--charte-blanc);
+  box-shadow: 0 0 0 3px var(--pv-papier);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: grid;
+  place-items: center;
+}
+/*  La maquette pose DEUX étiquettes l'une sous l'autre : celle du NOM
+    en haut (90 px de large), celle du RÔLE juste dessous, plus large et
+    décalée de 6 px vers la droite (127 px). Ce sont deux pièces, pas une
+    carte : chacune a son contour et son ombre. */
+.pauses-v2-identite-texte {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+.pauses-v2-carte {
+  display: flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 1.5px solid var(--pv-traif);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--pv-carte);
+  line-height: 1.2;
+  box-shadow: 2px 2px 0 var(--pv-traif);
+}
+.pauses-v2-carte--role {
+  margin: -1px 0 0 6px;
+  padding: 2px 10px 3px;
+}
+.pauses-v2-carte strong { font-size: 16px; font-weight: 700; color: var(--pv-traif); }
+.pauses-v2-carte em { font-style: normal; font-size: 13px; color: var(--pv-doux, var(--pv-traif)); }
+
+/*  LE BOUTON D'AJOUT — 299 × 79, double ombre décalée comme la maquette. */
+.pauses-v2-add-btn {
+  position: absolute;
+  right: 0;
+  top: 90px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 299px;
+  min-height: 79px;
+  padding: 0 12px 0 9px;
+  border: 2px solid var(--pv-traif);
+  border-radius: 999px;
+  background: var(--pv-terre);
+  color: var(--charte-blanc);
+  outline: 1.5px solid var(--pv-carte);
+  outline-offset: -6px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 6px 0 var(--pv-traif);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.pauses-v2-add-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 var(--pv-traif); }
+.pauses-v2-add-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--pv-traif); }
+.pauses-v2-add-plus {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border: 2px solid var(--charte-blanc);
+  border-radius: 999px;
+}
+
+
+/*  L'ŒILLET — le trou poinçonné par lequel passe la ficelle. C'est un
+   bouton : c'est la période précédente, comme avant. */
+.pauses-v2-oeillet--d {
+  margin-left: auto;
+}
+.pauses-v2-oeillet {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  padding: 0;
+  border: 2px solid var(--pv-traif);
+  border-radius: 999px;
+  background: var(--pv-lavis);
+  cursor: pointer;
+}
+.pauses-v2-oeillet:hover { background: var(--pv-terre); }
+
+/*  Les deux flèches : DEUX CERCLES SÉPARÉS, à droite de l'étiquette. */
+.pauses-v2-sens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 0;
+}
+.pauses-v2-sens .pauses-v2-pastille { width: 40px; height: 40px; flex: 0 0 40px; }
+.pauses-v2-pastille {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  flex: 0 0 43px;
+  padding: 0;
+  border: 2px solid var(--pv-traif);
+  border-radius: 999px;
+  background: var(--pv-papier);
+  color: var(--pv-traif);
+  cursor: pointer;
+  transition: transform 140ms ease, background-color 140ms ease;
+}
+.pauses-v2-pastille:hover { background: var(--pv-lavis); transform: scale(1.05); }
+
+/*  « CSV » : un CERCLE, comme sur la maquette — pas une pilule. */
+.pauses-v2-pastille--csv {
+  width: 65px;
+  height: 65px;
+  align-self: center;
+  margin: 0;
+  flex: 0 0 65px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+
+/*  LA PILULE DU MODE — une seule, pleine terre, à l'échelle de la maquette
+   (150 × 50). Elle porte le mode courant ; un clic ouvre les trois. */
+.pauses-v2-menu-modes {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 148px;
+  padding: 6px;
+  border: 2px solid var(--pv-traif);
+  border-radius: var(--charte-rayon-badge);
+  background: var(--pv-papier);
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+.pauses-v2-menu-mode {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--pv-traif);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.pauses-v2-menu-mode:hover { background: var(--pv-lavis); }
+.pauses-v2-menu-mode.is-active { background: var(--pv-terre); color: var(--pv-papier); }
+.pauses-v2-menu-mode--auj { border-top: 1.5px dashed var(--pv-traif); margin-top: 4px; }
+
+/*  La pilule entreprise : 325 × 56, chevron › à droite. */
+.pauses-v2-entreprise {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pauses-v2-entreprise .pauses-v2-entreprise-chevron {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1.5px solid var(--pv-traif);
+  background: var(--pv-papier);
+  pointer-events: none;
+}
+.pauses-v2-entreprise svg { color: var(--pv-traif); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   À DROITE — le profil AU-DESSUS, l'ajout DESSOUS (ordre de la maquette)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.pauses-v2-identite .pauses-v2-avatar {
+  width: 67px;
+  height: 67px;
+  flex: 0 0 67px;
+  border: 3px solid var(--pv-indigo);
+  border-radius: 999px;
+  background: var(--pv-indigo);
+  color: var(--charte-blanc);
+  box-shadow: 0 0 0 3px var(--pv-papier);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: grid;
+  place-items: center;
+}
+/*  La maquette pose DEUX étiquettes l'une sur l'autre : celle du nom
+    (1259→1349, 90 px de large) et celle du rôle, plus basse et plus
+    large (1259→1386, 127 px), qui dépasse de 37 px. On dessine la
+    seconde en `::before`, sans texte, pour que rien ne soit dupliqué
+    pour les lecteurs d'écran. */
+.pauses-v2-carte {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 5px 10px;
+  border: 1.5px solid var(--pv-traif);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--pv-carte);
+  line-height: 1.15;
+  box-shadow: 2px 2px 0 var(--pv-traif);
+}
+.pauses-v2-carte-bord {
+  position: absolute;
+  left: -2px;
+  top: 24px;
+  right: -20px;
+  bottom: -2px;
+  z-index: -1;
+  border: 1.5px solid var(--pv-traif);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--pv-carte);
+  box-shadow: 2px 2px 0 var(--pv-traif);
+}
+.pauses-v2-carte strong { font-size: 16px; font-weight: 700; color: var(--pv-traif); }
+.pauses-v2-carte em { font-style: normal; font-size: 13px; color: var(--pv-doux, var(--pv-traif)); }
+
+/*  LE BOUTON D'AJOUT — 299 × 79, double ombre décalée comme la maquette. */
+.pauses-v2-add-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 var(--pv-traif); }
+.pauses-v2-add-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--pv-traif); }
+.pauses-v2-add-plus {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border: 2px solid var(--charte-blanc);
+  border-radius: 999px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
 
 .pauses-v2-Ghost-btn {
   display: inline-flex;
@@ -3758,438 +4416,6 @@
   .pauses-v2-donut-layout {
     grid-template-columns: 1fr;
   }
-}
-
-/* ── LE CERCLE DE RETOUR — 36 px, contour 2 px, ombre dure ──
-   Il était à 1 px avec une ombre floue : c'est précisément ce que la
-   maquette B remplace. Rayon 999, jamais un carré. */
-.pauses-v2-back-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
-  border-radius: 999px;
-  border: 2px solid var(--pv-traif);
-  background: var(--pv-papier);
-  color: var(--pv-traif);
-  cursor: pointer;
-  box-shadow: 3px 3px 0 var(--pv-traif);
-  transition: transform 140ms ease, box-shadow 140ms ease;
-}
-.pauses-v2-back-btn:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--pv-traif);
-}
-.pauses-v2-back-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--pv-traif);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   L'ENSEIGNE — le pied dans son sceau, le titre, le sticker
-   ═══════════════════════════════════════════════════════════════════════ */
-
-/*  Le sceau : un cercle de 84 px, DEUX traits (le second à 6 px du bord),
-    et l'ombre dure qui le décolle. Le pied est celui de la marque, agrandi. */
-.pauses-v2-sceau {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 84px;
-  height: 84px;
-  flex: 0 0 84px;
-  border: 2px solid var(--pv-traif);
-  border-radius: 999px;
-  background: var(--pv-papier);
-  box-shadow: 3px 3px 0 var(--pv-traif);
-}
-.pauses-v2-sceau::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border: 1.5px solid var(--pv-traif);
-  border-radius: 999px;
-  pointer-events: none;
-}
-.pauses-v2-sceau svg {
-  width: 46px;
-  height: 46px;
-  color: var(--pv-traif);
-}
-
-/*  Le bloc du titre : titre énorme, sticker posé dessus de travers. */
-.pauses-v2-marque {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  cursor: pointer;
-  padding-right: 26px;
-}
-/*  La ligne du titre : c'est ELLE qui porte le sticker, pour qu'il se pose
-    à la fin du mot et non à la fin du bloc — le bloc est plus large, la
-    devise « Humain · Temps · Performance » débordant sous le titre. */
-.pauses-v2-titre-ligne {
-  position: relative;
-  display: inline-flex;
-  align-items: flex-start;
-}
-.pauses-v2-titre {
-  font-size: clamp(30px, 3.4vw, 46px);
-  font-weight: 900;
-  line-height: 0.94;
-  letter-spacing: -0.045em;
-  text-transform: uppercase;
-  color: var(--pv-traif);
-}
-
-/*  LE STICKER — « EN-CHECK » en travers. Le liseré kente est une bande
-    répétée en dégradé : trois traits terracotta/indigo/sable, pas une image.
-    Il est penché à −7°, chevauche la fin du titre, et ne prend aucun clic. */
-.pauses-v2-sticker {
-  position: absolute;
-  /*  ⚠️ IL SE POSE APRÈS LE TITRE, PAS DESSUS. Dans la première pose il
-      coupait « PAUSES » en deux ; dans la seconde il dérivait jusqu'aux
-      pastilles de mode. Il est maintenant accroché à `100%` de la LIGNE DU
-      TITRE, mordu de 12 px, donc il chevauche la dernière lettre du mot et
-      rien d'autre, comme sur la maquette. */
-  /*  Mesuré : le titre finit à x=338, le sticker doit commencer à 324 pour
-      mordre 14 px sur le S. `calc(100% - 26px)` le pose là quel que soit le
-      corps du titre (il est en `clamp`). */
-  left: calc(100% - 26px);
-  top: 2px;
-  padding: 3px 8px 3px 7px;
-  border: 2px solid var(--pv-traif);
-  border-radius: var(--charte-rayon-carte);
-  background: var(--pv-papier);
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--pv-indigo) 0 5px,
-    var(--pv-papier) 5px 7px,
-    var(--pv-terre) 7px 12px,
-    var(--pv-papier) 12px 14px
-  );
-  background-size: 100% 4px;
-  background-position: 0 100%;
-  background-repeat: no-repeat;
-  color: var(--pv-traif);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  transform: rotate(-7deg);
-  box-shadow: 2px 2px 0 var(--pv-traif);
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-/*  La devise, en micro-capitales espacées, sous le titre. */
-.pauses-v2-devise {
-  display: block;
-  margin-top: 5px;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--pv-traif);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   LES ÉTIQUETTES DE PÉRIODE — posées à des hauteurs différentes
-   ═══════════════════════════════════════════════════════════════════════ */
-
-.pauses-v2-etiquettes {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-  flex: 1 1 420px;
-  min-width: 0;
-  padding-top: 2px;
-}
-
-/*  L'étiquette pendue : sa ficelle (un arc de trait) puis l'étiquette.
-    La ficelle sort du coin haut-gauche et remonte hors de l'étiquette. */
-.pauses-v2-pendue {
-  position: relative;
-  padding-top: 10px;
-}
-.pauses-v2-ficelle {
-  position: absolute;
-  left: 26px;
-  top: -4px;
-  width: 34px;
-  height: 22px;
-  border: 2px solid var(--pv-traif);
-  border-bottom: 0;
-  border-left-color: transparent;
-  border-radius: var(--charte-rayon-badge) var(--charte-rayon-badge) 0 0;
-  transform: rotate(-8deg);
-  pointer-events: none;
-}
-
-/*  L'étiquette elle-même : pilule de 14 px de rayon, contour 2 px. */
-.pauses-v2-etiquette-date {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 9px;
-  border: 2px solid var(--pv-traif);
-  border-radius: var(--charte-rayon-badge);
-  background: var(--pv-papier);
-  box-shadow: 3px 3px 0 var(--pv-traif);
-}
-.pauses-v2-date-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 0 4px;
-  border: 0;
-  background: transparent;
-  color: var(--pv-traif);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-/*  L'œillet : le trou par lequel passe la ficelle, à gauche de la date. */
-.pauses-v2-oeillet {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  flex: 0 0 9px;
-  border: 2px solid var(--pv-traif);
-  border-radius: 999px;
-  background: var(--pv-lavis);
-}
-
-/*  Les deux pastilles de flèches : rondes, 28 px, entre l'étiquette. */
-.pauses-v2-pastille {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  padding: 0;
-  border: 2px solid var(--pv-traif);
-  border-radius: 999px;
-  background: var(--pv-papier);
-  color: var(--pv-traif);
-  cursor: pointer;
-  transition: transform 140ms ease, background-color 140ms ease;
-}
-.pauses-v2-pastille:hover { background: var(--pv-lavis); transform: scale(1.06); }
-
-/*  « CSV » : une pastille ronde comme les flèches, mais qui porte un mot. */
-.pauses-v2-pastille--csv {
-  width: auto;
-  min-width: 46px;
-  height: 34px;
-  padding: 0 12px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  box-shadow: 3px 3px 0 var(--pv-traif);
-}
-
-/*  Les trois modes : une pilule pleine pour l'actif, des pastilles nues
-   pour les autres — c'est le tampon « SEMAINE » de la maquette. */
-.pauses-v2-modes {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-left: 34px;
-}
-.pauses-v2-mode {
-  padding: 5px 13px;
-  border: 2px solid var(--pv-traif);
-  border-radius: 999px;
-  background: var(--pv-papier);
-  color: var(--pv-traif);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: transform 140ms ease;
-}
-.pauses-v2-mode:hover { transform: translateY(-1px); }
-.pauses-v2-mode.is-active {
-  background: var(--pv-terre);
-  color: var(--pv-papier);
-  box-shadow: 3px 3px 0 var(--pv-traif);
-}
-
-/*  Le rang des annexes : le filtre entreprise, puis le CSV. */
-.pauses-v2-annexes {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: 34px;
-  flex-wrap: wrap;
-}
-.pauses-v2-entreprise {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-.pauses-v2-entreprise select {
-  appearance: none;
-  padding: 7px 32px 7px 14px;
-  border: 2px solid var(--pv-traif);
-  border-radius: 999px;
-  background: var(--pv-papier);
-  color: var(--pv-traif);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 3px 3px 0 var(--pv-traif);
-}
-.pauses-v2-entreprise svg {
-  position: absolute;
-  right: 11px;
-  pointer-events: none;
-  color: var(--pv-traif);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   À DROITE — le tampon d'ajout et la carte du profil
-   ═══════════════════════════════════════════════════════════════════════ */
-
-.pauses-v2-bord {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-  flex: 0 0 auto;
-}
-
-/*  Le bouton d'ajout : pilule terracotta, contour 2 px, ombre dure 4 px
-   pour qu'il porte plus fort que le reste — c'est l'action de la page. */
-.pauses-v2-add-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 20px 8px 9px;
-  border: 2px solid var(--pv-traif);
-  border-radius: 999px;
-  background: var(--pv-terre);
-  color: var(--pv-papier);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 4px 4px 0 var(--pv-traif);
-  transition: transform 140ms ease, box-shadow 140ms ease;
-}
-.pauses-v2-add-btn:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0 var(--pv-traif);
-}
-.pauses-v2-add-btn:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 var(--pv-traif);
-}
-/*  Le plus dans son rond : c'est le détail de la maquette. */
-.pauses-v2-add-plus {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  border: 1.5px solid var(--pv-papier);
-  border-radius: 999px;
-  background: transparent;
-}
-
-/*  La carte du profil : un papier posé, l'avatar en cercle à gauche, deux
-   lignes de texte à droite. Le rectangle à 8 px est admis ici — c'est une
-   carte, pas un bouton. */
-.pauses-v2-identite {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-}
-.pauses-v2-identite .pauses-v2-avatar {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  /*  ⚠️ PAS d'indigo en fond : `--charte-espresso` — le jeton que lit
-      `--pv-indigo` — devient très sombre en thème sombre, et les initiales
-      disparaissaient sur un disque presque noir (capture du 25/11). Le disque
-      prend donc l'encre du trait, qui bascule avec le thème, et les lettres
-      prennent le papier : contraste garanti dans les deux modes. */
-  border: 2px solid var(--pv-traif);
-  border-radius: 999px;
-  background: var(--pv-traif);
-  color: var(--pv-papier);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  display: grid;
-  place-items: center;
-  box-shadow: 2px 2px 0 var(--pv-traif);
-}
-.pauses-v2-carte {
-  display: flex;
-  flex-direction: column;
-  padding: 4px 10px;
-  border: 1.5px solid var(--pv-traif);
-  border-radius: var(--charte-rayon-carte);
-  background: var(--pv-papier);
-  box-shadow: 2px 2px 0 var(--pv-traif);
-  line-height: 1.2;
-}
-.pauses-v2-carte strong {
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--pv-traif);
-}
-.pauses-v2-carte em {
-  font-style: normal;
-  font-size: 10px;
-  color: var(--pv-texte-doux);
-}
-
-/*  Sur téléphone : tout s'empile, et les étiquettes reprennent la largeur. */
-@media (max-width: 900px) {
-  .pauses-v2-topbar { align-items: flex-start; }
-  .pauses-v2-etiquettes { flex-basis: 100%; }
-  .pauses-v2-bord { flex-direction: row; align-items: center; flex-wrap: wrap; }
-}
-@media (max-width: 560px) {
-  /*  Sur téléphone, l'enseigne passe sur deux lignes : le sceau et la flèche
-     restent à gauche, le titre prend toute la largeur en dessous — sinon il
-     sort de l'écran, et le sticker mange la fin du mot. */
-  .pauses-v2-brand { flex-wrap: wrap; gap: 10px; }
-  .pauses-v2-sceau { width: 58px; height: 58px; flex-basis: 58px; }
-  .pauses-v2-sceau svg { width: 31px; height: 31px; }
-  .pauses-v2-marque { flex: 1 1 100%; padding-right: 0; }
-  /*  le sticker reste COLLÉ AU MOT : la ligne se rétracte sur son contenu.
-     Sans ça, elle prenait toute la largeur et le sticker partait au bord
-     de l'écran — le défaut de la capture du 25/11. */
-  .pauses-v2-titre-ligne { width: fit-content; max-width: 100%; }
-  .pauses-v2-titre { font-size: 30px; }
-  .pauses-v2-sticker { font-size: 9.5px; left: calc(100% - 14px); top: 0; padding: 2px 6px; }
-  .pauses-v2-devise { font-size: 8.5px; letter-spacing: 0.16em; }
-  .pauses-v2-modes, .pauses-v2-annexes { margin-left: 0; }
-  .pauses-v2-etiquette-date { flex-wrap: wrap; }
-  .pauses-v2-pendue { padding-top: 8px; }
-  .pauses-v2-ficelle { left: 18px; top: -2px; width: 26px; height: 16px; }
-  .pauses-v2-bord { width: 100%; justify-content: space-between; }
-  .pauses-v2-add-btn { flex: 1 1 auto; justify-content: center; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
