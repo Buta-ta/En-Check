@@ -339,3 +339,77 @@ La maquette mentait sur trois points, et le code ne l'a pas crue : les **prénom
 1. **Le mode jour est une corde d'un seul anneau.** Ça tient — un anneau, une planche pleine, le solde à droite — mais une figure à un point est pauvre. Si le fondateur le trouve maigre, la porte est un jeton de plus (les six jours voisins en filigrane), pas un composant de plus.
 2. **`Masquer sans absence` et la corde se marchent un peu dessus** : le switch enlève la ligne entière, l'anneau creux la rendait déjà muette. Le jour où la liste des présents s'allonge, le switch devient un tri et l'anneau garde la parole.
 3. Reste ouvert depuis la tringle : **la deuxième porte « Déclarer »** (bande vs bandeau du haut), **la décision B du Planning** (`planning-case-B2-*`), et la factorisation de `services/absences.js` avec le `motifDe()` de `Planning.jsx`.
+
+# La copie à la cote (26/11) — « d'abord reproduire, ensuite adapter »
+
+La consigne du fondateur tient en une phrase, et c'est un **ordre de passage**, pas une préférence :
+
+> « quand je demande une maquette le but est de reproduire à l'identique la maquette et une fois fait, on essaiera de l'adapter parfaitement à l'identité En-Check mais d'abord il faut reproduire la maquette choisie à l'identique »
+
+La version du 10/12 ne reproduisait pas la maquette : elle l'**interprétait**. Le reproche n'était pas une question de goût, il avait une taille — « ce n'est ni les mêmes couleurs, ni la même interface ». Ce tour-ci n'arbitre donc rien : il **mesure le dessin, et recopie**. L'adaptation à l'identité (loi des couleurs, densité de la maison, teintes) est une passe suivante, qu'il ouvrira.
+
+## Les cotes, relevées sur l'image
+
+`maquettes/absences-grille-1-corde.png` fait 1 422 × 800 — un **canevas 1×, pas une capture retina**. Son rendu à lui, lui, est à 2× : diviser l'un comme l'autre par deux était la première façon de se tromper (c'est ce que j'avais fait). Les cotes se recopient telles quelles.
+
+| ce qu'on mesure | au dessin | jeton |
+|---|---|---|
+| le pas d'une ligne | 50 px (fils à y 180, 406, 456, 506, 558, 606, 656, 708, 756) | `--abs-corde-repos` |
+| le trait tendu | 3 px (y 180-182), **continu** | `--abs-corde-fil` |
+| le haut de carte sous le fil | 26 px (carte à y 206 pour un fil à 180) | `--abs-corde-descente` 21 + fil + fil-top |
+| la carte | 46 px de corps, contour d'encre de ≈3, ombre **dure** en bas à droite | `--abs-corde-carte`, `--abs-corde-encre` |
+| les attaches | **deux** cordons de ≈40 × 45, à 6 px des coins, qui **traversent** le fil | `--abs-corde-cordons`, `--abs-corde-coin` |
+| le trou du jour | ≈9 px cerclé de 3, un par jour, pitch ≈125 (le pas de l'entête : ≈122) | `--abs-corde-anneau`, `--abs-corde-cercle` |
+| la vignette de tête | 78 × 35, **teintée** (230, 218, 193), aucun trait d'encre sur son bord | `--abs-corde-figure-largeur/hauteur` |
+| le solde | ornière de 104 × 18 (x 1226→1329), nombre jusqu'à x 1361 → **colonne de 136** | `LARGEUR_SOLDE`, `--abs-corde-jauge` |
+| aujourd'hui | toute la **colonne** lavée (224, 200, 174) sur ≈1,5 jour + un trait de 2 px | `--abs-corde-lavage`, `--charte-trait` |
+| le fond | bandes alternées (243, 234, 218) ↔ (232, 219, 193), **aucune carte blanche** | `.abs-cal-scroll`, `--abs-corde-fond` |
+| l'entête | « L 23 » sur une ligne, filet de 2 px dessous, **aucun séparateur vertical** | `.abs-cal-entete` |
+
+Un chiffre relevé n'est pas un chiffre arrondi : la colonne du solde fait 136, pas 176 « pour que le mot tienne à l'aise » — et le jeton qui avait été posé à 176 dans la journée a été remisé à la mesure.
+
+## La loi qui empêche la dérive : un seul modèle de largeur
+
+La panne qu'il avait vue (« les trous sont mal placés, analyse et tu verras ») valait −8 px au lundi et **−97 px au dimanche**. Cause unique : le champ de l'entête omettait la colonne du solde, la piste la réservait — sept colonnes d'un côté, sept plus étroites de l'autre. Ce n'était pas lisible dans le code : les deux formules étaient justes prises séparément. Depuis :
+
+* `.abs-cal-entete-jours` et `.abs-corde-piste` portent **le même** `flex: 1 1 0` ;
+* les deux colonnes collantes lisent **les mêmes** jetons posés en ligne par le composant — `.abs-cal-entete-employes` / `.abs-corde-tete` sur `--abs-corde-employe`, `.abs-cal-entete-solde` / `.abs-corde-solde` sur `--abs-corde-solde` ;
+* `minWidth` du champ porte les **trois** termes : `LARGEUR_EMPLOYE + nbJours × largeurJour + LARGEUR_SOLDE` ;
+* verrou 17 : la comparaison des deux côtés est écrite, pas seulement la formule de l'un. « Lire les formules n'est pas vérifier » — c'est la leçon du 25/11, rendue exécutable.
+
+## Ce que la copie a supprimé, et pourquoi
+
+* **la carte blanche derrière le calendrier** (`theme.carte`, `theme.bordure`, `theme.grille` en styles en ligne dans le corps de corde) : le dessin n'a pas de fiche, il a un fond de sable et des bandes. `--abs-corde-fond` est posé sur la ligne, et les deux colonnes collantes le relisent — un fond propre à elles laisserait une bande claire traverser le défilement horizontal. Ces trois constantes restent en vie, pour la tringle seule.
+* **les trois séparateurs verticaux de l'entête et son étiquette encadrée** : le dessin n'en a pas.
+* **le cordon unique de 2 px** (`.abs-corde-attache`) : deux montants (`.abs-corde-cordons`) qui dépassent le fil d'un cordon. Une carte qui touche sans traverser est une étiquette posée, pas une carte accrochée.
+* **le trait de jour à 45 % sur une case** : un lavage d'une colonne et demie, plein champ, borné à `max-width: 100%` pour que le mode jour n'ouvre pas d'ascenseur horizontal.
+* **la jauge de 6 px cerclée** : une ornière de 74 × 14 en contour pointillé, remplie en plein de ce qui reste — avec le nombre à côté, parce qu'une jauge lue seule est un statut sans mot.
+* **les bandes au `:nth-child`** : l'entête est le premier enfant du champ, un rang de décalage inversait tout. C'est `data-alterné` posé par le composant.
+* **la montée écrite deux fois** : `--abs-corde-montée` vit sur la carte, cordons et nœud la relisent. Deux formules écrites côte à côte, et le deuxième rang flottait à vingt-six pixels du trait.
+
+## Ce qui est délibérément resté du droit (et non du dessin)
+
+Le dessin est une figure : ses prénoms, ses « 26/30 » répétés et son anneau par jour férié non justifié ne se recopient pas. Restent réels : les noms, les soldes, les motifs, les sept commandes de la tringle avec leurs portes (`data-testid`, `aria-pressed`, `role="switch"`), le dépôt d'une pince sur le jour sous le pointeur (`data-drop-lane`, `jourDepuisX`), le 📎, la coupure aux bords de période, le nœud de conflit — posé **sur le fil**, centré par le même calcul que l'anneau. Les deux seuls indices de statut admis par la charte sont restés : **pointillé** pour ce qui n'est pas acquis, **barré** pour un refus, et le mot écrit à côté ; la carte a perdu sa couleur de motif (le dessin est monochrome) et gagné le « Motif · N j » du dessin.
+
+## Le thème sombre, piégé par un blanc
+
+Première version de la copie : carte en `--charte-blanc`, texte en `--charte-encre`. Sous `[data-theme='dark']`, la maison inverse l'encre (elle devient claire) mais garde « blanc » crème — une encre claire sur crème, donc **illisible**. La carte est passée en `--charte-surface`, qui suit le thème dans les deux sens (crème sur sable le jour, écorce claire la nuit) ; le survol répond en `--charte-surface2`. Le verrou de rayon et la loi « pas de hex en dur » n'ont pas bougé d'un poil : `npm run charte` rend **exactement** les chiffres de la base (4 488 couleurs en dur · 126 ombres floues · 332 rayons · 63 / 42 / 27 mesures) — la copie n'a ajouté aucune entorse, elle en a retiré du côté du corps de grille.
+
+## Les chiffres du contrôle (26/11)
+
+| mesure | base `59a1045` | **la copie** |
+|---|---|---|
+| `npx vitest run` | 199 fichiers · 2 829 ✓ | **200 · 2 837 ✓** (0 échec), dont **22** verrous de corde (+4 : la cote relevée, le modèle de largeur partagé, le champ nu, le lavage borné) et 23 de tringle intacts |
+| `npx vite build` | ✓ | ✓ (22 entrées precachees) |
+| `npm run charte` | 4 488 · 126 · 332 · 63/42/27 | **les mêmes, un pour un** |
+| `npx eslint` sur les trois fichiers touchés | silence | **silence** |
+| portée du patch | — | `AbsencesCalendrier.jsx` (structure d'entête, champ, cordons, lavage, solde, `LARGEUR_SOLDE = 136`), `AbsencesAfroTech.css` (rubrique de corde réécrite en entier), `absencesCalendrierCorde.test.jsx` (verrous rebasés sur la cote du dessin) |
+
+## Ce qui attend la passe « identité »
+
+Rien de ce qui suit n'a été fait — c'est la porte qu'il ouvrira après avoir validé la copie :
+
+1. **la loi des couleurs sur la carte** : `styleBarreAbsence` dit « la couleur dit le motif » ; la copie monochrome ne la montre pas. Deux options à trancher par lui : colorer le contour (le dessin garde sa géométrie) ou la pastille de gauche.
+2. **l'échelle typographique** : le dessin écrit le chiffre du jour à 15 px et son titre à 20 ; la maison n'a que 20 / 14 / 11 / 9,5. La copie a pris 14 — le 15 est hors liste et ne se décrète pas ici.
+3. **la densité** : 50 px par ligne, c'est la cote du dessin ; la grille d'avant en faisait 78 et la corde de la veille 44. Le choix d'identité est à poser une fois la copie actée.
+4. **les teintes relevées** (crème 241/235/214, sables 243/234/218 et 232/219/193) sont exprimées en `--charte-*` existants, jamais en hex. Si la passe identité veut ses tons exacts, c'est une décision de palette, pas un `#…` de plus.
