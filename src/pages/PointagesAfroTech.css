@@ -2843,75 +2843,11 @@
 }
 
 /* ── Topbar ── */
-/*  ═══ LA PLANCHE DU BANDEAU — un seul facteur d'échelle ═══════════════
-    Le bandeau est une composition ABSOLUE de 1420 × 306 px, mesurée sur la
-    maquette. C'est ce qui le rend juste — et c'est aussi ce qui le rend
-    rigide : une géométrie en dur ne sait pas se réduire.
-
-    On l'enveloppe donc dans une « planche » : le dessin garde SA taille,
-    et c'est `--pv-echelle` qui décide de la taille à l'écran. Une seule
-    valeur pour tout — rien ne se déforme, tout rétrécit ensemble, texte,
-    traits, ombres et distances compris.
-
-    La planche ne s'agrandit jamais au-delà de l'échelle 1 : le bandeau ne
-    prend pas la place de la page sur un écran large. Sous 1030 px, la
-    composition s'efface au profit d'un empilement lisible (voir plus bas).
-    ══════════════════════════════════════════════════════════════════════ */
-.pauses-v2-planche {
-  --pv-echelle: 1;
-  position: relative;
-  width: 1420px;
-  height: 306px;
-  margin: 0 auto 16px;
-  transform: scale(var(--pv-echelle));
-  transform-origin: top left;
-  /*  La boîte reste à 1420 px (c'est le dessin), mais elle est centrée
-      dans la place disponible : sans ce plafond, elle débordait de 300 px
-      sur un écran de 1100. `margin-inline: auto` ne suffit pas quand la
-      boîte est plus large que son parent — d'où le décalage géré par la
-      marge négative de droite, plus bas. */
-  max-width: none;
-}
-/*  `transform` ne change pas la boîte : la planche occupe toujours 1420 px
-    dans le flux, même réduite. C'est la marge négative qui récupère la
-    place restante, pour que ce qui suit le bandeau remonte au bon endroit. */
-.pauses-v2-planche {
-  margin-bottom: calc(16px - 306px * (1 - var(--pv-echelle)));
-  margin-right: calc(-1420px * (1 - var(--pv-echelle)));
-}
-
-/*  ═══ LE PLAFOND — la taille du bandeau sur un grand écran ═════════════
-    L'échelle 1 (1420 px) est la taille de DESSIN. Sur un écran de 1420 px
-    et plus, le bandeau l'atteint — c'est la fidélité maximale. En dessous,
-    il se réduit par paliers jusqu'à 0,72 à 1150 px, puis la planche
-    s'empile sous 1030 px.
-
-    Pour le réduire PARTOUT d'un cran : baisse ces trois valeurs de 0,10
-    (0,80 / 0,72 / 0,62 par exemple). Rien d'autre à toucher. */
-@media (max-width: 1419px) {
-  .pauses-v2-planche { --pv-echelle: 0.90; }
-}
-@media (max-width: 1300px) {
-  .pauses-v2-planche { --pv-echelle: 0.82; }
-}
-@media (max-width: 1150px) {
-  .pauses-v2-planche { --pv-echelle: 0.72; }
-}
-
-/*  LE BANDEAU — la fenêtre de la composition. Toutes les pièces sont en
-    position absolue à l'intérieur : c'est une illustration, pas un flux.
-    La planche (`.pauses-v2-planche`) porte l'échelle ; cette boîte garde la
-    taille du dessin. */
-.pauses-v2-topbar {
-  position: relative;
-  width: 1420px;
-  height: 306px;
-  margin: 0;
-  background: var(--pv-papier);
-  /*  Le contenu déborde volontairement : sticker, ombres et bouton sortent
-      de la boîte, comme sur la maquette. */
-  overflow: visible;
-}
+/*  ═══ LE BANDEAU — les deux enveloppes ══════════════════════════════════
+    Elles ne portent plus d'échelle : le bandeau est une RANGÉE souple qui
+    se dimensionne seule (voir la section « LE BANDEAU DEVIENT UN EN-TÊTE »).
+    Elles restent dans le HTML comme points d'ancrage, sans effet visuel. */
+.pauses-v2-planche { position: relative; width: 100%; }
 
 /* l'enseigne occupe le tiers gauche, ses pièces se chevauchent */
 .pauses-v2-brand {
@@ -3000,12 +2936,16 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  width: 324px;   /* P→S : de 338 à 648 dans la maquette */
-  height: 113px;
+  width: 186px;   /* le mot occupe ~186 px à 80 px de corps */
+  height: 68px;
   overflow: visible;
 }
 .pauses-v2-titre {
-  font-size: 141px;
+  /*  80 px dans le dessin : à l'échelle 0,62 cela fait 50 px rendus, la
+      valeur de l'en-tête Employés. Le dessin d'origine le donnait à 141 px
+      parce que c'était une AFFICHE : le titre y domine tout. Dans une page,
+      un titre n'écrase pas ses contrôles — on le ramène au rang de titre. */
+  font-size: 80px;
   font-weight: 700;
   line-height: 0.72;
   letter-spacing: 0.012em;
@@ -3266,8 +3206,8 @@
     l'étiquette. Liseré kente en HAUT et en BAS, comme la maquette. ═══ */
 .pauses-v2-sticker {
   position: absolute;
-  left: 262px;
-  top: 58px;
+  left: 148px;
+  top: 22px;
   padding: 5px 12px 6px;
   border: 2px solid var(--pv-traif);
   border-radius: var(--charte-rayon-carte);
@@ -5517,4 +5457,330 @@
   transform: none;
   justify-self: center;
   align-self: center;
+}
+
+/*  ═══════════════════════════════════════════════════════════════════════
+    LE BANDEAU DEVIENT UN EN-TÊTE — 26/11, 3ᵉ retour
+    ═══════════════════════════════════════════════════════════════════════
+
+    ⚠️ CE QUI N'ALLAIT PAS. La maquette est une AFFICHE : 1420 × 306, un
+    titre de 141 px, un sceau de 191. Tant que je la réduisais d'un bloc
+    (0,72 puis 0,62), je restais avec une affiche en réduction — trop
+    épaisse, ou devenue une vignette de 880 px au milieu de la page.
+
+    Un en-tête de page, lui, est une RANGÉE : pleine largeur, ~170 px de
+    haut, un titre de 50 px et des contrôles de 11 à 13 px. C'est l'en-tête
+    Employés (`empv3-entete`) — le référent que l'utilisateur cite.
+
+    On abandonne donc la composition absolue sur grand écran. Le bandeau
+    garde TOUT son dessin (sceau à double trait, sticker kente, étiquette
+    suspendue à œillets, pastille terre, profil en deux étiquettes) mais il
+    s'aligne en rangée, à l'échelle des autres en-têtes. Les petits écarts
+    de la maquette (une pièce plus haute que l'autre) restent : c'est ce
+    qui garde l'allure « papiers sur un établi ».
+    ═══════════════════════════════════════════════════════════════════════ */
+
+/*  Les deux enveloppes de la planche ne servent plus à rien : on les
+    neutralise sans toucher au HTML (elles restent utiles au repli mobile). */
+.pauses-v2-planche {
+  position: relative;
+  width: 100%;
+}
+
+/*  --- LA RANGÉE --------------------------------------------------------- */
+.pauses-v2-topbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  padding: 14px 0 4px;
+  margin: 0;
+  background: var(--pv-papier);
+  overflow: visible;
+}
+
+/*  Les trois familles redeviennent des blocs souples, plus des absolus. */
+.pauses-v2-brand,
+.pauses-v2-etiquettes,
+.pauses-v2-pendue,
+.pauses-v2-bord,
+.pauses-v2-identite,
+.pauses-v2-annexes,
+.pauses-v2-modes {
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+.pauses-v2-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 1 auto;
+}
+.pauses-v2-etiquettes {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+.pauses-v2-bord {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+/*  --- L'ENSEIGNE : le sceau, le titre, le sticker ---------------------- */
+.pauses-v2-sceau {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 104px;
+  height: 104px;
+  flex: 0 0 104px;
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+.pauses-v2-sceau::before { inset: 7px; }
+.pauses-v2-pied { width: 35%; height: 60%; margin: 0; transform: none; }
+
+.pauses-v2-back-btn {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+}
+
+.pauses-v2-marque {
+  position: relative;
+  left: auto;
+  top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 0 1 auto;
+  padding-right: 30px;
+}
+.pauses-v2-titre-ligne {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  width: auto;
+  height: auto;
+  margin-left: 0;
+  padding-bottom: 8px;
+}
+.pauses-v2-titre {
+  /*  le titre d'un en-tête : la valeur d'Employés, en clamp comme lui */
+  font-size: clamp(34px, 3.4vw, 50px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  transform: none;
+  white-space: nowrap;
+}
+.pauses-v2-sticker {
+  position: absolute;
+  left: auto;
+  right: -8px;
+  top: auto;
+  bottom: 0;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  transform: rotate(-6deg);
+}
+.pauses-v2-devise {
+  width: auto;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+/*  --- LE CENTRE : l'étiquette pendue et la pilule du mode ------------- */
+.pauses-v2-ficelle { display: none; }
+.pauses-v2-etiquette-date {
+  width: auto;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 14px;
+  gap: 10px;
+  box-shadow: 2px 2px 0 var(--pv-traif);
+}
+.pauses-v2-oeillet { width: 12px; height: 12px; }
+.pauses-v2-date-trigger { font-size: 14px; font-weight: 600; }
+.pauses-v2-sens { position: relative; left: auto; top: auto; padding-top: 0; gap: 6px; }
+.pauses-v2-sens .pauses-v2-pastille { width: 34px; height: 34px; flex: 0 0 34px; }
+.pauses-v2-modes { margin-left: 0; }
+.pauses-v2-mode { font-size: 13px; padding: 7px 16px; letter-spacing: 0.05em; }
+
+.pauses-v2-annexes { gap: 10px; }
+.pauses-v2-entreprise select {
+  width: auto;
+  min-width: 190px;
+  min-height: 40px;
+  padding: 0 34px 0 12px;
+  font-size: 11px;
+  box-shadow: 2px 2px 0 var(--pv-traif);
+}
+.pauses-v2-entreprise .pauses-v2-entreprise-chevron {
+  width: 24px;
+  height: 24px;
+  right: 7px;
+}
+.pauses-v2-pastille--csv {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  font-size: 10px;
+  box-shadow: 2px 2px 0 var(--pv-traif);
+}
+
+/*  --- À DROITE : le profil, puis l'action ----------------------------- */
+.pauses-v2-identite { gap: 8px; }
+.pauses-v2-identite .pauses-v2-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  font-size: 14px;
+  border-width: 2px;
+  box-shadow: 0 0 0 2px var(--pv-papier);
+}
+.pauses-v2-carte { padding: 2px 9px; box-shadow: 2px 2px 0 var(--pv-traif); }
+.pauses-v2-carte strong { font-size: 11px; }
+.pauses-v2-carte em { font-size: 10px; }
+.pauses-v2-carte--role { margin: -1px 0 0 8px; }
+
+.pauses-v2-add-btn {
+  position: relative;
+  right: auto;
+  top: auto;
+  width: auto;
+  min-height: 42px;
+  padding: 0 16px 0 5px;
+  gap: 9px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  box-shadow: 3px 3px 0 var(--pv-traif);
+}
+.pauses-v2-add-plus { width: 32px; height: 32px; flex: 0 0 32px; }
+
+/*  ═══ LES DEUX FINS RÉGLAGES DE LA RANGÉE ═══════════════════════════════
+    1. Le sticker se posait SUR le titre. Dans la maquette il mord le bas du
+       « S », mais à 50 px de corps il n'y a plus de place sous la ligne :
+       on le sort de la boîte, à droite du mot, en débord léger.
+    2. Les contrôles passaient sur deux rangs faute de place. On resserre
+       les écarts et on laisse le centre respirer : la rangée tient sur une
+       ligne jusqu'à ~1180 px. */
+
+.pauses-v2-planche .pauses-v2-marque {
+  padding-right: 44px;
+}
+.pauses-v2-planche .pauses-v2-titre-ligne {
+  padding-bottom: 0;
+  overflow: visible;
+}
+.pauses-v2-planche .pauses-v2-sticker {
+  position: absolute;
+  left: 100%;
+  right: auto;
+  top: auto;
+  bottom: 4px;
+  margin-left: -6px;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  transform: rotate(-7deg);
+  box-shadow: 1px 1px 0 var(--pv-traif);
+}
+
+.pauses-v2-planche .pauses-v2-topbar {
+  gap: 8px 16px;
+  align-items: center;
+}
+.pauses-v2-planche .pauses-v2-etiquettes { gap: 10px; }
+.pauses-v2-planche .pauses-v2-brand { gap: 10px; }
+.pauses-v2-planche .pauses-v2-etiquette-date {
+  min-height: 42px;
+  padding: 0 12px;
+  gap: 8px;
+}
+.pauses-v2-planche .pauses-v2-date-trigger { font-size: 13px; }
+.pauses-v2-planche .pauses-v2-entreprise select { min-width: 168px; font-size: 10.5px; }
+.pauses-v2-planche .pauses-v2-mode { font-size: 12px; padding: 6px 13px; }
+.pauses-v2-planche .pauses-v2-sens .pauses-v2-pastille { width: 30px; height: 30px; flex: 0 0 30px; }
+.pauses-v2-planche .pauses-v2-pastille--csv { width: 38px; height: 38px; flex: 0 0 38px; font-size: 9.5px; }
+.pauses-v2-planche .pauses-v2-add-btn { font-size: 11.5px; min-height: 38px; }
+.pauses-v2-planche .pauses-v2-add-plus { width: 28px; height: 28px; flex: 0 0 28px; }
+.pauses-v2-planche .pauses-v2-identite .pauses-v2-avatar { width: 34px; height: 34px; flex: 0 0 34px; font-size: 12px; }
+.pauses-v2-planche .pauses-v2-sceau { width: 92px; height: 92px; flex: 0 0 92px; }
+.pauses-v2-planche .pauses-v2-titre { font-size: clamp(30px, 3vw, 42px); }
+
+/*  Sous 1280 px la rangée ne tient plus : le profil et l'action passent à
+    la ligne, alignés à droite — c'est ce que fait aussi l'en-tête Employés. */
+@media (max-width: 1279px) {
+  .pauses-v2-planche .pauses-v2-bord {
+    flex: 1 1 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+}
+
+/*  ═══ FIN DES RÉGLAGES DE RANGÉE ════════════════════════════════════════
+    · Le sticker mordait encore le « S ». On l'accroche VRAIMENT à droite :
+      8 px après la fin du mot, en bas de la ligne — il chevauche le vide,
+      pas la lettre.
+    · Le chevron du select se sauvait hors de la pilule : sa règle d'origine
+      le positionnait en absolu depuis un parent qui n'est plus le même. */
+.pauses-v2-planche .pauses-v2-marque { padding-right: 58px; }
+.pauses-v2-planche .pauses-v2-titre-ligne { position: relative; }
+.pauses-v2-planche .pauses-v2-sticker {
+  left: 100%;
+  right: auto;
+  bottom: 3px;
+  margin-left: 4px;
+  font-size: 8.5px;
+  padding: 1px 4px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+.pauses-v2-planche .pauses-v2-entreprise { position: relative; }
+.pauses-v2-planche .pauses-v2-entreprise select {
+  padding-right: 34px;
+  min-height: 40px;
+}
+.pauses-v2-planche .pauses-v2-entreprise .pauses-v2-entreprise-chevron {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+}
+
+/*  ═══ LE PROFIL RESTE À DROITE, MÊME QUAND IL PASSE À LA LIGNE ═════════
+    Le bloc `.pauses-v2-bord` réunit l'identité et le bouton d'ajout. Quand
+    il descend à la ligne sous 1280 px, `flex: 1 1 100%` le fait occuper
+    toute la largeur — et sans `margin-left: auto` il repart à GAUCHE, sous
+    l'enseigne. On le recolle à droite, comme dans l'en-tête Employés. */
+@media (max-width: 1279px) {
+  .pauses-v2-planche .pauses-v2-bord {
+    margin-left: auto;
+    padding-right: 2px;
+  }
 }
