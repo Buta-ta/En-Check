@@ -40,6 +40,7 @@ import PageCulturalBand from '../components/PageCulturalBand'
 import JoursFeriesAnnee from '../components/JoursFeriesAnnee'
 import JoursFeriesLoading from '../components/JoursFeriesLoading'
 import { LesothoSceauSvg, LesothoLosangeSvg, LesothoCoutureSvg } from '../components/LesothoMotif'
+import PhotoSignee from '../components/PhotoSignee'
 import './JoursFeries.css'
 
 // ── Les deux registres ──
@@ -540,7 +541,8 @@ export default function JoursFeries() {
     )
   }
 
-  const nomEntreprise = enterprises.find(e => e.id === selectedEntId)?.name
+  const entrepriseActive = enterprises.find(e => e.id === selectedEntId) || null
+  const nomEntreprise = entrepriseActive?.name
     || admin?.selectedEnterprise?.name
     || 'votre entreprise'
 
@@ -584,7 +586,6 @@ export default function JoursFeries() {
       }
     >
     <div className="jf-page jf-clair">
-      <PageCulturalBand pathname="/jours-feries" />
       <div className="jf-bordure" aria-hidden="true" />
 
       {/* ══ L'EN-TÊTE ══ */}
@@ -684,15 +685,32 @@ export default function JoursFeries() {
           </div>
 
 
-        {/*  LA CAPSULE DU SEUIL — entreprise, année, prochain et raccourcis,
-             d'un seul tenant, contre le titre : la maquette choisie la
-             remonte ici. */}
+      </header>
+
+      {/*  « Je veux que le bandeau motif en haut puisse entourer ce bloc »
+           (26/11, image 4). Le seuil n'est plus une capsule posée dans
+           l'en-tête : il est DANS le bandeau, qui fait le tour de lui. */}
+      <div className="jf-seuil-bandeau">
+        <PageCulturalBand pathname="/jours-feries" />
+        {/*  LA BANDE DU SEUIL — entreprise, année, prochain. Trois faits,
+             une seule ligne. Plus de raccourcis (26/11). */}
         <div className="jf-seuil" role="group" aria-label="Entreprise, année et accès rapides">
           <div className="jf-seuil-gauche">
             <div className="jf-seuil-item">
               <span className="jf-seuil-libelle">Entreprise</span>
               <span className="jf-seuil-valeur">
-                <Building2 size={12} aria-hidden="true" />
+                {/*  « Affiche l'image de l'entreprise aussi » (26/11,
+                    image 4). Le logo remplace l'icône d'immeuble ; s'il n'y
+                    en a pas, ou s'il est cassé, PhotoSignee rend le chevron
+                    et l'on retombe sur l'icône d'avant. */}
+                <span className="jf-seuil-logo" aria-hidden="true">
+                  <PhotoSignee
+                    url={entrepriseActive?.logo_url}
+                    alt=""
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    fallback={<Building2 size={11} />}
+                  />
+                </span>
                 {nomEntreprise}
               </span>
             </div>
@@ -711,9 +729,10 @@ export default function JoursFeries() {
               </span>
             </div>
           </div>
-
-                </div>
-      </header>
+        </div>
+        {/*  Le même bandeau, retourné : il ferme le cadre par le bas. */}
+        <PageCulturalBand pathname="/jours-feries" />
+      </div>
 
       <main className="jf-coque">
 
@@ -736,19 +755,38 @@ export default function JoursFeries() {
                 : ''
             }
             onChoisirRepère={(r) => {
-              /*  Un repère cliqué ouvre sa pièce : le bon registre d'abord,
-                  puis le pays si c'est une fête du pays, enfin le défilement
-                  et le surlignage. */
+              /*  « Normalement quand on clique sur un point ça doit nous
+                  diriger vers le jour férié dédié » (26/11, image 3).
+
+                  Un repère n'est donc plus un filtre : c'est un RENVOI vers
+                  la fiche. On ouvre le bon registre, on filtre sur le bon
+                  pays, on fait défiler jusqu'à la pièce, on l'allume — puis
+                  on ouvre sa fiche, parce que c'est là qu'on veut aller. */
+              const fete = r.origine === 'pays'
+                ? globalHolidays.find(h => h.id === r.id)
+                : ownHolidays.find(h => h.id === r.id)
+              if (!fete) return
+
               setRegistre(r.origine === 'pays' ? REGISTRES.PAYS : REGISTRES.MAISON)
               if (r.origine === 'pays') setFilterCountry(r.pays || 'ALL')
               setRepereActif(r.cle)
+
               window.setTimeout(() => {
                 const piece = document.getElementById(`jf-piece-${r.id}`)
-                if (!piece) return
-                piece.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                piece.classList.add('jf-piece-appelee')
-                window.setTimeout(() => piece.classList.remove('jf-piece-appelee'), 1600)
+                if (piece) {
+                  piece.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  piece.classList.add('jf-piece-appelee')
+                  window.setTimeout(() => piece.classList.remove('jf-piece-appelee'), 1600)
+                }
               }, 60)
+
+              /*  La fiche s'ouvre pour qui la modifie. Un lecteur sans droit
+                  d'écriture n'a pas de fiche à ouvrir : on s'arrête au
+                  surlignage, et la pièce reste sous ses yeux. */
+              const peutModifier = r.origine === 'pays' ? isSuperAdmin : Boolean(selectedEntId)
+              if (peutModifier) {
+                window.setTimeout(() => openEditModal(fete), 220)
+              }
             }}
           />
           </aside>

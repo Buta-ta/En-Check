@@ -105,7 +105,12 @@ describe('1. le bandeau suit la page, et c’est bien le Lesotho', () => {
   })
 
   it('la page et son chargement portent tous les deux le bandeau', () => {
-    expect(PAGE).toContain('<PageCulturalBand pathname="/jours-feries" />')
+    //  Deux fois : le bandeau n'est plus une frise en haut de page, il
+    //  ENTOURE la bande du seuil — une fois dessus, une fois dessous,
+    //  le second retourné (26/11, image 4).
+    expect(PAGE.match(/<PageCulturalBand pathname="\/jours-feries" \/>/g)).toHaveLength(2)
+    expect(PAGE).toContain('<div className="jf-seuil-bandeau">')
+    expect(CSS).toContain('.jf-seuil-bandeau > .ec-cultural-band:last-child')
     const html = renderToStaticMarkup(<JoursFeriesLoading darkMode />)
     expect(html.match(/data-cultural-motif="lesotho"/g)).toHaveLength(2)
     expect(html).toContain('ec-cultural-bottom')
@@ -164,6 +169,26 @@ describe('2. la lisière de l’année place chaque fête', () => {
     )
     expect(html).toContain('La prochaine fête tombe en 2027')
     expect(html).toContain('jf-annee-suite')
+  })
+
+  it('la modale est un panneau, pas un disque', () => {
+    //  La panne du 26/11 : `--jf-radius-piece` valait 999 px, donc le panneau
+    //  se refermait en cercle et l'on ne voyait ni les champs ni le pied.
+    expect(CSS).toContain('--jf-radius-piece: 34px;')
+    expect(CSS).not.toContain('--jf-radius-piece: 999px;')
+  })
+
+  it('un repère ouvre la fiche de sa fête, il ne filtre pas', () => {
+    //  « Quand on clique sur un point ça doit nous diriger vers le jour férié
+    //  dédié » (26/11, image 3).
+    expect(PAGE).toContain('onChoisirRepère')
+    expect(PAGE).toContain('openEditModal(fete)')
+  })
+
+  it('l’entreprise montre son logo dans la bande du seuil', () => {
+    //  « Affiche l'image de l'entreprise aussi » (26/11, image 4).
+    expect(PAGE).toContain('jf-seuil-logo')
+    expect(PAGE).toContain('logo_url')
   })
 
   it('les repères deviennent des boutons quand la page sait les ouvrir', () => {
