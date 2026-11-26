@@ -1464,9 +1464,9 @@ export function PausesCollaborateursSection({
   }
 
   return (
-    <section className="pauses-v2-panel" aria-label="Pauses des employés">
-      {/* En-tête de la table (fidèle à redesign-pauses-v2.png) */}
-      <div className="pauses-v2-panel-head" style={{ marginBottom: 14 }}>
+    <section className="pauses-v2-panel pauses-v2-table-section" aria-label="Pauses des employés">
+      {/* En-tête de la table — posé sur le papier, pas dans une carte. */}
+      <div className="pauses-v2-panel-head pauses-v2-table-head">
         <div className="pauses-v2-panel-title-wrap">
           <div className="pauses-v2-panel-icon">
             <Users size={18} />
@@ -1505,31 +1505,14 @@ export function PausesCollaborateursSection({
           )}
 
           {/* Recherche employé */}
-          <label
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '7px 13px',
-              borderRadius: 9,
-              border: '1px solid var(--pv-border)',
-              background: 'var(--pv-card-elevated)',
-            }}
-          >
+          <label className="pauses-v2-search">
             <Search size={14} color="var(--pv-muted)" />
             <input
               type="search"
               placeholder="Rechercher un employé..."
               value={searchTerm}
               onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                color: 'var(--pv-text)',
-                fontSize: '0.8rem',
-                width: 190,
-              }}
+
             />
           </label>
 
@@ -1556,11 +1539,7 @@ export function PausesCollaborateursSection({
       </div>
 
       {/* Onglets rapides */}
-      <div
-        role="tablist"
-        aria-label="Onglets rapides des pauses"
-        style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}
-      >
+      <div role="tablist" aria-label="Onglets rapides des pauses" className="pauses-v2-onglets">
         {[
           { id: 'all', label: `Toutes (${paies.filter((p) => p.statut !== 'ecartee').length})`, active: activeTab === 'all' && subFilter === 'all' },
           { id: 'en_direct', label: `⏱️ En direct (${openPauses.length})`, active: subFilter === 'en_direct' },
@@ -1574,11 +1553,7 @@ export function PausesCollaborateursSection({
             role="tab"
             aria-selected={t.active}
             className="pauses-v2-Ghost-btn"
-            style={{
-              borderColor: t.active ? 'var(--pv-gold)' : undefined,
-              color: t.active ? 'var(--pv-gold)' : undefined,
-              background: t.active ? 'rgba(240, 178, 84, 0.12)' : undefined,
-            }}
+            data-actif={t.active ? 'oui' : 'non'}
             onClick={() => {
               if (t.id === 'en_direct') {
                 onSelectTab && onSelectTab('reelles')
@@ -1643,7 +1618,7 @@ export function PausesCollaborateursSection({
                 return (
                   <tr key={p.id} className={p.ouverte ? 'is-live-row' : undefined}>
                     {/* 1. Employé */}
-                    <td>
+                    <td data-col="Employé">
                       <div className="pauses-v2-emp-cell">
                         <div className="pauses-v2-avatar">
                           {empObj?.photo_url ? (
@@ -1667,17 +1642,17 @@ export function PausesCollaborateursSection({
                     </td>
 
                     {/* 2. Service */}
-                    <td style={{ color: 'var(--pv-text-soft)', fontWeight: 600 }}>
+                    <td data-col="Service" style={{ color: 'var(--pv-text-soft)', fontWeight: 600 }}>
                       {serviceLabel}
                     </td>
 
                     {/* 3. Date */}
-                    <td style={{ color: 'var(--pv-text-soft)', whiteSpace: 'nowrap' }}>
+                    <td data-col="Date" style={{ color: 'var(--pv-text-soft)', whiteSpace: 'nowrap' }}>
                       {formatTableRowDate(p.jour)}
                     </td>
 
                     {/* 4. Plage horaire */}
-                    <td style={{ whiteSpace: 'nowrap', fontWeight: 800 }}>
+                    <td data-col="Plage horaire" style={{ whiteSpace: 'nowrap', fontWeight: 800 }}>
                       {p.ouverte ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: 'var(--pv-amber)' }}>
                           <span className="pauses-v2-live-pulse-dot" />
@@ -1691,7 +1666,7 @@ export function PausesCollaborateursSection({
                     </td>
 
                     {/* 5. Durée (ou Timer Dynamique en Direct) */}
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td data-col="Durée" style={{ whiteSpace: 'nowrap' }}>
                       {p.ouverte ? (
                         <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
                           <span
@@ -1716,7 +1691,7 @@ export function PausesCollaborateursSection({
                     </td>
 
                     {/* 6. Statut */}
-                    <td>
+                    <td data-col="Statut">
                       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                         {p.ouverte ? (
                           <span className="pauses-v2-status-pill is-live">
@@ -1793,8 +1768,8 @@ export function PausesCollaborateursSection({
                     </td>
 
                     {/* 7. Actions */}
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                    <td data-col="Actions" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div className="pauses-v2-row-actions">
                         {p.aStatuer && onStatuer ? (
                           <>
                             <button

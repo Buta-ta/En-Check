@@ -6368,3 +6368,738 @@
   .pauses-v2-tasse-dessus { width: 150px; height: 150px; }
   .pauses-v2-donut-layout { grid-template-columns: 1fr; gap: 18px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAUSES DES EMPLOYÉS — LA GRANDE TABLE (26/11, maquette A retenue)
+   ═══════════════════════════════════════════════════════════════════════════
+
+   CE QUE DIT LA MAQUETTE. La section n'est pas un tableau dans une carte :
+   c'est UNE LONGUE TABLE DE BOIS, et chaque pause est un COUVERCLE posé
+   dessus. Les sept colonnes sont gravées au bord de la table, les rangées
+   sont séparées par un couvert croisé en pointillés, et les actions
+   s'alignent comme des couverts.
+
+   CE QUI NE CHANGE PAS. Le HTML reste un vrai `<table>` : `<th>` par
+   colonne, `<tr>` par pause. C'est ce qui permet à un lecteur d'écran
+   d'annoncer « Service : INFORMATIQUE » quand on traverse la ligne. On
+   n'habille que l'apparence.
+
+   Tout passe par la charte : encre, surface, surface2, aplat, succes,
+   erreur, douce. Aucune teinte nouvelle, le thème sombre suit.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/*  ── 1 · L'EN-TÊTE ET LES CONTRÔLES, POSÉS SUR LE PAPIER ──────────────── */
+
+/*  La section elle-même n'a plus de fond : la table est l'objet. */
+.pauses-v2-panel.pauses-v2-table-section {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pauses-v2-table-head {
+  margin-bottom: 12px;
+}
+
+.pauses-v2-table-head .pauses-v2-panel-title {
+  color: var(--charte-encre);
+  font-size: 1.42rem;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+.pauses-v2-table-head .pauses-v2-panel-subtitle {
+  color: var(--charte-douce);
+  font-size: 0.82rem;
+}
+.pauses-v2-table-head .pauses-v2-panel-icon {
+  width: 44px;
+  height: 44px;
+  color: var(--charte-encre);
+  border: 2.5px solid var(--charte-encre);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--charte-surface) 70%, transparent);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+
+/*  Les contrôles : tous en pastille, tous cerclés d'encre. */
+.pauses-v2-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 15px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 999px;
+  background: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.pauses-v2-search input {
+  width: 190px;
+  color: var(--charte-encre);
+  font-size: 0.8rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+}
+.pauses-v2-search input::placeholder { color: var(--charte-douce); }
+
+.pauses-v2-table-head .pauses-v2-select {
+  padding: 7px 16px;
+  color: var(--charte-encre);
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 2px solid var(--charte-encre);
+  border-radius: 999px;
+  background: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  cursor: pointer;
+}
+
+/*  Les deux actions en lot : vert et rouge de la charte, en pastilles. */
+.pauses-v2-panel.pauses-v2-table-section .pauses-v2-btn-validate,
+.pauses-v2-panel.pauses-v2-table-section .pauses-v2-btn-reject {
+  padding: 6px 15px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.pauses-v2-panel.pauses-v2-table-section .pauses-v2-btn-validate {
+  color: var(--charte-succes);
+  background: color-mix(in srgb, var(--charte-succes) 12%, var(--charte-surface));
+}
+.pauses-v2-panel.pauses-v2-table-section .pauses-v2-btn-reject {
+  color: var(--charte-erreur);
+  background: color-mix(in srgb, var(--charte-erreur) 10%, var(--charte-surface));
+}
+
+/*  ── 2 · LES ONGLETS, EN SACHETS DE SUCRE ─────────────────────────────── */
+
+/*  Un sachet, c'est une pastille aux deux bouts crantés. Le cran est une
+    onde de papier, pas une dent de scie : quatre bosses suffisent. */
+.pauses-v2-onglets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn {
+  padding: 7px 17px;
+  color: var(--charte-encre);
+  font-size: 0.77rem;
+  font-weight: 750;
+  border: 2px solid var(--charte-encre);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 0 50%, transparent 5px, var(--charte-surface) 5.5px) left center / 9px 100% repeat-y,
+    radial-gradient(circle at 100% 50%, transparent 5px, var(--charte-surface) 5.5px) right center / 9px 100% repeat-y,
+    var(--charte-surface);
+  background-clip: padding-box;
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn:hover {
+  color: var(--charte-encre);
+  border-color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 0 var(--charte-encre);
+}
+/*  L'onglet actif est le seul rempli : argile de la charte. */
+.pauses-v2-onglets .pauses-v2-Ghost-btn[data-actif="oui"] {
+  color: var(--charte-blanc);
+  background:
+    radial-gradient(circle at 0 50%, transparent 5px, var(--charte-aplat) 5.5px) left center / 9px 100% repeat-y,
+    radial-gradient(circle at 100% 50%, transparent 5px, var(--charte-aplat) 5.5px) right center / 9px 100% repeat-y,
+    var(--charte-aplat);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+
+/*  ── 3 · LA TABLE ─────────────────────────────────────────────────────── */
+
+/*  Le bois : la surface de la charte, chauffée d'argile, avec des veines
+    verticales très espacées. Deux dégradés suffisent — pas d'image. */
+.pauses-v2-table-section .pauses-v2-table-wrap {
+  padding: 6px 26px 22px;
+  overflow-x: auto;
+  border: 2.5px solid var(--charte-encre);
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(
+      94deg,
+      transparent 0 34px,
+      color-mix(in srgb, var(--charte-encre) 5%, transparent) 34px 35px
+    ),
+    color-mix(in srgb, var(--charte-aplat) 26%, var(--charte-surface));
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+.pauses-v2-table-section .pauses-v2-table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+}
+
+/*  LES COLONNES GRAVÉES : petites capitales espacées, en encre, avec un
+    filet qui court sous toute la largeur comme le bord de la table. */
+.pauses-v2-table-section .pauses-v2-table th {
+  padding: 14px 12px 10px;
+  color: var(--charte-encre);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+  border-bottom: 2px solid color-mix(in srgb, var(--charte-encre) 45%, transparent);
+}
+
+/*  LES RANGÉES : chaque pause est un couvercle. Le séparateur est une ligne
+    pointillée — le « couvert croisé » de la maquette, dessiné par le CSS
+    sur le premier `td` de chaque rangée. */
+.pauses-v2-table-section .pauses-v2-table td {
+  padding: 16px 12px;
+  color: var(--charte-encre);
+  font-size: 0.83rem;
+  vertical-align: middle;
+  border-bottom: 0;
+}
+.pauses-v2-table-section .pauses-v2-table tbody tr {
+  position: relative;
+  background: transparent;
+}
+.pauses-v2-table-section .pauses-v2-table tbody tr + tr td {
+  border-top: 1.5px dashed color-mix(in srgb, var(--charte-encre) 38%, transparent);
+}
+.pauses-v2-table-section .pauses-v2-table tbody tr:hover {
+  background: color-mix(in srgb, var(--charte-surface) 30%, transparent);
+}
+.pauses-v2-table-section .pauses-v2-table tbody tr.is-live-row {
+  background: color-mix(in srgb, var(--charte-alerte) 12%, transparent);
+}
+
+/*  L'employé : l'assiette (avatar), le nom, le matricule. */
+.pauses-v2-table-section .pauses-v2-emp-cell {
+  gap: 14px;
+}
+.pauses-v2-table-section .pauses-v2-avatar {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  color: var(--charte-texte);
+  border: 2.5px solid var(--charte-encre);
+  border-radius: 50%;
+  background: var(--charte-surface);
+  box-shadow:
+    0 0 0 4px var(--charte-surface),
+    0 0 0 5.5px color-mix(in srgb, var(--charte-encre) 45%, transparent),
+    3px 3px 0 4px color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+.pauses-v2-table-section .pauses-v2-emp-name {
+  color: var(--charte-encre);
+  font-size: 0.92rem;
+  font-weight: 850;
+  line-height: 1.15;
+}
+.pauses-v2-table-section .pauses-v2-emp-mat {
+  margin-top: 3px;
+  color: color-mix(in srgb, var(--charte-encre) 62%, transparent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/*  Le service : deux lignes, en petites capitales, comme gravé. */
+.pauses-v2-table-section .pauses-v2-table td:nth-child(2) {
+  color: color-mix(in srgb, var(--charte-encre) 78%, transparent);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  max-width: 132px;
+}
+
+/*  La date, la plage et la durée : le chiffre est roi. */
+.pauses-v2-table-section .pauses-v2-table td:nth-child(3),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(4),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(5) {
+  color: var(--charte-encre);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+/*  Les pastilles de statut : des sous-tasses cerclées, posées sur la table. */
+.pauses-v2-table-section .pauses-v2-status-pill {
+  padding: 4px 12px;
+  color: var(--charte-encre);
+  font-size: 0.72rem;
+  font-weight: 800;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  background: var(--charte-surface);
+  box-shadow: 1px 1px 0 0 color-mix(in srgb, var(--charte-encre) 55%, transparent);
+}
+/*  On garde la couleur de chaque nature, mais par la charte. */
+.pauses-v2-table-section .pauses-v2-status-pill.is-real { color: var(--charte-succes); }
+.pauses-v2-table-section .pauses-v2-status-pill.is-presumed { color: var(--charte-alerte); }
+.pauses-v2-table-section .pauses-v2-status-pill.is-live { color: var(--charte-aplat); }
+.pauses-v2-table-section .pauses-v2-status-pill.is-anomaly,
+.pauses-v2-table-section .pauses-v2-status-pill.is-depassement { color: var(--charte-erreur); }
+
+/*  ── 4 · LES ACTIONS, COMME DES COUVERTS ──────────────────────────────── */
+
+/*  Les cinq boutons de ligne : des couverts alignés au bord de la table.
+    Même gabarit pour tous, la teinte dit le geste. */
+.pauses-v2-table-section .pauses-v2-btn-validate,
+.pauses-v2-table-section .pauses-v2-btn-reject,
+.pauses-v2-table-section .pauses-v2-icon-btn {
+  padding: 4px 11px;
+  color: var(--charte-encre);
+  font-size: 0.7rem;
+  font-weight: 800;
+  border: 1.8px solid var(--charte-encre);
+  border-radius: 999px;
+  background: var(--charte-surface);
+  box-shadow: 1.5px 1.5px 0 0 var(--charte-encre);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+.pauses-v2-table-section .pauses-v2-btn-validate:hover,
+.pauses-v2-table-section .pauses-v2-btn-reject:hover,
+.pauses-v2-table-section .pauses-v2-icon-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2.5px 2.5px 0 0 var(--charte-encre);
+}
+.pauses-v2-table-section .pauses-v2-btn-validate {
+  color: var(--charte-succes);
+  background: color-mix(in srgb, var(--charte-succes) 14%, var(--charte-surface));
+}
+.pauses-v2-table-section .pauses-v2-btn-reject {
+  color: var(--charte-erreur);
+  background: color-mix(in srgb, var(--charte-erreur) 12%, var(--charte-surface));
+}
+.pauses-v2-table-section .pauses-v2-table td:last-child > div {
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 300px;
+  margin-left: auto;
+}
+
+/*  L'état vide reste une assiette, pas une carte. */
+.pauses-v2-table-section + p,
+.pauses-v2-table-section .pauses-v2-table-wrap p { color: var(--charte-douce); }
+
+/*  ── 5 · CE QUI NE MARCHAIT PAS DANS LE PREMIER JET ─────────────────────
+
+    1. La colonne EMPLOYÉ avait disparu. Cause : la pastille de l'onglet
+       actif (fond « argile ») débordait de la silhouette crantée, et la
+       première colonne se retrouvait écrasée par le padding de 26 px du
+       plateau arrondi. Et surtout : les sept colonnes ne tenaient pas, le
+       navigateur rognait la première.
+    2. La table débordait de son plateau à droite (le rayon de 999 px
+       mangeait les actions).
+    3. Les statuts et les actions passaient sur deux lignes.
+
+    Réglages : on fixe la largeur des colonnes, on enlève le padding
+    horizontal qui rognait les bords, et on laisse la dernière colonne
+    respirer. Le rayon redevient celui de la charte (12 px) — un plateau de
+    bois n'a pas besoin d'être une gélule, et la gélule rognait le contenu. */
+
+.pauses-v2-table-section .pauses-v2-table-wrap {
+  padding: 4px 0 16px;
+  border-radius: var(--charte-rayon-tuile);
+}
+
+.pauses-v2-table-section .pauses-v2-table {
+  table-layout: fixed;
+  min-width: 1060px;
+}
+
+/*  Sept colonnes, sept largeurs. `fixed` évite que le contenu pousse la
+    dernière colonne hors du plateau. */
+.pauses-v2-table-section .pauses-v2-table th:nth-child(1),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(1) { width: 22%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(2),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(2) { width: 12%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(3),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(3) { width: 11%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(4),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(4) { width: 12%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(5),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(5) { width: 8%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(6),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(6) { width: 16%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(7),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(7) { width: 19%; }
+
+/*  Le premier et le dernier rang ont besoin d'air : c'est le bout de la
+    table. */
+.pauses-v2-table-section .pauses-v2-table th:first-child,
+.pauses-v2-table-section .pauses-v2-table td:first-child { padding-left: 20px; }
+.pauses-v2-table-section .pauses-v2-table th:last-child,
+.pauses-v2-table-section .pauses-v2-table td:last-child { padding-right: 20px; }
+
+/*  Les actions tiennent sur deux rangées de trois, jamais trois de deux :
+    c'est ce qui faisait déborder la dernière colonne. */
+.pauses-v2-table-section .pauses-v2-table td:last-child > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+  max-width: 100%;
+}
+.pauses-v2-table-section .pauses-v2-table td:last-child .pauses-v2-btn-validate,
+.pauses-v2-table-section .pauses-v2-table td:last-child .pauses-v2-btn-reject,
+.pauses-v2-table-section .pauses-v2-table td:last-child .pauses-v2-icon-btn {
+  flex: 0 0 auto;
+}
+
+/*  Le statut : une seule pastille par ligne quand il y en a trois, pour que
+    la colonne ne double pas de hauteur. */
+.pauses-v2-table-section .pauses-v2-table td:nth-child(6) > div {
+  gap: 4px;
+  align-items: flex-start;
+}
+.pauses-v2-table-section .pauses-v2-status-pill {
+  padding: 3px 9px;
+  font-size: 0.68rem;
+}
+
+/*  L'onglet : la silhouette crantée était mangée par le fond. On la dessine
+    autrement — un liseré de bosses en haut et en bas, qui se voit à coup
+    sûr, sans dépendre de la taille du fond. */
+.pauses-v2-onglets .pauses-v2-Ghost-btn {
+  position: relative;
+  padding: 7px 20px;
+  border-radius: 6px;
+  background: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+/*  Les dents, en haut et en bas : de petits cercles creux de la couleur du
+    papier, posés sur le bord. */
+.pauses-v2-onglets .pauses-v2-Ghost-btn::before,
+.pauses-v2-onglets .pauses-v2-Ghost-btn::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 5px;
+  background-image: radial-gradient(
+    circle at 3px 50%,
+    var(--charte-sable) 2.6px,
+    transparent 2.8px
+  );
+  background-size: 8px 5px;
+  background-repeat: repeat-x;
+  pointer-events: none;
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn::before { top: -2.5px; }
+.pauses-v2-onglets .pauses-v2-Ghost-btn::after { bottom: -2.5px; }
+
+/*  ── 6 · DERNIERS ÉCARTS AVEC LA MAQUETTE ─────────────────────────────── */
+
+/*  a) DATE et PLAGE HORAIRE étaient collées. Ce n'est pas un padding : la
+        colonne Date faisait 11 % et son contenu « Mar. 24 nov. 2026 » la
+        poussait contre la suivante. On élargit, on répartit, et on remet
+        un peu d'air entre les colonnes. */
+.pauses-v2-table-section .pauses-v2-table th,
+.pauses-v2-table-section .pauses-v2-table td {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+.pauses-v2-table-section .pauses-v2-table th:nth-child(1),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(1) { width: 21%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(2),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(2) { width: 11%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(3),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(3) { width: 13%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(4),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(4) { width: 14%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(5),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(5) { width: 8%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(6),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(6) { width: 15%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(7),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(7) { width: 18%; }
+
+.pauses-v2-table-section .pauses-v2-table td:nth-child(3),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(4) {
+  white-space: nowrap;
+}
+.pauses-v2-table-section .pauses-v2-table td:nth-child(4) {
+  letter-spacing: 0.01em;
+}
+
+/*  b) LES ONGLETS. Ma silhouette crantée en `::before`/`::after` ne se voyait
+        pas sur l'onglet actif : les dents sont peintes avec la couleur du
+        FOND, donc un aplat d'argile sous elles les effaçait. On dessine les
+        dents en encre, posées sur le bord — elles se lisent sur les deux. */
+.pauses-v2-onglets .pauses-v2-Ghost-btn {
+  border-radius: 8px;
+  border-width: 2px;
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn::before,
+.pauses-v2-onglets .pauses-v2-Ghost-btn::after {
+  height: 6px;
+  background-image: radial-gradient(
+    circle at 3px 50%,
+    transparent 2.4px,
+    var(--charte-encre) 2.6px,
+    var(--charte-encre) 3.4px,
+    transparent 3.6px
+  );
+  background-size: 9px 6px;
+  opacity: 0.85;
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn::before { top: -3px; }
+.pauses-v2-onglets .pauses-v2-Ghost-btn::after { bottom: -3px; }
+
+/*  L'onglet actif : l'aplat doit s'arrêter AVANT les dents, sinon il les
+        couvre. On passe donc le fond en `background-size` intérieur. */
+.pauses-v2-onglets .pauses-v2-Ghost-btn[data-actif="oui"] {
+  background:
+    linear-gradient(var(--charte-aplat), var(--charte-aplat)) center / 100% calc(100% - 4px) no-repeat;
+  color: var(--charte-blanc);
+}
+
+/*  c) LE BOIS. La surface était trop pâle, on ne lisait pas « table ». On
+        monte l'argile et on marque les veines. */
+.pauses-v2-table-section .pauses-v2-table-wrap {
+  background:
+    repeating-linear-gradient(
+      93deg,
+      transparent 0 42px,
+      color-mix(in srgb, var(--charte-encre) 7%, transparent) 42px 43.5px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--charte-aplat) 30%, var(--charte-surface)),
+      color-mix(in srgb, var(--charte-aplat) 40%, var(--charte-surface))
+    );
+}
+
+/*  ── 7 · LES ONGLETS, ENFIN DISCRETS, ET LE COUVERT SÉPARATEUR ──────────
+
+     Le crantage que je viens de poser fait une FRISE de timbres : trop de
+     dents, trop profondes. Un sachet de sucre a trois ou quatre bosses
+     larges. On passe donc à des bosses de 14 px, et on les atténue. */
+.pauses-v2-onglets .pauses-v2-Ghost-btn::before,
+.pauses-v2-onglets .pauses-v2-Ghost-btn::after {
+  height: 5px;
+  background-image: radial-gradient(
+    circle at 7px 50%,
+    transparent 4.2px,
+    var(--charte-encre) 4.4px,
+    var(--charte-encre) 5px,
+    transparent 5.2px
+  );
+  background-size: 14px 5px;
+  opacity: 0.6;
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn[data-actif="oui"]::before,
+.pauses-v2-onglets .pauses-v2-Ghost-btn[data-actif="oui"]::after {
+  opacity: 0.9;
+}
+
+/*  LE COUVERT SÉPARATEUR. La maquette pose une fourchette et un couteau
+     croisés sur chaque ligne de séparation, à gauche de la table. On les
+     dessine en SVG de fond sur la première cellule de la rangée : un
+     couvert, pas une icône de bibliothèque. */
+.pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child {
+  position: relative;
+}
+.pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 4px;
+  width: 20px;
+  height: 18px;
+  background: var(--charte-encre);
+  opacity: 0.55;
+  -webkit-mask:
+    /*  la fourchette : trois dents + manche */
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 2px 0 / 1.4px 6px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 5px 0 / 1.4px 6px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 8px 0 / 1.4px 6px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 2px 6px / 7.4px 2px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 4.6px 8px / 1.6px 10px no-repeat,
+    /*  le couteau : lame + manche */
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 14px 0 / 2px 12px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 14px 12px / 2px 6px no-repeat;
+  mask:
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 2px 0 / 1.4px 6px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 5px 0 / 1.4px 6px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 8px 0 / 1.4px 6px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 2px 6px / 7.4px 2px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 4.6px 8px / 1.6px 10px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 14px 0 / 2px 12px no-repeat,
+    linear-gradient(var(--charte-encre), var(--charte-encre)) 14px 12px / 2px 6px no-repeat;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+/*  ── 8 · LE MOBILE : LA TABLE DEVIENT UNE PILE DE FICHES ────────────────
+
+     À 560 px, une table de sept colonnes ne peut pas tenir : elle glissait
+     horizontalement et on ne voyait que deux colonnes et demie. On change
+     donc la DISPOSITION, pas le contenu : chaque `<tr>` devient une fiche,
+     et chaque cellule s'annonce par son intitulé (lu dans l'attribut
+     `data-col` posé sur le `<th>`).
+
+     Le `<table>` reste un tableau pour les lecteurs d'écran : c'est le CSS
+     qui le replie visuellement. */
+@media (max-width: 700px) {
+  .pauses-v2-table-section .pauses-v2-table-wrap {
+    padding: 10px 12px 16px;
+    overflow-x: visible;
+  }
+  .pauses-v2-table-section .pauses-v2-table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  /*  Les intitulés de colonnes deviennent des légendes de champ : on les
+      lit au-dessus de chaque valeur, pas en tête de table. */
+  .pauses-v2-table-section .pauses-v2-table thead {
+    display: none;
+  }
+  .pauses-v2-table-section .pauses-v2-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .pauses-v2-table-section .pauses-v2-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    padding: 14px 14px 16px;
+    border: 2px solid var(--charte-encre);
+    border-radius: var(--charte-rayon-tuile);
+    background: var(--charte-surface);
+    box-shadow: 3px 3px 0 0 var(--charte-encre);
+  }
+
+  /*  Chaque cellule s'annonce par son intitulé. */
+  .pauses-v2-table-section .pauses-v2-table tbody td {
+    display: block;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+  .pauses-v2-table-section .pauses-v2-table tbody td::before {
+    content: attr(data-col);
+    display: block;
+    margin-bottom: 3px;
+    color: var(--charte-douce);
+    font-size: 0.62rem;
+    font-weight: 850;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  /*  L'employé prend toute la largeur, en tête de fiche. */
+  .pauses-v2-table-section .pauses-v2-table tbody td:nth-child(1) {
+    grid-column: 1 / -1;
+  }
+  .pauses-v2-table-section .pauses-v2-table tbody td:nth-child(1)::before { display: none; }
+  /*  Les actions aussi, en bas. */
+  .pauses-v2-table-section .pauses-v2-table tbody td:nth-child(7) {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+  }
+  .pauses-v2-table-section .pauses-v2-table tbody td:nth-child(7)::before { display: none; }
+  .pauses-v2-table-section .pauses-v2-table td:last-child > div {
+    justify-content: flex-start;
+  }
+
+  /*  Le service s'écrit sur une ligne ici : il y a la place. */
+  .pauses-v2-table-section .pauses-v2-table td:nth-child(2) {
+    max-width: none;
+    font-size: 0.7rem;
+  }
+  .pauses-v2-table-section .pauses-v2-table td:nth-child(3),
+  .pauses-v2-table-section .pauses-v2-table td:nth-child(4) {
+    white-space: normal;
+  }
+  .pauses-v2-table-section .pauses-v2-avatar {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
+  }
+  .pauses-v2-table-section .pauses-v2-table tbody tr + tr td {
+    border-top: 0;
+  }
+  .pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::before {
+    content: none;
+  }
+}
+
+/*  ── 9 · DEUX CORRECTIONS MOBILES ───────────────────────────────────────
+
+     a) Les actions s'empilaient en COLONNE : la règle desktop
+        `td:last-child > div { max-width: 300px; margin-left: auto }` restait
+        active, et dans une grille de fiche elle écrasait la largeur. On
+        remet la barre en ligne, étalée.
+     b) Les crans d'onglet, sur deux rangées collées, formaient une frise
+        continue entre les boutons. On les espace et on les estompe. */
+@media (max-width: 700px) {
+  .pauses-v2-table-section .pauses-v2-table td:last-child > div {
+    max-width: none;
+    margin-left: 0;
+    gap: 6px;
+  }
+  .pauses-v2-table-section .pauses-v2-table td:last-child .pauses-v2-btn-validate,
+  .pauses-v2-table-section .pauses-v2-table td:last-child .pauses-v2-btn-reject,
+  .pauses-v2-table-section .pauses-v2-table td:last-child .pauses-v2-icon-btn {
+    padding: 5px 12px;
+    font-size: 0.72rem;
+  }
+}
+
+.pauses-v2-onglets {
+  gap: 12px;
+  row-gap: 12px;
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn::before,
+.pauses-v2-onglets .pauses-v2-Ghost-btn::after {
+  background-size: 12px 5px;
+  opacity: 0.45;
+}
+
+/*  ── 9 bis · LES ACTIONS, EN LIGNE POUR DE VRAI ─────────────────────────
+
+     Malgré la règle de la fiche, les actions s'empilaient encore. La cause
+     n'est pas le `flex-wrap` : c'est que le conteneur des actions est en
+     `inline-flex` (style posé dans le JSX) et que, dans une grille, un
+     `inline-flex` se comporte comme un bloc de largeur min-content — il
+     prend la largeur de son plus long bouton, puis casse à chaque bouton.
+
+     On passe donc le conteneur en `flex` pleine largeur dans la fiche. */
+@media (max-width: 700px) {
+  .pauses-v2-table-section .pauses-v2-table tbody td:nth-child(7) > div {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    width: 100%;
+  }
+}
+
+/*  Les actions d'une ligne : un seul conteneur, nommé, pour que le CSS
+    puisse le plier sans lutter contre un style en ligne. */
+.pauses-v2-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+@media (max-width: 700px) {
+  .pauses-v2-row-actions {
+    justify-content: flex-start;
+    width: 100%;
+    gap: 6px;
+  }
+}
