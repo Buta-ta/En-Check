@@ -907,3 +907,157 @@ trop), et le thème de la page se règle **dans le rail** — l'interdit du 27/1
 le bouton clair/sombre ») se relit sans se relâcher : pas de `abs-theme-toggle`, pas de
 classe, pas d'icône à la page ; `toggleTheme` n'apparaît que dans la déstructuration du
 contexte et dans `surTheme` (aiguille 6 de `entetesEtTheme`, 12 de la même).
+
+## 26/12/2026 — sous le pli : les soldes, les motifs, le logo, l’attente
+
+Quatre captures, une même cause : des chiffres et des images posés sans que leur
+fabrication ne se lise. Les cotes ci-dessous ne viennent pas d’un goût ; elles se
+déduisent de ce que la page contient déjà (`--abs-pli-*`, `--charte-*`) ou de la
+largeur du texte qu’elles doivent loger.
+
+### La table des soldes : un rail par colonne, une note par nombre
+
+Relevé de la capture (CSS, table de 1265 × 530 pour six lignes) : les quatre
+en-têtes numériques tenaient dans les 60 % droits — `ACQUIS` centré sur x 424..468,
+`PRIS` sur 616..642, `EN ATTENTE` sur 806..877, `SOLDE` sur 997..1034 — et chaque
+ligne payait 63 px de pas. Le nom et le matricule se touchaient (`BIYOKILAENN-0002`,
+lisible « BIYOKILAE » + « NN-0002 » recollés) parce que la colonne d’identité était un
+flex en ligne sans séparation, et une seule des quatre colonnes portait une note.
+
+· `--abs-soldes-nombre: 104px` — la note la plus longue que la colonne doive loger,
+  « 2 j/mois × 12 mois », fait 19 signes en `--charte-taille-micro` (11 px) ≈ 104 px.
+  Un nombre qui n’a pas la largeur de sa note la rogne, et une note rogée n'explique plus rien.
+· `--abs-soldes-largeur: calc(180px + 4 × nombre + 4 × espace-3 + 12px)` = 660 px.
+  Le plancher se paye UNE fois, sur les lignes, dans le jeton ; `min-width: 580px`
+  écrit deux fois dans la tringle et 720 dans la feuille en est l'exemple.
+· `--abs-soldes-grille: minmax(180px, 2fr) repeat(4, minmax(var(--abs-soldes-nombre), 1fr))`.
+· `.abs-soldes-nombre` passe de `justify-self` à `display: grid; justify-items: end` :
+  quatre colonnes alignées par la même décision, pas par quatre volontés.
+· `.abs-soldes-identité` : sceau, puis `.abs-soldes-identité-nom` en `grid` de deux
+  lignes (nom, matricule) — le collage venait du flex en ligne.
+· `.abs-soldes-jauge { width: var(--abs-soldes-nombre) }` : le pourcentage s’apprécie
+  à largeur égale d’une ligne à l’autre, sinon deux « 25 % » ne se ressemblent pas.
+· l’entête se ferme d’une règle de trois (`--abs-pli-rule`), les lignes se cloisonnent
+  de deux (`--charte-trait`) — un cerclage par bordure, comme partout sous le pli.
+
+**La fabrication se lit, elle ne se rejoue pas.** `calculation_details` (jsonb de la
+table des soldes, vérifié dans la base : 16 lignes de 2026, les seize portent
+`months_worked`, `leave_days_per_month`, `annual_leave_cap`, `leave_reference_date`)
+dit ce qui a été utilisé ; le composant ne recompte plus les mois sur `hire_date`.
+L’ancienne fabrique affichait « 2 × 11 mois » sous un « 24 j » calculé sur douze mois,
+et « date inconnue » pour un salarié sans `hire_date` pendant que le nombre, lui,
+sortait du plancher `monthsWorked = 12`. Un solde sans `calculation_details` le dit
+(« jamais recalculé ») au lieu d’être expliqué.
+
+**Le repère de dates.** `last_calculated_at` se lit par la borne basse ET la haute :
+« recalculés entre le 15/05/2026 et le 23/11/2026 ». La base est dans ce cas — un
+solde daté du 15/05 parmi des recalculs du 23/11 — et n’afficher que le plus récent
+aurait caché la ligne qui n’a pas suivi le changement de configuration.
+
+### Les motifs : la même échelle que le pli, et l’encre de la charte
+
+Le composant ne portait AUCUNE classe : tout était en styles inline, avec huit
+hex bruts (`#C25E28 → #8C3418`, `#FFF5E6`, `#B91C1C`), six rayons (16, 13, 11, 10, 9, 3),
+un liseré `${color}55` par tuile ET un cerclage pour la carte, `borderRadius: 999`,
+et une feuille de style de la page qui grossissait les boutons de 44 px en
+`!important`. Aucun de ces nombres n’existait ailleurs ; le thème sombre ne pouvait
+pas les rattraper.
+
+· `--abs-motifs-planche: 224px`, `--abs-motifs-glyphe: 34px`.
+· `.abs-motifs-pile { grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--abs-motifs-planche)), 1fr)) }`
+  — le `min()` est la seule raison pour laquelle cette rubrique n’a pas de `@media` :
+  sous la planche, la tuile prend 100 % au lieu de faire déborder le rail.
+· `.abs-motifs-carte { grid-template-columns: auto minmax(0, 1fr) auto }` — le texte
+  est le seul rail qui puisse se réduire. En flex à trois `div`, un seul `min-width: 0`,
+  et c’est la DEUXIÈME ligne (teinte + usages) qui passait sous les boutons.
+· `.abs-motifs-pince { width/height: var(--abs-pli-case); border: var(--abs-pli-rule) solid var(--charte-encre) }`
+  — les pinces du pli, pas une sixième figure.
+· la couleur du motif reste où elle est UNE DONNÉE : le fond du glyphe, la pastille
+  du nuancier, l’aperçu du formulaire. Plus de liseré teinté par bordure.
+· le bouton devient `ch-btn-pleine`, le champ `ch-champ-cadre`, l’annulation
+  `ch-btn-contour` : classes de la maison, donc thème sombre compris.
+
+### Le logo de l’entreprise : entier, pas recadré
+
+`PastilleInterne` posait `style={{ objectFit: 'cover' }}` EN INLINE. Une règle inline
+ne se laisse commander par aucune classe : `.se-rond img { object-fit: cover }`
+(la loi du 24/11, « l’image ne déborde jamais ») restait première. Une bannière de
+236 × 43 dans un rond de 30, `cover` en laisse 30 × 30 au milieu du mot — cinq
+pixels de signe, et le rail a l’air vide. Le cadrage part donc dans la feuille :
+`.se-rond--logo img { object-fit: contain; padding: 2px }` sur une assiette
+`--charte-blanc`, et le inline ne garde que ce qui ne se discute pas (rien).
+La découpe de `.se-rond` (radius 999, `overflow: hidden`) est inchangée : une image
+contenue ne déborde pas plus qu’une image recadrée.
+
+### L’attente : la carte des employés, lue à quatre étapes
+
+`AbsencesLoadingScreen` n’est plus une carte à son compte ; elle EMPRUNTE
+`EmployesLoadingScreen` (cinquième carte jumelle = cinq entretiens) et n’apporte que
+son récit : quatre étapes, celles que `loadData` traverse vraiment — collaborateurs,
+absences de la période, demandes & conflits, solde de congés. `calques={[]}` et une
+scène plate (`/images/absences-loading-scene.webp`), parce que recouper quatre boîtes
+de calques sur une illustration qui n’est pas la même, ce serait dessiner de
+mémoire. Pas de bandeau de motifs dans un écran d’attente (loi du 22/11 reprise le
+26/11). Le plancher vient de `useLoadingMinimum` (`DUREE_MIN_CHARGEMENT_MS = 4500`),
+jamais d’un `setTimeout` local, et « passer l’animation » saute le plancher SANS
+jeter la donnée en vol.
+
+La carte d’attente lit le nom de l’entreprise : `entrepriseActivePourRail` doit donc
+être déclaré AVANT le `return` de l’écran d’attente — après, il était dans sa zone
+morte et le premier rendu levait un `ReferenceError`.
+
+### La balise `<style>` de la page, réduite à son usage
+
+Neuf kilooctets d’héritage (rubriques « RESPONSIVE MOBILE », « AMÉLIORATION TACTILE »,
+« CORRECTIONS OVERFLOW ») choisissaient 48 sélecteurs dont 28 ne sont montés par
+aucun composant du dépôt — mais sans portée. Montée sur les Absences, la balise
+re-dessinait les stats de Pointages, enflait chaque pince du pli (`button { min-height:
+44px !important }`, alors que la pince se règle au pixel : case de 30, carré de 22) et
+coupait le défilement du tableau (`body { overflow-x: hidden !important }`). Il ne
+reste que les quatre `@keyframes` que le JSX appelle en inline, deux effets de survol
+des cartes de la page, et un repli `prefers-reduced-motion` borné à `.abs-page`.
+Le responsive de la page se lit là où il a toujours été : le bloc unique de
+`@media (max-width: 650px)` du pli (onglets, planches, config, demandes) et les
+replis de la tringle.
+
+**Le verrou 25 des serrures du pli se relit sans se relâcher.** Il lisait
+`PLI.lastIndexOf('@media')` — tant que la rubrique du pli était la dernière à porter
+un repli, cela tenait ; dès qu'une rubrique sous le pli gagne le sien, l'aiguille
+remonte et inspecte la nouvelle, non plus le pli, il inspectait la nouvelle et
+non plus le pli. La loi est maintenant écrite pour ce qu’elle garde : le bloc du pli
+tient ses trois replis, et AUCUN autre bloc `@media` de la feuille ne choisit un
+sélecteur `.abs-pli-*`. Deux verrous de plus (39, 40) tiennent les rails des soldes
+et l’échelle des motifs.
+
+### Les serrures, recomptées le 26/12
+
+`absencesCalendrierPli.test.jsx` en compte **quarante et une** : trois de plus
+(39 — les rails des soldes et la fabrication lue dans la base, 40 — l’échelle des
+motifs et l’encre de la charte, 41 — le recensement de la balise `<style>`), et le 25
+relu pour dire la loi au lieu de l’indice (`lastIndexOf('@media')` dépendait de
+l’ordre du fichier). Le comptage de la charte se relance au même endroit :
+**4 471 valeurs de couleur en dur** dans 182 fichiers (4 488 le 11/12 — la baisse vient
+du gestionnaire de motifs, qui en portait huit et un `rgba()` par bordure),
+126 ombres floues et 332 rayons hors liste, inchangés.
+
+Ce que la table ne peut pas encore, et qui n’a pas été inventé pour elle :
+les motifs `PALETTE_MOTIFS` restent des hex — ils sont la DONNÉE couleur d’un
+métier, pas une décision de style ; et le `title` des notes rognées ne se remplace
+pas par une deuxième ligne, sous peine de rendre à la table les 63 px de pas qu’on
+vient de lui rendre en 44.
+
+### Ce qui NE SE REPLIE PAS, et pourquoi (téléphone, 26/12)
+
+Le pas de la semaine reste 78, celui du mois 39, à toutes les largeurs : ce sont des
+cotes du dessin (`absences-grille-2-pli.png`, 1 376 px), pas des conventions
+d’œil. Un repli qui écrirait `--abs-pli-pas-semaine: 56px` sous 650 px fabriquerait
+deux vérités du calendrier — la grille de la maquette et la grille du téléphone — et
+le verrou 22 (les cotes viennent du dessin) est là exactement pour ça.
+
+Ce que le téléphone reçoit à la place, et qui tient sans toucher au pas : le champ
+du plateau se défile (`overflow-x: auto`, ligne 2 379 de la feuille — la règle est
+née le 6/12 pour que l’ombre dure ne soit pas rognée, elle sert aussi à ça), la
+colonne d’identité du tableau des soldes reste collée à gauche pendant ce défilement
+(`position: sticky`, `z-index: 1`), les tuiles de motifs passent en rail d’une
+colonne avec leurs pinces à 44 px, et le bandeau d’outils dénoue son `nowrap`. Le
+verrou 41 vérifie que AUCUN repli ne re-dessine le pas, la planche ou la piste.

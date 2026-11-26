@@ -889,9 +889,34 @@ describe('📐 le pli par employé', () => {
     expect([...new Set(z)].sort()).toEqual(['-1', '1', '2', '3'])
   })
 
+  /* Les blocs `@media` RÉELS de la rubrique (les prose qui nomment `@media` dans
+     les commentaires sont écartés en exigeant la parenthèse). Le 26/12, le verrou
+     lisait `PLI.lastIndexOf('@media')` : dès qu'une rubrique sous le pli gagnait
+     son propre repli, c'est ELLE qu'il inspectait, et le pli n'y était pas — une
+     aiguille qui dépend de l'ORDRE du fichier se retourne contre la loi qu'elle
+     garde. La loi, ici, est double : le bloc du pli tient ses trois replis, et
+     AUCUN autre bloc ne choisit un sélecteur du pli. */
+  const blocsMedia = () => {
+    const out = []
+    const re = /@media\s*\(/g
+    let m
+    while ((m = re.exec(PLI))) {
+      const ouverture = PLI.indexOf('{', m.index)
+      let curseur = ouverture
+      let profondeur = 0
+      do {
+        if (PLI[curseur] === '{') profondeur++
+        else if (PLI[curseur] === '}') profondeur--
+        curseur++
+      } while (curseur < PLI.length && profondeur > 0)
+      out.push(PLI.slice(m.index, curseur))
+    }
+    return out
+  }
+
   it('25. aucune media ne repositionne le pli', () => {
-    const media = PLI.slice(PLI.lastIndexOf('@media'))
-    expect(media).toContain('.abs-pli-nom { max-width: 110px }')
+    const media = blocsMedia().find((b) => b.includes('.abs-pli-nom { max-width: 110px }'))
+    expect(media, 'le bloc du pli a perdu son repli d’étiquette').toBeTruthy()
     expect(media).toContain('width: calc(var(--abs-pli-jauge) / 2)')
     // la case d'entête se pose en flux, pas en:absolute, quand la ligne se replie
     expect(media).toContain('.abs-pli-deplier { position: static }')
@@ -900,6 +925,12 @@ describe('📐 le pli par employé', () => {
     expect(media).not.toContain('abs-pli-planche')
     expect(media).not.toContain('abs-pli-piste')
     expect(media).not.toContain('abs-pli-lavage')
+    // et sous le pli, les replis des rubriques voisines ne touchent JAMAIS un
+    // sélecteur du pli : une media qui re-cadre une planche par en bas
+    // recréerait le décalage colonne/rail que le verrou 22 interdit
+    for (const b of blocsMedia().filter((x) => x !== media)) {
+      expect(nud(b)).not.toMatch(/\.abs-pli-[a-z-]+\s*[,{]/)
+    }
   })
 
   it('26. la légende apprend le pli, et ne parle plus d\'anneaux', () => {
@@ -1338,4 +1369,131 @@ describe('📐 le pli par employé', () => {
     // et le rail n'a pas de sections récrites à la main
     expect(PAGE).not.toContain("label: 'Absences', path: '/absences'")
   })
+
+  it('39. la table des soldes lit sa fabrication dans la base, sur des rails', () => {
+    // L'ANOMALIE, 26/12 (capture du fondateur : « on ne comprend pas, il y a des
+    // anomalies »). Quatre chiffres serrés sous un entête unique, une note qui
+    // n'existait que sous « Acquis », et cette note REJOUÉE à la main depuis la
+    // date d'embauche — elle affichait « 2 × 11 mois » sous un « 24 j » que le
+    // service avait calculé sur douze mois. Une fabrication qui se rejoue est une
+    // fabrication qui ment le lendemain du recalcul : elle se LIT.
+    expect(PAGE).not.toContain('explicationAcquis')
+    expect(PAGE).toContain('calculation_details')
+    expect(PAGE).toContain('last_calculated_at')
+    // le nom de la table reste un mot de service, jamais un mot d'écran
+    expect(PAGE).not.toContain('employee_leave_balances')
+
+    // LES RAILS. La largeur d'une colonne de nombre se nomme une fois et sert
+    // deux fois : au gabarit de la grille et à la jauge, qui doit se comparer
+    // d'une ligne à l'autre. 104 = « 2 j/mois × 12 mois » en 11 px.
+    expect(cote('--abs-soldes-nombre')).toBe(104)
+    const jetonLargeur = CSS.match(/--abs-soldes-largeur:[^;]+;/)[0]
+    expect(jetonLargeur).toContain('4 * var(--abs-soldes-nombre)')
+    expect(jetonLargeur).toContain('4 * var(--charte-espace-3)')
+    const grille = CSS.match(/--abs-soldes-grille:[^;]+;/)[0]
+    expect(grille).toContain('minmax(var(--abs-soldes-nombre), 1fr)')
+    // le rail s'applique aux lignes, et une seule fois : posé sur chaque nombre,
+    // il laissait la table se tasser sous son propre défilement. La règle du
+    // défilement se lit dans la FEUILLE, pas dans `PLI` : c'est la tringle qui la
+    // porte, et le rail des soldes n'est pas le terrain du pli.
+    expect(nud(CSS)).toContain("[data-testid='abs-soldes-liste']>div{min-width:var(--abs-soldes-largeur)")
+    expect(nud(CSS)).toContain("[data-testid='abs-soldes-liste']{overflow-x:auto")
+
+    // chaque colonne de nombre porte le nombre PUIS sa fabrication, alignés à
+    // droite et sur la même ligne de base — c'est la colonne qui décide, jamais
+    // la ligne (`justify-self`, c'est n rails, n décisions)
+    const nombre = nud(corps('.abs-soldes-nombre'))
+    expect(nombre).toContain('justify-items:end')
+    expect(nombre).toContain('align-items:baseline')
+    expect(nombre).not.toContain('justify-self')
+    // le nom et le matricule ne se touchent plus : deux lignes, une grille
+    const identité = nud(corps('.abs-soldes-identité-nom'))
+    expect(identité).toContain('display:grid')
+    expect(identité).toContain('min-width:0')
+    // les quatre nombres sont quatre, pas trois + un solde cerclé à part
+    expect((PAGE.match(/className="abs-soldes-nombre"/g) || []).length).toBe(4)
+    expect((PAGE.match(/abs-soldes-chiffre/g) || []).length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('40. les motifs reprennent l’échelle du pli, sans encre hors charte', () => {
+    // LA CAPTURE, 26/12 : huit tuiles cerclées CHACUNE DE SA COULEUR, fond teinté,
+    // six rayons différents (16, 13, 11, 10, 9, 3), un dégradé `#C25E28 → #8C3418`
+    // pour un seul bouton — le tout en styles inline, donc hors portée du thème
+    // sombre et hors de portée de la feuille. La tuile n'a plus qu'un cerclage,
+    // celui de la carte ; la couleur du motif ne reste que là où c'est UNE DONNÉE.
+    const motifs = lire('src', 'components', 'AbsencesMotifsManager.jsx')
+    expect(motifs).not.toMatch(/#[0-9A-Fa-f]{6}/)
+    expect(motifs).not.toMatch(/rgba\(/)
+    expect(motifs).not.toMatch(/borderRadius/)
+    expect(motifs).not.toMatch(/linear-gradient/)
+    expect(motifs).not.toMatch(/!important/)
+    // les classes de la pile, plus les boutons de la maison
+    for (const c of ['abs-motifs-pile', 'abs-motifs-carte', 'abs-motifs-pince', 'ch-btn-pleine', 'ch-champ-cadre']) {
+      expect(motifs).toContain(c)
+    }
+    // le nombre d'usages se lit avec son mot, sinon un « 2 » nu se lit comme un code
+    expect(motifs).toContain('absence{nb === 1 ?')
+
+    // LE RAIL, à la mesure du pli : une planche = 224, la pince = la case de
+    // l'entête (30), le glyphe = son carré. Sous la planche, `min(100%, …)`
+    // évite la gouttière — c'est pour ça que cette rubrique n'a pas de media.
+    expect(cote('--abs-motifs-planche')).toBe(224)
+    expect(cote('--abs-motifs-glyphe')).toBe(34)
+    const pile = nud(corps('.abs-motifs-pile'))
+    expect(pile).toContain('repeat(auto-fill,minmax(min(100%,var(--abs-motifs-planche)),1fr))')
+    const tuile = nud(corps('.abs-motifs-carte'))
+    expect(tuile).toContain('grid-template-columns:autominmax(0,1fr)auto')
+    expect(tuile.match(/border:/g) || []).toHaveLength(1)
+    const pince = nud(corps('.abs-motifs-pince'))
+    expect(pince).toContain('width:var(--abs-pli-case)')
+    expect(pince).toContain('border:var(--abs-pli-rule)solidvar(--charte-encre)')
+    expect(pince).not.toContain('box-shadow')
+  })
+
+
+  it('41. la page ne rustine plus l’application : le repli vit dans sa feuille', () => {
+    // LE RELEVÉ, 26/12 (« rends la page absences responsive tout écran, mobile,
+    // tablette, desktop »). La balise `<style>` de la page pesait 9 Ko et choisissait
+    // 48 sélecteurs, dont 28 que plus aucun composant du dépôt ne monte. Sans portée,
+    // ces règles peignaient les AUTRES écrans pendant que la page était ouverte
+    // (`.stats-grid` de Pointages en deux colonnes, `body { overflow-x: hidden }` qui
+    // coupait le défilement du tableau, `button { min-height: 44px !important }` qui
+    // enflait chaque pince du pli — et l'aplomb du pli se règle à la case de 30).
+    const styleBrut = PAGE.slice(PAGE.indexOf('<style>{`'), PAGE.indexOf('`}</style>'))
+    expect(styleBrut.length).toBeLessThan(3200) // 9 Ko d'héritage, plus jamais
+    // le commentaire de la balise NOMME les sélecteurs qu'il enterre — une aiguille
+    // qui compte des sous-chaînes lit donc la prose, pas le contrat : on coupe les
+    // commentaires avant de mesurer (la leçon du 08/12 sur `<CoqueAdmin`)
+    const style = styleBrut.replace(/\/\*[\s\S]*?\*\//g, '')
+    // aucune couleur en dur, aucun sélecteur d'un autre écran, pas de `body`
+    expect(style).not.toMatch(/#[0-9A-Fa-f]{3,8}/)
+    expect(style).not.toMatch(/rgba?\(/)
+    // LE RECENSEMENT, pas la liste de ce qui est interdit : énumérer les sélecteurs
+    // Enterres se retourne contre l'aiguille dès qu'un survivant en est le préfixe
+    // (`.cal-day` relisait `.cal-day-click`, conservé lui). Ce que la balise sait
+    // nommer tient en cinq classes — les cinq que la page monte.
+    const connues = [...new Set([...style.matchAll(/\.([a-z][a-z0-9-]+)/g)].map((m) => m[1]))].sort()
+    expect(connues).toEqual(['abs-page', 'absence-card-hover', 'afro-card', 'cal-day-click', 'doc-view-btn'])
+    // une seule règle porte un `!important`, et c'est le repli de mouvement borné
+    // à `.abs-page` — un inline ne se commande qu'ainsi
+    expect((style.match(/!important/g) || []).length).toBe(2)
+    expect(style).toContain(".abs-page [style*='animation']")
+    // quatre images de mouvement (deux accolades chacune), sept règles d'effets,
+    // un bloc de repli : le recensement des classes ci-dessus est la vraie borne,
+    // compter les accolades n'aurait gardé que l'écriture du jour
+    expect((style.match(/@keyframes/g) || []).length).toBe(4)
+
+    // et le responsive de CETTE page se lit dans sa feuille, au seuil du composant
+    // qui le porte : table qui défile avec son identité collante, tuiles en rail
+    // fluide, aucun repli qui re-dessine le pli (verrou 25)
+    expect(nud(CSS)).toContain('.abs-soldes-identité{display:flex')
+    expect(nud(corps('.abs-soldes-identité'))).toContain('position:sticky')
+    expect(nud(corps('.abs-soldes-identité'))).toContain('z-index:1')
+    // le rail fluide à sa place, et UN seul repli pour lui, dans le bloc du pli :
+    // `corps()` lit la PREMIÈRE règle du sélecteur et c'est le repli qui est écrit
+    // avant la définition — d'où la feuille entière, deux aiguilles distinctes
+    expect(nud(CSS)).toContain('.abs-config-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))')
+    expect(nud(CSS)).toContain('.abs-config-grille{grid-template-columns:1fr')
+  })
+
 })

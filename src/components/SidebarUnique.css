@@ -916,6 +916,25 @@
   max-width: 100%;
 }
 
+/* LE LOGO, LUI, NE SE DÉCOUPE PAS. Une photo de visage se cadre : elle remplit
+   le rond, et le rond est fait pour un visage. Une image de marque est un MOT —
+   la bannière d'EN-NOUS mesure 236 × 43 : recadrée en `cover` dans un rond de
+   30, il n'en restait que cinq pixels de signe, et le rail avait l'air de n'avoir
+   aucune image (fondateur, 26/12 : « affiche l'image de l'entreprise ici »).
+   `contain` la montre entière ; les deux pixels d'air l'empêchent de toucher le
+   cercle, et l'assiette garde un logotype sombre lisible dans la pâte claire du
+   rail comme dans le thème sombre. La classe se pose en plus de `--photo`, pas à
+   sa place : le remplissage, la bordure et le repli sur l'initiale sont les mêmes. */
+.se-rond--logo {
+  background: var(--charte-blanc);
+}
+
+.se-rond--logo img {
+  object-fit: contain;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
 /* et sur la bande debout du rail : la photo de l'entreprise active */
 .se-rond--bande {
   width: 30px;

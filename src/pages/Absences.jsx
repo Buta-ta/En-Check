@@ -32,6 +32,7 @@ import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import { cibleRetour } from '../lib/monEntreprise'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import { useTheme } from '../contexts/ThemeContext'
+import useLoadingMinimum from '../hooks/useLoadingMinimum'
 import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
 import LeaveBalanceService from '../services/leaveBalanceService'
@@ -395,32 +396,54 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
 // ═══════════════════════════════════════════════════════════
 // COMPOSANT PRINCIPAL
 // ═══════════════════════════════════════════════════════════
-/** Douze mois, ou moins depuis l'embauche : le diviseur de l'acquisition, en
-    dixièmes (un `1.75 × 3.4` affiché entier dirait « 6 » pour 5,95). */
-const nombreDeMois = (mois) => Math.round(Math.max(0, Math.min(12, mois)) * 10) / 10
-
-/** COMMENT un « acquis » est fait. Sans cette ligne, 24 j à côté de 8 j se lit
-    comme une incohérence de la base alors que c'est la règle (fondateur, 08/12 :
-    la colonne « Acquis » alternait 24j et 8j sans que rien ne le dise). Le
-    calcul n'est PAS repris à la charge du service : on nomme les paramètres, on
-    ne redonne pas le résultat — deux fabrications du même nombre, c'est deux
-    nombres. */
-const explicationAcquis = (item, config, annee) => {
-  const parMois = Number(config?.leave_days_per_month) || 0
-  if (!parMois) return 'aucune acquisition réglée'
-  if (config?.leave_reference_date === 'calendar_year') {
-    return `année civile · ${parMois} × 12, plafonné à ${config.annual_leave_cap || '—'} j`
+/*  LA FABRICATION D'UN SOLDE SE LIT, ELLE NE SE REJOUERAIT PAS.
+    la colonne `calculation_details` de la table des soldes porte ce que le
+    service a EFFECTIVEMENT utilisé au recalcul (`months_worked`,
+    `leave_days_per_month`, `annual_leave_cap`, `leave_carry_over`). Le composant ne re-compte donc plus
+    les mois « à la main » sur la date d'embauche : recopié, le calcul devenait
+    faux dès que l'écran tournait en décembre (la capture du fondateur montrait
+    « 2 × 11 mois » sous un « 24 j » qui valait 2 × 12), et faux aussi pour les
+    salariés sans `hire_date` — « date inconnue » pendant que le nombre, lui,
+    sortait de nulle part. Un solde jamais recalculé le dit, au lieu d'être expliqué. */
+const fabricationSolde = (item) => {
+  const d = item?.calculation_details
+  if (!d) return 'jamais recalculé — lancez un recalcul pour dater ce nombre'
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0)
+  const parMois = num(d.leave_days_per_month)
+  const mois = num(d.months_worked)
+  const morceaux = [`${parMois} j/mois × ${mois} mois`]
+  if (d.annual_leave_cap && Number(item.total_acquired) >= Number(d.annual_leave_cap)) {
+    morceaux.push(`plafonné à ${d.annual_leave_cap} j`)
   }
-  const embauche = item?.employees?.hire_date
-  if (!embauche) return `${parMois} j/mois depuis l’embauche (date inconnue)`
-  const née = new Date(`${embauche}T12:00:00`)
-  const début = Number(née.getFullYear()) < Number(annee) ? new Date(`${annee}-01-01T12:00:00`) : née
-  const fin = new Date()
-  const mois =
-    (fin.getFullYear() - début.getFullYear()) * 12 + (fin.getMonth() - début.getMonth()) +
-    (fin.getDate() >= début.getDate() ? 1 : 0)
-  if (Number(née.getFullYear()) > Number(annee)) return `entré le ${embauche.slice(8, 10)}/${embauche.slice(5, 7)}/${embauche.slice(0, 4)} · rien à acquérir cette année`
-  return `${parMois} × ${nombreDeMois(mois)} mois depuis le ${embauche.slice(8, 10)}/${embauche.slice(5, 7)}/${embauche.slice(0, 4)}`
+  if (Number(d.carry_over ?? item.carry_over_previous) > 0) {
+    morceaux.push(`report N-1 ${item.carry_over_previous} j`)
+  }
+  return morceaux.join(' · ')
+}
+
+/** La fabrication du SOLDE : acquis + report − pris − attente. Le nombre est lu
+    sur les colonnes, il n'est pas redessiné — cette ligne ne fait que les nommer. */
+const fabricationSoldeNette = (item) => {
+  const d = item?.calculation_details
+  if (!d) return 'non recalculé'
+  const r = (n) => Math.round((Number(n) || 0) * 100) / 100
+  return `${r(item.total_acquired)} + ${r(item.carry_over_previous)} − ${r(item.total_taken)} − ${r(item.total_pending)}`
+}
+
+/** Les dates de recalcul de la table. Un solde sans date est un solde qu'on ne
+    peut pas contester ; des dates qui s'étalent disent qu'une ligne n'a pas suivi
+    le dernier changement de configuration. La table réelle est dans ce cas (un
+    solde daté du 15/05/2026 parmi des recalculs du 23/11/2026), donc la borne
+    basse se lit, elle ne se cache pas derrière la plus récente. */
+const datesDeRecalcul = (items) => {
+  const triees = items.map((i) => i.last_calculated_at).filter(Boolean).sort()
+  if (!triees.length) return 'aucun recalcul enregistré'
+  const jour = (iso) => {
+    const d = new Date(iso)
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  }
+  const [min, max] = [jour(triees[0]), jour(triees[triees.length - 1])]
+  return min === max ? `recalculés le ${min}` : `recalculés entre le ${min} et le ${max}`
 }
 
 export default function Absences() {
@@ -499,6 +522,10 @@ export default function Absences() {
   // `localStorage['encheck.theme']` (D-005) — retirer le bouton ne remet pas la page
   // en clair de force, il retire l'interrupteur de CET écran.
   const { darkMode, toggleTheme } = useTheme()
+  /* le plancher de la scène, en un seul endroit : `minLoadingDone` n'est PAS un
+     second `loading` — la page se montre quand LES DONNÉES sont là, l'écran ne
+     fait que réclamer son droit de regard sur la première peinture. */
+  const { minLoadingDone, skipLoading } = useLoadingMinimum()
   const today = new Date().toISOString().split('T')[0]
 
   const [formData, setFormData] = useState({
@@ -1468,14 +1495,36 @@ export default function Absences() {
     setSortBy('date_desc')
   }
 
-  if (!accessChecked || loading) {
-    return <AbsencesLoadingScreen darkMode={darkMode} checkingAccess={!accessChecked}/>
-  }
-
   // L'entreprise active décide des motifs visibles (globaux + les siens)
   const entrepriseActiveId = admin?.role === 'super_admin'
     ? selectedEntrepriseId
     : (admin?.selectedEnterprise?.id || admin?.enterprise_id)
+
+  const entrepriseActivePourRail =
+    entreprises.find((e) => e.id === selectedEntrepriseId)
+    || (admin?.role !== 'super_admin' ? (entreprises[0] || null) : null)
+
+  /*  L'écran d'attente est LA CARTE DES EMPLOYÉS (08/12 : « utilise cette même
+      animation, juste retravaille ça comme dans la page employés ») — même plancher
+      que Pauses et le Planning : la scène a le temps d'être vue, mais la page
+      s'affiche dès que LA DONNÉE est là, jamais dès que le minuteur est passé.
+      `checkingAccess` n'est plus un état de l'écran : la carte n'a qu'un titre, et
+      c'est la page qui le choisit. */
+  if (!accessChecked || (loading && absences.length === 0) || !minLoadingDone) {
+    return (
+      <AbsencesLoadingScreen
+        darkMode={darkMode}
+        dataReady={!loading}
+        nomEntreprise={admin?.selectedEnterprise?.name || entrepriseActivePourRail?.name || ''}
+        accessChecked={accessChecked}
+        onSkip={() => {
+          skipLoading()
+          if (!accessChecked) return
+          setLoading(false)
+        }}
+      />
+    )
+  }
 
   /* ═══ LE RAIL ET LA BARRE (demande du 08/12 : « RAMENE THE SIDEBAR ET LE
      RAIL DANS LA PAGE ABSENCE — n'oublie pas d'afficher les images respectives
@@ -1490,10 +1539,11 @@ export default function Absences() {
      `PhotoSignee`) sur les objets passés dans `entreprises`. C'est pour ça
      que `loadEntreprises` demande `*` et tourne aussi pour un admin non
      super : une requête qui ne rapporte pas `logo_url` laisse la lettre du
-     nom, et on croit le logo perdu alors qu'il n'a jamais été demandé. */
-  const entrepriseActivePourRail =
-    entreprises.find((e) => e.id === selectedEntrepriseId)
-    || (admin?.role !== 'super_admin' ? (entreprises[0] || null) : null)
+     nom, et on croit le logo perdu alors qu'il n'a jamais été demandé.
+     (`entrepriseActiveId` et `entrepriseActivePourRail` se calculent plus haut,
+     avant l'écran d'attente : la carte de chargement lit le nom de l'entreprise,
+     et un `const` déclaré APRÈS ce `return` est dans sa zone morte — le premier
+     rendu plantait d'un `ReferenceError`.) */
   const nomAdmin =
     `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() ||
     admin?.name || admin?.email || 'Administrateur'
@@ -1514,412 +1564,46 @@ export default function Absences() {
     <MotifsAbsenceProvider enterpriseId={entrepriseActiveId}>
     <>
       <style>{`
+  /* ═══════════════════════════════════════════════════════════
+     🧺 CE QUE CETTE BALISE SAIT FAIRE : les quatre images de mouvement que le
+     JSX de la page appelle en inline, et les deux effets de survol des cartes
+     qu'elle monte. Rien de plus.
+
+     Le 26/12, elle portait encore neuf kilooctets d'héritage : « RESPONSIVE
+     MOBILE — CORRECTIONS CRITIQUES », « AMÉLIORATION TACTILE », « CORRECTIONS
+     OVERFLOW ». Ces trois rubriques choisissaient des sélecteurs que cette page
+     n'écrit plus (.cal-day, .stats-grid, .modal-content, .filter-item, .search-box,
+     .config-grid : vingt-huit d'entre eux ne sont montés par AUCUN composant du
+     dépôt) — mais elles les écrivaient SANS PORTÉE. Une balise de page peignait
+     donc l'application : dès que les Absences étaient montées, les stats de
+     Pointages passaient en deux colonnes, « button { min-height: 44px !important } »
+     enflait chaque pince du pli — dont l'aplomb se règle au pixel, case de
+     30 et carré de 22 — et « body { overflow-x: hidden } » coupait le
+     défilement du rail et du tableau. « Rends la page responsive » ne veut pas
+     dire empiler les rustines : les cotes de repli du pli, de la tringle et de
+     la pile de configuration vivent dans AbsencesAfroTech.css, à la largeur du
+     composant qui les porte.
+     ═══════════════════════════════════════════════════════════ */
+
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
   @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-  
-  .afro-card{animation:slideUp .4s ease forwards;opacity:0}
-  .afro-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(245,158,11,.3)}
-  .absence-card-hover{transition:all .3s ease}
-  .absence-card-hover:hover{border-color:rgba(245,158,11,.2)!important;transform:translateY(-2px)}
-  .stat-card:hover{transform:translateY(-4px);transition:all .3s ease}
-  .loading-pulse{animation:pulse 1.5s ease infinite}
-  .cal-day-click{cursor:pointer;transition:all .2s ease}
-  .cal-day-click:hover{transform:scale(1.02);border-color:rgba(245,158,11,.4)!important}
-  .req-card:hover{border-color:var(--abs-line)!important;transform:translateY(-2px)}
-  .req-card{transition:all .3s ease}
-  .tab-btn:hover{background:rgba(245,158,11,0.08)!important}
-  .doc-view-btn:hover{background:rgba(59,130,246,0.15)!important;border-color:rgba(59,130,246,0.4)!important}
-  
-  select:focus,input:focus,textarea:focus{border-color:var(--abs-amber)!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.12)}
-  select option{background:var(--abs-bg-elevated);color:var(--abs-text)}
 
+  .afro-card{animation:slideUp .4s ease both}
+  .absence-card-hover{transition:border-color .2s ease,transform .2s ease}
+  .absence-card-hover:hover{border-color:var(--charte-encre);transform:translateY(-2px)}
+  .cal-day-click{cursor:pointer;transition:transform .2s ease}
+  .cal-day-click:hover{transform:scale(1.02)}
+  .doc-view-btn{transition:background-color .2s ease}
+  .doc-view-btn:hover{background:var(--charte-bordure)}
 
-  /* Classes utilitaires responsive */
-.hide-mobile { display: block; }
-.show-mobile { display: none; }
-
-@media(max-width: 768px) {
-  .hide-mobile { display: none !important; }
-  .show-mobile { display: block !important; }
-}
-
-/* Amélioration scroll */
-.hide-scrollbar {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-}
-
-.hide-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
-}
-  
-  /* ═══════════════════════════════════════════════════════════
-     🎯 RESPONSIVE MOBILE - CORRECTIONS CRITIQUES
-  ═══════════════════════════════════════════════════════════ */
-  
-  @media(max-width: 1024px) {
-    /* Stats en 3 colonnes sur tablette */
-    .stats-grid {
-      grid-template-columns: repeat(3, 1fr) !important;
-    }
-  }
-  
-  @media(max-width: 768px) {
-    /* ✅ CONTAINER PRINCIPAL */
-    .container {
-      padding: 12px !important;
-    }
-    
-    /* ✅ STATS EN 2 COLONNES */
-    .stats-grid { 
-      grid-template-columns: repeat(2, 1fr) !important; 
-      gap: 10px !important; 
-    }
-    
-    .stat-card {
-      padding: 14px !important;
-      gap: 12px !important;
-    }
-    
-    .stat-icon {
-      width: 40px !important;
-      height: 40px !important;
-    }
-    
-    .stat-number {
-      font-size: 22px !important;
-    }
-    
-    .stat-label {
-      font-size: 11px !important;
-    }
-    
-    /* ✅ TOOLBAR EMPILABLE */
-    .toolbar-top { 
-      flex-direction: column !important; 
-      gap: 12px !important; 
-      align-items: stretch !important; 
-    }
-    
-    .toolbar-left, .toolbar-right {
-      width: 100% !important;
-      flex-direction: column !important;
-      gap: 10px !important;
-    }
-    
-    .search-box {
-      flex: 1 !important;
-      min-width: 100% !important;
-    }
-    
-    .filter-group {
-      flex: 1 !important;
-      min-width: 100% !important;
-    }
-    
-    .view-toggle {
-      width: 100% !important;
-    }
-    
-    .view-btn {
-      flex: 1 !important;
-      justify-content: center !important;
-    }
-    
-    /* ✅ FILTRES EN COLONNE */
-    .filters-panel { 
-      flex-direction: column !important; 
-      gap: 10px !important;
-      padding: 16px !important;
-    }
-    
-    .filter-item {
-      min-width: 100% !important;
-      flex: 1 !important;
-    }
-    
-    /* ✅ LISTE ABSENCES EN 1 COLONNE */
-    .abs-list { 
-      grid-template-columns: 1fr !important; 
-    }
-    
-    /* ✅ CARTES ABSENCES COMPACTES */
-    .absence-card-hover {
-      padding: 14px !important;
-    }
-    
-    .card-header {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      gap: 10px !important;
-    }
-    
-    .dates-row {
-      flex-direction: column !important;
-      gap: 10px !important;
-      padding: 10px !important;
-    }
-    
-    .card-footer {
-      flex-wrap: wrap !important;
-      gap: 10px !important;
-    }
-    
-    .footer-actions {
-      flex-wrap: wrap !important;
-      gap: 6px !important;
-      width: 100% !important;
-      justify-content: flex-end !important;
-    }
-    
-    /* ✅ ONGLETS EMPILABLES */
-    .tab-container {
-      flex-wrap: wrap !important;
-      gap: 6px !important;
-    }
-    
-    .tab-btn {
-      padding: 10px 16px !important;
-      font-size: 13px !important;
-    }
-    
-    /* ✅ CALENDRIER COMPACT */
-    .cal-grid {
-      gap: 2px !important;
-    }
-    
-    .cal-day {
-      min-height: 80px !important;
-      padding: 6px !important;
-      font-size: 11px !important;
-    }
-    
-    .cal-day-num {
-      font-size: 12px !important;
-    }
-    
-    .cal-emp-name {
-      font-size: 9px !important;
-    }
-    
-    .cal-detail {
-      padding: 16px !important;
-    }
-    
-    .cal-detail-item {
-      flex-wrap: wrap !important;
-      gap: 10px !important;
-    }
-    
-    /* ✅ MODALS RESPONSIVE */
-    .modal-content, .modal {
-      max-width: 95vw !important;
-      max-height: 95vh !important;
-      margin: 10px !important;
-      padding: 20px !important;
-    }
-    
-    .modal-header {
-      flex-wrap: wrap !important;
-      gap: 10px !important;
-    }
-    
-    .modal-footer {
-      flex-direction: column !important;
-      gap: 10px !important;
-    }
-    
-    .save-btn, .modal-footer button {
-      width: 100% !important;
-    }
-    
-    /* ✅ FORMULAIRE MODAL */
-    .form-row {
-      flex-direction: column !important;
-      gap: 14px !important;
-    }
-    
-    .reason-grid {
-      grid-template-columns: repeat(2, 1fr) !important;
-    }
-    
-    /* ✅ DEMANDES EMPLOYÉS */
-    .req-card {
-      padding: 16px !important;
-    }
-    
-    /* ✅ CONFIG CONGÉS */
-    .config-grid {
-      grid-template-columns: 1fr !important;
-    }
-  }
-  
-  @media(max-width: 480px) {
-    /* ✅ STATS EN 1 COLONNE SUR TRÈS PETIT ÉCRAN */
-    .stats-grid { 
-      grid-template-columns: 1fr !important; 
-    }
-    
-    /* ✅ PADDING RÉDUIT */
-    .container {
-      padding: 8px !important;
-    }
-    
-    .main {
-      padding: 12px !important;
-    }
-    
-    /* ✅ BOUTONS COMPACTS */
-    .afro-btn, .export-btn, .add-btn {
-      padding: 10px 14px !important;
-      font-size: 13px !important;
-    }
-    
-    /* ✅ CARTES PLUS COMPACTES */
-    .stat-card {
-      padding: 12px !important;
-      flex-direction: column !important;
-      text-align: center !important;
-    }
-    
-    .stat-icon {
-      width: 36px !important;
-      height: 36px !important;
-    }
-    
-    /* ✅ CALENDRIER TRÈS COMPACT */
-    .cal-grid {
-      font-size: 10px !important;
-    }
-    
-    .cal-day {
-      min-height: 60px !important;
-      padding: 4px !important;
-    }
-    
-    .cal-day-num {
-      font-size: 11px !important;
-    }
-    
-    .cal-emp-list {
-      display: none !important; /* Cache les noms sur très petit écran */
-    }
-    
-    /* ✅ MODAL PLEIN ÉCRAN */
-    .modal-content, .modal {
-      border-radius: 0 !important;
-      max-width: 100vw !important;
-      max-height: 100vh !important;
-      margin: 0 !important;
-      padding: 16px !important;
-    }
-    
-    /* ✅ REASON GRID EN 1 COLONNE */
-    .reason-grid {
-      grid-template-columns: 1fr !important;
-    }
-    
-    /* ✅ TOOLBAR ACTIONS EMPILÉES */
-    .toolbar-right button {
-      width: 100% !important;
-    }
-    
-    /* ✅ BADGES PLUS PETITS */
-    .badge, .cal-detail-badge {
-      font-size: 9px !important;
-      padding: 2px 6px !important;
-    }
-    
-    /* ✅ HIST STATS VERTICAL */
-    .hist-stats {
-      flex-direction: column !important;
-    }
-    
-    .hist-total-box {
-      border-right: none !important;
-      border-bottom: 1px solid var(--abs-line-soft) !important;
-      padding-right: 0 !important;
-      padding-bottom: 12px !important;
-      margin-bottom: 12px !important;
-    }
-  }
-  
-  /* ═══════════════════════════════════════════════════════════
-     🎯 AMÉLIORATION TACTILE (iOS GUIDELINES)
-  ═══════════════════════════════════════════════════════════ */
-  
-  @media(max-width: 768px) {
-    /* Zones tactiles minimum 44x44px */
-    button, a, select, input[type="date"], input[type="checkbox"] {
-      min-height: 44px !important;
-    }
-    
-    button:not(.icon-only) {
-      min-width: 44px !important;
-    }
-    
-    /* Boutons d'action dans les cartes */
-    .footer-actions button {
-      min-width: 40px !important;
-      min-height: 40px !important;
-      padding: 10px !important;
-    }
-    
-    /* Espacement entre éléments cliquables */
-    .toolbar-right {
-      gap: 12px !important;
-    }
-    
-    .footer-actions {
-      gap: 8px !important;
-    }
-  }
-  
-  /* ═══════════════════════════════════════════════════════════
-     🎯 CORRECTIONS OVERFLOW
-  ═══════════════════════════════════════════════════════════ */
-  
-  @media(max-width: 768px) {
-    /* Empêcher le scroll horizontal */
-    body {
-      overflow-x: hidden !important;
-    }
-    
-    /* Textes longs */
-    .emp-name, .cal-emp-name, .cal-detail-name {
-      max-width: 150px !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
-      white-space: nowrap !important;
-    }
-    
-    /* Badges qui débordent */
-    .top-badges, .card-header {
-      max-width: 100% !important;
-      overflow-x: auto !important;
-      scrollbar-width: none !important; /* Firefox */
-    }
-    
-    .top-badges::-webkit-scrollbar,
-    .card-header::-webkit-scrollbar {
-      display: none !important; /* Chrome/Safari */
-    }
-  }
-  
-
-
-  /* ═══════════════════════════════════════════════════════════
-     🎯 ACCESSIBILITÉ
-  ═══════════════════════════════════════════════════════════ */
-  
   @media (prefers-reduced-motion: reduce) {
-    * {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
+    /* la page ne supprime pas le mouvement des AUTRES écrans — seule sa
+       portée ; l'astérisque est là parce que la commande est inline, donc
+       gagne contre toute feuille (aucun backtick ici : cette balise EST un
+       gabarit, le caractère le fermerait) */
+    .abs-page [style*='animation']{animation:none !important;opacity:1 !important}
   }
 `}</style>
 
@@ -2464,7 +2148,10 @@ export default function Absences() {
                       placeholder="1.75"
                     />
                     <span className="abs-config-aide">
-                      {nombreDeMois(12) * (parseFloat(leaveConfig.leave_days_per_month) || 0)} jours sur une année pleine
+                      <span className="abs-config-mono">
+                        {(12 * (parseFloat(leaveConfig.leave_days_per_month) || 0)).toFixed(1)} j
+                      </span>{' '}
+                      sur une année pleine
                     </span>
                   </label>
 
@@ -2477,8 +2164,10 @@ export default function Absences() {
                       placeholder="30"
                     />
                     <span className="abs-config-aide">
-                      Au-delà, l’acquisition s’arrête — {leaveConfig.leave_days_per_month || 0} × 12 ={' '}
-                      {nombreDeMois(12) * (parseFloat(leaveConfig.leave_days_per_month) || 0)}
+                      Au-delà, l’acquisition s’arrête — une année pleine vaut{' '}
+                      <span className="abs-config-mono">
+                        {(12 * (parseFloat(leaveConfig.leave_days_per_month) || 0)).toFixed(1)} j
+                      </span>
                     </span>
                   </label>
 
@@ -2536,15 +2225,15 @@ export default function Absences() {
                   <div>
                     <h3>Soldes de congés {anneeSoldes}</h3>
                     <p className="abs-config-note">
-                      Calculés à partir des absences validées de l’année — employés actifs uniquement. Deux employés
-                      n’ont pas le même « acquis » : {nombreDeMois(12) * (parseFloat(leaveConfig.leave_days_per_month) || 1.75)}{' '}
-                      jours pour une année pleine, autant de ×{' '}
-                      <span className="abs-config-mono">{leaveConfig.leave_days_per_month || 1.75}</span> que de mois
-                      depuis l’embauche pour les autres.
+                      Jours ouvrés, absences approuvées seulement, employés actifs. Sous chaque nombre, sa fabrication :
+                      acquis = taux mensuel × mois travaillés, solde = acquis + report − pris − attente.
                     </p>
                   </div>
                   {!loadingLeaveBalancesPreview && leaveBalancesPreview.length > 0 && (
-                    <span className="abs-demandes-compte">{leaveBalancesPreview.length} employé{leaveBalancesPreview.length > 1 ? 's' : ''}</span>
+                    <div className="abs-soldes-repere">
+                      <span className="abs-demandes-compte">{leaveBalancesPreview.length} employé{leaveBalancesPreview.length > 1 ? 's' : ''}</span>
+                      <span className="abs-config-note">{datesDeRecalcul(leaveBalancesPreview)}</span>
+                    </div>
                   )}
                 </header>
 
@@ -2562,15 +2251,16 @@ export default function Absences() {
                   <div className="abs-soldes-table" data-testid="abs-soldes-liste" role="region" aria-label="Soldes de congés, tableau défilant" tabIndex={0}>
                     <div className="abs-soldes-ligne abs-soldes-tete">
                       <span>Employé</span>
-                      <span>Acquis</span>
-                      <span>Pris</span>
-                      <span>En attente</span>
-                      <span>Solde</span>
+                      <span className="abs-soldes-col">Acquis</span>
+                      <span className="abs-soldes-col">Pris</span>
+                      <span className="abs-soldes-col">En attente</span>
+                      <span className="abs-soldes-col">Solde</span>
                     </div>
 
                     {leaveBalancesPreview.map((item, index) => {
                       const acquis = item.total_acquired || 0
                       const pris = item.total_taken || 0
+                      const attente = item.total_pending || 0
                       const pct = acquis > 0 ? Math.min(100, Math.round((pris / acquis) * 100)) : 0
                       const solde = item.balance || 0
                       const initiales = `${item.employees?.first_name?.[0] || ''}${item.employees?.last_name?.[0] || ''}`.toUpperCase()
@@ -2583,8 +2273,8 @@ export default function Absences() {
                         >
                           <div className="abs-soldes-identité">
                             <span className="abs-soldes-sceau" aria-hidden="true">{initiales}</span>
-                            <span style={{ minWidth: 0 }}>
-                              <span className="abs-soldes-nom">
+                            <span className="abs-soldes-identité-nom">
+                              <span className="abs-soldes-nom" title={`${item.employees?.first_name || ''} ${item.employees?.last_name || ''}`}>
                                 {item.employees?.first_name} {item.employees?.last_name}
                               </span>
                               <span className="abs-soldes-matricule">
@@ -2594,26 +2284,31 @@ export default function Absences() {
                             </span>
                           </div>
 
+                          {/* la fabrication est lue dans la base (`calculation_details`),
+                              pas rejouée ici : rejouée, elle contredit le nombre dès que
+                              la page tourne un autre jour de l'année */}
                           <div className="abs-soldes-nombre">
-                            {acquis} j
-                            <span className="abs-soldes-fabrication">{explicationAcquis(item, leaveConfig, anneeSoldes)}</span>
+                            <span className="abs-soldes-chiffre">{acquis} j</span>
+                            <span className="abs-soldes-fabrication" title={fabricationSolde(item)}>{fabricationSolde(item)}</span>
                           </div>
 
                           <div className="abs-soldes-nombre">
-                            {pris} j
-                            <span
-                              className="abs-soldes-jauge"
-                              role="presentation"
-                              title={`${pct} % du pris sur l'acquis`}
-                            >
+                            <span className="abs-soldes-chiffre">{pris} j</span>
+                            <span className="abs-soldes-jauge" title={`${pct} % de l’acquis pris`}>
                               <span className="abs-soldes-jauge-plein" data-plein={pct >= 100 ? 'vrai' : 'faux'} style={{ width: `${pct}%` }} />
                             </span>
                           </div>
 
-                          <div className="abs-soldes-nombre">{item.total_pending || 0} j</div>
+                          <div className="abs-soldes-nombre">
+                            <span className="abs-soldes-chiffre">{attente} j</span>
+                            {Number(item.pending_calendar_days) > attente && (
+                              <span className="abs-soldes-fabrication">{item.pending_calendar_days} j calendaires</span>
+                            )}
+                          </div>
 
-                          <div className="abs-soldes-solde" data-negatif={solde < 0 ? 'vrai' : 'faux'}>
-                            {solde} j
+                          <div className="abs-soldes-nombre">
+                            <span className="abs-soldes-solde" data-negatif={solde < 0 ? 'vrai' : 'faux'}>{solde} j</span>
+                            <span className="abs-soldes-fabrication" title={fabricationSoldeNette(item)}>{fabricationSoldeNette(item)}</span>
                           </div>
                         </div>
                       )
