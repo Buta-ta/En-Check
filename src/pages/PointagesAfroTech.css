@@ -7356,3 +7356,237 @@
     margin: 0;
   }
 }
+
+/* ═══ LA SAISIE MANUELLE D'UNE PAUSE ══════════════════════════════════════
+
+     « On doit retravailler ça », 26/11. Le formulaire était une grille de
+     champs natifs posée à même le panneau : select et champs date/heure
+     gardaient le dessin du navigateur, l'intitulé flottait au-dessus, et
+     aucun champ ne disait ce qu'il attendait.
+
+     Il devient une section à part entière : en-tête qui explique, champs
+     étiquetés, et l'action principale au bout — le même vocabulaire que le
+     reste de la page (bord d'encre, ombre pleine, rayon de la charte). */
+.pauses-v2-saisie {
+  margin-bottom: 18px;
+  padding: 20px 22px 22px;
+  border: 2.5px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-surface);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+.pauses-v2-saisie-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/*  La tasse, comme sur les cartes KPI : c'est le sujet de la page. */
+.pauses-v2-saisie-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--charte-aplat) 16%, var(--charte-surface));
+  color: var(--charte-aplat);
+}
+
+.pauses-v2-saisie-copy { flex: 1 1 auto; min-width: 0; }
+
+.pauses-v2-saisie-title {
+  margin: 0;
+  color: var(--charte-encre);
+  font-size: 0.96rem;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+
+.pauses-v2-saisie-subtitle {
+  margin: 3px 0 0;
+  color: var(--charte-douce);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.pauses-v2-saisie-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid var(--charte-encre);
+  border-radius: 50%;
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+.pauses-v2-saisie-close:hover {
+  background: var(--charte-encre);
+  color: var(--charte-surface);
+}
+
+/*  Les champs : deux colonnes souples. Le collaborateur et le motif prennent
+    la largeur d'une colonne double, les trois autres se partagent la ligne. */
+.pauses-v2-saisie-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(120px, 0.85fr));
+  gap: 12px 14px;
+}
+.pauses-v2-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+/*  Le motif prend toute la largeur restante, sous les quatre premiers. */
+.pauses-v2-field--motif { grid-column: 1 / -1; }
+
+.pauses-v2-field-label {
+  color: var(--charte-douce);
+  font-size: 0.66rem;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/*  Le champ lui-même : le bord d'encre de la page, et un fond sable. Les
+    champs natifs (date, heure) gardent leur sélecteur, mais prennent notre
+    peau et notre hauteur — ils s'alignent enfin sur le select. */
+.pauses-v2-field-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-sable);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.pauses-v2-field-input:hover {
+  background: color-mix(in srgb, var(--charte-aplat) 8%, var(--charte-sable));
+}
+.pauses-v2-field-input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--charte-aplat) 55%, transparent);
+  outline-offset: 1px;
+}
+/*  Le crayon de date et l'horloge prennent la couleur de l'encre. */
+.pauses-v2-field-input::-webkit-calendar-picker-indicator {
+  opacity: 0.65;
+  cursor: pointer;
+}
+.pauses-v2-field-input::placeholder { color: var(--charte-douce); opacity: 0.75; }
+
+/*  Le pied : une note discrète à gauche, l'action à droite. */
+.pauses-v2-saisie-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1.5px dashed color-mix(in srgb, var(--charte-encre) 35%, transparent);
+}
+.pauses-v2-saisie-note {
+  margin: 0;
+  flex: 1 1 auto;
+  color: var(--charte-douce);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+/*  L'action principale : le bouton d'argile de la page, sans son cercle. */
+.pauses-v2-saisie-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+  padding: 12px 22px;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 5px 0 0 var(--charte-encre);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.pauses-v2-saisie-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 0 var(--charte-encre);
+}
+.pauses-v2-saisie-submit:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 0 var(--charte-encre);
+}
+
+@media (max-width: 900px) {
+  .pauses-v2-saisie-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /*  Le motif prend toute la largeur restante, sous les quatre premiers. */
+.pauses-v2-field--motif { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .pauses-v2-saisie { padding: 16px 16px 18px; }
+  .pauses-v2-saisie-grid { grid-template-columns: minmax(0, 1fr); }
+  .pauses-v2-saisie-foot { flex-direction: column; align-items: stretch; }
+  .pauses-v2-saisie-submit { justify-content: center; }
+}
+
+/* ═══ LE JOURNAL DES DÉCISIONS, EN VERSION COMPACTE ═══════════════════════
+
+     « Cette barre elle gêne un peu, elle prend de la place… il faut optimiser
+     l'espace pour moins scroller », 26/11.
+
+     Le journal occupait 130 px de haut pour annoncer ZÉRO décision : un
+     titre, une explication en deux phrases, un compteur, et un paragraphe
+     qui répétait la même chose. Trois redites et quatre lignes de vide.
+
+     Le panneau s'annonce maintenant en UNE ligne quand il n'a rien à dire :
+     l'icône, le titre, le compteur et l'explication dans le même rang, le
+     paragraphe d'introduction supprimé (le titre dit déjà « reste listée
+     ici »). Dès qu'une décision existe, le panneau reprend son corps normal
+     pour la liste. */
+.pauses-v2-panel.pauses-v2-journal-panel.is-vide {
+  padding: 12px 18px;
+  box-shadow: 3px 3px 0 0 var(--charte-encre);
+}
+.pauses-v2-journal-panel.is-vide .pauses-v2-panel-head {
+  margin-bottom: 0;
+}
+.pauses-v2-journal-panel.is-vide .pauses-v2-panel-title {
+  font-size: 0.9rem;
+}
+/*  L'explication passe à côté du titre, sur la même ligne : elle tient en
+    une phrase, et elle n'a pas besoin d'un paragraphe à elle. */
+.pauses-v2-journal-panel.is-vide .pauses-v2-panel-subtitle {
+  margin-top: 1px;
+  font-size: 0.74rem;
+}
+/*  Le paragraphe « Aucune décision enregistrée… » redisait l'en-tête. */
+.pauses-v2-journal-empty { display: none; }
+
+/*  La frange de tissu ne pend plus sous un panneau d'une seule ligne : elle
+    ferait un ourlet à un ticket. */
+.pauses-v2-journal-panel.is-vide::after { display: none; }
+
+/*  L'assiette de service dépassait de 32 px hors de la scène : elle sortait du
+    panneau, coupée par le bord, et un morceau passait DERRIÈRE la carte
+    « Pauses des employés » (z-index négatif dans son contexte). Elle est à
+    cheval sur le bord, mais du bon côté : 4 px dehors, le reste dedans. */
+.pauses-v2-table-assiette {
+  right: -4px;
+  top: 24%;
+  z-index: 3;
+}
