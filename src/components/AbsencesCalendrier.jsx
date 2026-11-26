@@ -33,6 +33,13 @@ import AbsenceTiroir from './AbsenceTiroir'
 import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
 
 const LARGEUR_EMPLOYE = 236
+// La colonne de droite porte l'ornière du solde ET le nombre. Sa largeur est
+// relevée sur le dessin, pas arrondie pour faire joli : l'ornière mesure 104 px
+// (x 1226 → 1329) et le nombre court jusqu'à x 1361, la colonne fait donc
+// 136 px. Elle est réservée dans l'entête comme dans les lignes — c'est ce
+// terme qui manquait, et qui faisait dériver les sept anneaux sous sept jours
+// de largeurs différentes (mesuré : −8 px au lundi, −97 px au dimanche).
+const LARGEUR_SOLDE = 136
 const LARGEUR_JOUR_MOIS = 36
 const LARGEUR_JOUR_SEMAINE = 108
 const LARGEUR_JOUR_UNIQUE = 460
@@ -457,45 +464,51 @@ export default function AbsencesCalendrier({
       </div>
 
       {/* ═══ Grille ═══ */}
-      <div className="abs-cal-scroll" style={{
-        overflowX: 'auto', border: `1px solid ${theme.bordure}`,
-        borderRadius: 16, background: theme.carte,
-      }}>
-        <div style={{ minWidth: LARGEUR_EMPLOYE + nbJours * largeurJour }}>
+      {/* Le champ nu du dessin : pas de cadre, pas de carte blanche autour —
+          le champ EST le fond de sable, et les lignes s'y posent en bandes. */}
+      <div className="abs-cal-scroll">
+        <div
+          className="abs-cal-champ"
+          style={{
+            minWidth: LARGEUR_EMPLOYE + nbJours * largeurJour + LARGEUR_SOLDE,
+            '--abs-corde-employe': `${LARGEUR_EMPLOYE}px`,
+            '--abs-corde-solde': `${LARGEUR_SOLDE}px`,
+            // le lavage du jour se mesure en colonnes, pas en pixels : la piste
+            // s'étire au-delà de `largeurJour` sur un écran large, et un `1.5 ×
+            // largeurJour` posé ici serait trop étroit de vingt-quatre pixels.
+            '--abs-corde-nb-jours': nbJours,
+          }}
+        >
 
-          {/* Entête des jours */}
-          <div style={{ display: 'flex', borderBottom: `1px solid ${theme.bordure}` }}>
-            <div style={{
-              width: LARGEUR_EMPLOYE, flexShrink: 0, position: 'sticky', left: 0, zIndex: 3,
-              background: theme.carte, padding: '10px 14px',
-              fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: theme.texteDoux,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
+          {/* Entête des jours — la cote du dessin : « L 23 » sur une seule ligne,
+              aucun filet entre les colonnes, aucune case teintée en dur, et la
+              MÊME largeur de champ que la piste des lignes (le solde est réservé
+              ici aussi : `abs-cal-entete-solde` et `abs-corde-solde` lisent le même
+              jeton posé plus haut). C'est ce terme qui manquait : la piste était
+              raccourcie d'une colonne entière et les sept anneaux se serraient
+              sous sept jours plus larges — mesuré sur l'écran : −8 px au
+              lundi, −97 px au dimanche, le trait du jour hors de sa colonne. Un seul
+              champ, deux usages : la dérive devient impossible à écrire. */}
+          <div className="abs-cal-entete">
+            <div className="abs-cal-entete-employes">
               <Users size={13} /> Employé · {lignes.length}
             </div>
-            <div style={{ flex: 1, display: 'flex' }}>
-              {jours.map((j) => {
-                const estAujourdhui = j.iso === aujourdhuiIso
-                return (
-                  <div key={j.iso} data-jour={j.iso} style={{
-                    flex: 1, minWidth: 0, textAlign: 'center', padding: '7px 0 6px',
-                    background: estAujourdhui ? 'rgba(245,158,11,0.10)' : 'transparent',
-                    borderLeft: `1px solid ${theme.grille}`,
-                  }}>
-                    <div style={{ fontSize: 10, color: theme.texteDoux, textTransform: 'uppercase' }}>
-                      {mode === 'jour' ? nomJourLong(j.iso).split(' ')[0] : JOURS_SEMAINE[j.weekday - 1]}
-                    </div>
-                    <div style={{
-                      fontSize: mode === 'mois' ? 13 : 15,
-                      fontWeight: estAujourdhui ? 800 : 600,
-                      color: estAujourdhui ? 'var(--abs-amber)' : theme.texte,
-                    }}>
-                      {j.jour}
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="abs-cal-entete-jours">
+              {jours.map((j) => (
+                <div
+                  key={j.iso}
+                  data-jour={j.iso}
+                  className="abs-cal-jour"
+                  data-aujourdhui={j.iso === aujourdhuiIso ? 'vrai' : 'faux'}
+                >
+                  <span className="abs-cal-jour-nom">
+                    {mode === 'jour' ? nomJourLong(j.iso).split(' ')[0] : JOURS_SEMAINE[j.weekday - 1]}
+                  </span>
+                  <span className="abs-cal-jour-num">{j.jour}</span>
+                </div>
+              ))}
             </div>
+            <div className="abs-cal-entete-solde" aria-hidden="true" />
           </div>
 
           {/* Lignes employés — UNE CORDE PAR EMPLOYÉ
@@ -517,7 +530,7 @@ export default function AbsencesCalendrier({
               nombres de hauteur ne sont plus ici : ils vivent dans la feuille, une
               seule fois — un nombre écrit deux fois se contredit à la première
               retouche. */}
-          {lignes.map((ligne) => {
+          {lignes.map((ligne, ligneIdx) => {
             const feriers = getHolidaySet(ligne.employe.enterprise_id)
             const nbRangees = ligne.segments.reduce((max, s) => Math.max(max, s.rangeesTotal || 1), 1)
             const solde = soldeDe(ligne.employe.id)
@@ -529,9 +542,14 @@ export default function AbsencesCalendrier({
                 className="abs-corde-ligne"
                 data-testid="abs-corde-ligne"
                 data-employe={ligne.employe.id}
+                // la bande alterne par le TON, pas par un filet : le dessin n'a
+                // pas de ligne entre les employés. Un `:nth-child` ne peut pas le
+                // porter — l'entête occupe le premier rang du champ, et un rang de
+                // décalage inverserait toutes les bandes.
+                data-alterné={ligneIdx % 2 === 1 ? 'vrai' : undefined}
                 style={{ '--abs-corde-rangs': nbRangees }}
               >
-                <div className="abs-corde-tete" style={{ width: LARGEUR_EMPLOYE, background: theme.carte }}>
+                <div className="abs-corde-tete">
                   {ligne.employe.photo_url ? (
                     <img className="abs-corde-figure" src={ligne.employe.photo_url} alt="" />
                   ) : (
@@ -593,14 +611,26 @@ export default function AbsencesCalendrier({
                     })}
                   </span>
 
-                  {/* Repère « aujourd'hui » : le trait rouille qui traverse la pile */}
+                  {/* Repère « aujourd'hui » — le dessin ne se contente pas d'un
+                      trait pâle : la journée est LAVÉE d'ambre sur une largeur et
+                      demie de jour, du haut en bas de la ligne, et un trait de 2 px
+                      court dedans (mesuré : le lavage fait une colonne et demie, son
+                      trait est plus fin que le fil). Les deux partagent le même
+                      `left`, donc le même repère que les anneaux et les cartes. */}
                   {indexAujourdhui >= 0 && (
-                    <span
-                      className="abs-corde-aujourdhui"
-                      data-testid="abs-corde-aujourdhui"
-                      aria-hidden="true"
-                      style={{ left: `${((indexAujourdhui + 0.5) / nbJours) * 100}%` }}
-                    />
+                    <>
+                      <span
+                        className="abs-corde-lavage"
+                        aria-hidden="true"
+                        style={{ left: `${((indexAujourdhui + 0.5) / nbJours) * 100}%` }}
+                      />
+                      <span
+                        className="abs-corde-aujourdhui"
+                        data-testid="abs-corde-aujourdhui"
+                        aria-hidden="true"
+                        style={{ left: `${((indexAujourdhui + 0.5) / nbJours) * 100}%` }}
+                      />
+                    </>
                   )}
 
                   {/* Le jour visé pendant un glisser-déposer */}
@@ -647,22 +677,29 @@ export default function AbsencesCalendrier({
                           left: `calc(${(seg.debut / nbJours) * 100}% + 2px)`,
                           width: `calc(${((seg.fin - seg.debut + 1) / nbJours) * 100}% - 4px)`,
                           '--abs-corde-rang': seg.rangee,
-                          background: st.fond,
-                          borderColor: st.bordure,
-                          borderStyle: st.pointillee ? 'dashed' : 'solid',
-                          color: theme.texte,
+                          /* La carte est crème cerclée d'encre, comme au dessin :
+                             la couleur du motif ne se pose PAS sur la carte (le
+                             dessin est monochrome, et l'adaptation à la charte
+                             viendra après). Restent du droit que la loi de
+                             `styleBarreAbsence` doit à l'écran : tout ce qui n'est
+                             pas acquis prend le contour pointillé, le refus garde
+                             le barré, et le mot du statut est écrit. */
+                          borderStyle: st.pointillee || st.barree ? 'dashed' : 'solid',
                           textDecoration: st.barree ? 'line-through' : 'none',
                         }}
                       >
-                        {/* la ficelle qui retient la planche à sa corde : sans elle,
-                            on a une étiquette posée, pas une absence accrochée */}
-                        <span className="abs-corde-attache" aria-hidden="true" />
+                        {/* Les DEUX cordons du dessin : ils partent du bord haut de
+                            la carte, à six pixels des coins, et montent jusqu'au fil.
+                            Un seul cordon de 2 px, mesuré sur l'écran, ne se voyait
+                            pas — une carte sans attache est une étiquette posée. */}
+                        <span className="abs-corde-cordons" aria-hidden="true" />
                         {/* le nœud sur la corde, quand la pointeuse conteste ce jour */}
                         {conflitParAbsence[a.id]?.status === 'pending' && (
                           <span className="abs-corde-noeud" aria-hidden="true" />
                         )}
                         <span className="abs-corde-marque" aria-hidden="true">{st.motif.emoji}</span>
                         <span className="abs-corde-motif">{st.motif.label}</span>
+                        <span className="abs-corde-séparateur" aria-hidden="true">·</span>
                         <span className="abs-corde-durée">{joursComptés} j</span>
                         {a.status !== 'approuve' && (
                           <span className="abs-corde-statut">{st.statut.label}</span>
@@ -684,10 +721,7 @@ export default function AbsencesCalendrier({
                 <div
                   className="abs-corde-solde"
                   title={`${solde.pris} jour(s) pris · plafond ${solde.plafond} jours`}
-                  style={{
-                    background: theme.carte,
-                    '--abs-corde-plein': `${Math.max(0, Math.min(100, plein))}%`,
-                  }}
+                  style={{ '--abs-corde-plein': `${Math.max(0, Math.min(100, plein))}%` }}
                 >
                   <span className="abs-corde-jauge" aria-hidden="true"><i /></span>
                   <span className="abs-corde-nombre">
