@@ -24,6 +24,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
+import PiedGrave from './PiedGrave'
 import PhotoSignee from './PhotoSignee'
 import { AdinkraWatermarkSvg, KenteWovenTapestrySvg, WovenKenteBadgeSvg } from './AfroCulturalSvg'
 import {
@@ -113,6 +114,24 @@ export function PausesCulturalHero({
   onExportCsv,
 }) {
   const dateInputRef = useRef(null)
+  /*  Le menu des trois modes. La maquette n'affiche qu'une pilule : c'est
+      elle qu'on voit, et c'est elle qui ouvre le choix. Il se ferme au clic
+      dehors et sur Échap, comme le panneau du mois sur /retards. */
+  const [modesOuverts, setModesOuverts] = useState(false)
+  const modesRef = useRef(null)
+  useEffect(() => {
+    if (!modesOuverts) return undefined
+    const dehors = (e) => {
+      if (modesRef.current && !modesRef.current.contains(e.target)) setModesOuverts(false)
+    }
+    const echap = (e) => { if (e.key === 'Escape') setModesOuverts(false) }
+    document.addEventListener('mousedown', dehors)
+    document.addEventListener('keydown', echap)
+    return () => {
+      document.removeEventListener('mousedown', dehors)
+      document.removeEventListener('keydown', echap)
+    }
+  }, [modesOuverts])
   const periodLabel = useMemo(
     () => formatPeriodRangeLabel(selectedDate, viewMode),
     [selectedDate, viewMode]
@@ -143,11 +162,11 @@ export function PausesCulturalHero({
   return (
     <header aria-label="En-tête Pauses En-Check">
       <div className="pauses-v2-topbar">
-        {/*  ═══ LA MARQUE, COMME UNE ENSEIGNE (25/11) ═══
-            Maquette B retenue : le pied s'ouvre en grand dans un cercle à
-            double trait, le titre prend toute la hauteur, et un sticker
-            « EN-CHECK » s'y accroche de travers avec son liseré kente.
-            Plus de rangée de liens : la barre latérale suffit.
+        {/*  ═══ L'ENSEIGNE (25/11, maquette B) ═══
+            Le pied s'ouvre en grand dans un cercle à double trait, le titre
+            prend toute la hauteur, et le sticker « EN-CHECK » s'y accroche
+            de travers avec son liseré kente. Géométrie mesurée sur la
+            maquette — voir docs/maquettes/pauses-bandeau-spec.md.
             On garde les cibles : le cercle de retour et le bloc marque
             ramènent au tableau de bord, comme avant. */}
         <div className="pauses-v2-brand">
@@ -159,11 +178,11 @@ export function PausesCulturalHero({
               title="Retour au Dashboard"
               aria-label="Retour au Dashboard"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={24} />
             </button>
           )}
           <div className="pauses-v2-sceau">
-            <EnCheckBrandMark size={46} />
+            <PiedGrave className="pauses-v2-pied" />
           </div>
           <div
             className="pauses-v2-marque"
@@ -181,41 +200,38 @@ export function PausesCulturalHero({
         </div>
 
         {/*  ═══ LES ÉTIQUETTES DE PÉRIODE (25/11) ═══
-            Le centre de l'en-tête n'est plus un alignement de contrôles : ce
-            sont des étiquettes de bagage posées à des hauteurs différentes.
-            La plage de dates pend à sa ficelle, « semaine » est un tampon
-            dessous, les flèches sont deux pastilles. */}
+            Le centre de l'en-tête n'est plus un alignement de contrôles :
+            une étiquette de bagage pendue — œillet, double ficelle — et,
+            dessous, le tampon du mode courant. La maquette n'en montre qu'un :
+            « SEMAINE ». Décision du 25/11 : on garde CETTE pilule, et un clic
+            ouvre Jour / Semaine / Mois (voir `pauses-v2-menu-modes`). */}
         <div className="pauses-v2-etiquettes">
           <div className="pauses-v2-pendue">
-            <span className="pauses-v2-ficelle" aria-hidden="true" />
+            <span className="pauses-v2-ficelle pauses-v2-ficelle--g" aria-hidden="true" />
+            <span className="pauses-v2-ficelle pauses-v2-ficelle--d" aria-hidden="true" />
             <div className="pauses-v2-etiquette-date">
               <button
                 type="button"
-                className="pauses-v2-pastille"
+                className="pauses-v2-oeillet"
                 onClick={() => onShiftDate && onShiftDate(-1)}
                 aria-label="Période précédente"
                 title="Période précédente"
-              >
-                <ChevronLeft size={14} />
-              </button>
+              />
               <button
                 type="button"
                 className="pauses-v2-date-trigger"
                 onClick={openDatePicker}
                 title="Choisir une date au calendrier"
               >
-                <span className="pauses-v2-oeillet" aria-hidden="true" />
-                <span>{periodLabel}</span>
+                {periodLabel}
               </button>
               <button
                 type="button"
-                className="pauses-v2-pastille"
+                className="pauses-v2-oeillet pauses-v2-oeillet--d"
                 onClick={() => onShiftDate && onShiftDate(1)}
                 aria-label="Période suivante"
                 title="Période suivante"
-              >
-                <ChevronRight size={14} />
-              </button>
+              />
             </div>
             <input
               ref={dateInputRef}
@@ -225,19 +241,70 @@ export function PausesCulturalHero({
               aria-label="Choisir une date"
               style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
             />
+            <div className="pauses-v2-sens" role="group" aria-label="Changer de période">
+              <button
+                type="button"
+                className="pauses-v2-pastille"
+                onClick={() => onShiftDate && onShiftDate(-1)}
+                aria-label="Période précédente"
+                title="Période précédente"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                type="button"
+                className="pauses-v2-pastille"
+                onClick={() => onShiftDate && onShiftDate(1)}
+                aria-label="Période suivante"
+                title="Période suivante"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
           </div>
 
-          <div className="pauses-v2-modes" role="group" aria-label="Mode de période">
-            {['jour', 'semaine', 'mois'].map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                className={`pauses-v2-mode${viewMode === mode ? ' is-active' : ''}`}
-                onClick={() => onViewModeChange && onViewModeChange(mode)}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
+          {/*  la pilule unique, et son menu des trois modes */}
+          <div className="pauses-v2-modes" ref={modesRef}>
+            <button
+              type="button"
+              className="pauses-v2-mode is-active"
+              aria-haspopup="listbox"
+              aria-expanded={modesOuverts}
+              onClick={() => setModesOuverts((v) => !v)}
+            >
+              {viewMode}
+            </button>
+            {modesOuverts && (
+              <div className="pauses-v2-menu-modes" role="listbox" aria-label="Mode de période">
+                {['jour', 'semaine', 'mois'].map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="option"
+                    aria-selected={viewMode === mode}
+                    className={`pauses-v2-menu-mode${viewMode === mode ? ' is-active' : ''}`}
+                    onClick={() => {
+                      setModesOuverts(false)
+                      onViewModeChange && onViewModeChange(mode)
+                    }}
+                  >
+                    {mode}
+                  </button>
+                ))}
+                {selectedDate !== todayIso && (
+                  <button
+                    type="button"
+                    className="pauses-v2-menu-mode pauses-v2-menu-mode--auj"
+                    onClick={() => {
+                      setModesOuverts(false)
+                      onDateChange && onDateChange(todayIso)
+                    }}
+                  >
+                    Aujourd’hui
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="pauses-v2-annexes">
@@ -253,10 +320,14 @@ export function PausesCulturalHero({
                     <option key={ent.id} value={ent.id}>{ent.name}</option>
                   ))}
                 </select>
-                <ChevronDown size={14} aria-hidden="true" />
+                <span className="pauses-v2-entreprise-chevron">
+                  <ChevronRight size={18} aria-hidden="true" />
+                </span>
               </label>
             )}
+          </div>
 
+          <div className="pauses-v2-annexes pauses-v2-annexes--csv">
             {onExportCsv && (
               <button
                 type="button"
@@ -270,8 +341,23 @@ export function PausesCulturalHero({
           </div>
         </div>
 
-        {/*  ═══ À DROITE : le tampon d'ajout et la carte du profil ═══ */}
+        {/*  ═══ À DROITE : le profil AU-DESSUS, le tampon d'ajout dessous ═══
+            L'ordre est celui de la maquette, et il n'est pas décoratif : le
+            profil est une information, l'ajout une action — l'action est au
+            plus près du pouce et du regard qui descend. */}
         <div className="pauses-v2-bord">
+          <div className="pauses-v2-identite">
+            <span className="pauses-v2-avatar">{adminInitials}</span>
+            <span className="pauses-v2-identite-texte">
+              <span className="pauses-v2-carte pauses-v2-carte--nom">
+                <strong>{adminFullName}</strong>
+              </span>
+              <span className="pauses-v2-carte pauses-v2-carte--role">
+                <em>{adminRoleLabel}</em>
+              </span>
+            </span>
+          </div>
+
           {onToggleAddForm && (
             <button
               type="button"
@@ -279,19 +365,11 @@ export function PausesCulturalHero({
               onClick={onToggleAddForm}
             >
               <span className="pauses-v2-add-plus" aria-hidden="true">
-                <Plus size={14} strokeWidth={3} />
+                <Plus size={20} strokeWidth={2.6} />
               </span>
               <span>{showAddForm ? 'Fermer' : 'Ajouter une pause'}</span>
             </button>
           )}
-
-          <div className="pauses-v2-identite">
-            <span className="pauses-v2-avatar">{adminInitials}</span>
-            <span className="pauses-v2-carte">
-              <strong>{adminFullName}</strong>
-              <em>{adminRoleLabel}</em>
-            </span>
-          </div>
         </div>
       </div>
     </header>
