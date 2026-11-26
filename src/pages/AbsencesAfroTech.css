@@ -1429,6 +1429,92 @@ button.abs-planche-corps:focus-visible {
    bandeau de plus — ils sont cousus au pied des compteurs. */
 .abs-page .toolbar-top { border-top: 1px dashed var(--abs-border-strong); padding-top: 12px; margin-top: 2px; }
 
+/* LA BARRE D'OUTILS, À LA COTE DE LA FEUILLE (12/12). Elle était écrite en `style`
+   inline : coins de douze, fond blanc flottant, cuivre en accent — un morceau d'une
+   autre page cousu au-dessus du plateau, et le fondateur l'a signalée (« il faut
+   retravailler cette section »). Elle prend donc les trois règles du reste de la
+   page : règle de trois en encre, coin de plaque, aucun relief, aucun aplat de plus.
+   Les boîtes ne sont pas des cartes : ce sont des CHAMPS, et un champ se cerne. */
+.abs-outils { padding-top: var(--charte-espace-4); }
+.abs-outils-gauche, .abs-outils-droite { display: flex; align-items: center; gap: var(--charte-espace-3); flex-wrap: wrap; }
+.abs-outils-boite {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  min-height: var(--abs-pli-case);
+  padding: var(--charte-espace-2) var(--charte-espace-4);
+  box-sizing: border-box;
+  border: var(--abs-pli-rule) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-encre);
+}
+.abs-outils-champ { flex: 1 1 220px; min-width: 0 }
+.abs-outils-entreprise { flex: 0 1 240px; min-width: 0 }
+.abs-outils-boite input,
+.abs-outils-boite select {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--charte-encre);
+  font: inherit;
+  font-size: var(--charte-taille-corps);
+  outline: none;
+}
+.abs-outils-boite svg { flex-shrink: 0; color: var(--charte-texte) }
+.abs-outils-vider {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--charte-douce);
+  cursor: pointer;
+}
+.abs-outils-pince {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--abs-pli-case);
+  height: var(--abs-pli-case);
+  padding: 0;
+  box-sizing: border-box;
+  border: var(--abs-pli-rule) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+.abs-outils-pince[aria-expanded='true'] { background: var(--charte-bordure) }
+.abs-outils-vues {
+  display: flex;
+  border: var(--abs-pli-rule) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  overflow: hidden;
+}
+/* les trois modes d'affichage sont une tringle de plus, pas trois boutons : un
+   seul cadre, des cloisons, et l'actif rempli d'argile — le blanc cassé dessus
+   tient AA (4,64:1) parce que c'est LA teinte d'aplat de la charte, pas du cuivre. */
+.abs-outils-vue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) var(--charte-espace-4);
+  border: 0;
+  border-left: var(--charte-trait) solid var(--charte-encre);
+  background: transparent;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 600;
+  cursor: pointer;
+}
+.abs-outils-vue:first-child { border-left: 0 }
+.abs-outils-vue[aria-pressed='true'] { background: var(--charte-aplat); color: var(--charte-blanc) }
+@media (max-width: 650px) {
+  .abs-outils-vue span { display: none }        /* sur un écran d'enfant, l'icône suffit */
+  .abs-outils-entreprise { flex-basis: 100% }
+}
+
 /* L'alerte de conflit n'est plus un bandeau plein : une couture. Un filet
    oblique en haut, un filet oblique en bas, le mot entre les deux. */
 .abs-couture-alerte { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px dashed var(--abs-border-strong); border-bottom: 1px dashed var(--abs-border-strong); background: color-mix(in srgb, var(--abs-orange) 7%, transparent); margin-bottom: 18px; }
@@ -2117,6 +2203,15 @@ button.abs-planche-corps:focus-visible {
   --abs-pli-noeud: 13px;                /* le carré de corail d'un conflit */
   --abs-pli-case: 30px;                 /* la case « déplier tout » : x 1143..1173, y 102..132 */
   --abs-pli-ombre: 6px;                 /* l'ombre dure du plateau */
+  /* LE MOIS NE PLIE PAS, ET NE GARDE PAS LA PLAQUETTE. Trente et une cellules de 36
+     n'offrent ni la place d'un pli (le dessin du 10/12 est UNE SEMAINE), ni celle
+     d'une jauge de cinquante pixels + son nombre de soixante-dix : à 36 px par jour,
+     la plaquette du solde mangeait trois jours et demi et le mot de chaque planche
+     se coupait en travers du trait — « beaucoup d'anomalies quand la grille passe en
+     mode mois » (fondateur, 12/12). Le solde du mois se lit dans l'étage Soldes de la
+     page, pas dans la rive d'une vignette. Un seul jeton par mode, deux lectures. */
+  --abs-pli-solde-mois: 0px;
+  --abs-pli-jauge-mois: none;
   /* le cran entre deux planches qui se chevauchent : une planche + un souffle.
      Le MÊME nombre sert à la montée de la planche et à la hauteur que la ligne
      doit laisser libre — écrit deux fois, il se contredit à la première retouche
@@ -2161,6 +2256,15 @@ button.abs-planche-corps:focus-visible {
 
 .abs-pli-plateau {
   position: relative;
+  /* ISOLER LE PLATEAU. Les deux feuilles repliées sont des pseudo-éléments en
+     `z-index: -1` : sans contexte d'empilement ICI, ce -1 remonte au contexte de la
+     page, et elles se peignent DERRIÈRE le fond sable de `.abs-cal` — donc sous le
+     fond de la page, donc invisibles. C'est exactement ce que le fondateur a
+     re-signalé le 12/12 : « il était convenu la forme feuilles pliées pour la grille
+     mais jusque là tu n'as rien fait ». La pile se dessinait ; elle ne se voyait pas.
+     `isolation: isolate` borne le -1 au plateau : les feuilles passent derrière son
+     fond, devant celui de la page, et il ne reste à voir que ce qui dépasse. */
+  isolation: isolate;
   border: var(--abs-pli-rule) solid var(--charte-encre);
   border-radius: var(--charte-rayon-champ);
   background: var(--charte-sable);
@@ -2435,6 +2539,39 @@ img.abs-pli-figure { border: 0 }
   color: var(--charte-encre);
 }
 
+/* LA PINCE DE PLI, PAR LIGNE. Le pli était une case d'entête ou rien : « c'est
+   impossible de cliquer sur un employé plié, et le déplier ou le plier juste lui »
+   (fondateur, 12/12). Chaque ligne porte donc sa propre pince, posée dans la colonne
+   d'identité à droite du prénom — JAMAIS sur la piste, qui est la zone de dépôt des
+   motifs et la surface des planches cliquables. C'est le dessin qui le veut : sa
+   coupure unique est ENTRE la colonne d'identité et le champ (x 305), et rien d'autre
+   ne se clique dans cette colonne. Un carré de la taille de la case d'entête, cerclé
+   comme elle, et le mot du pli est dans l'`aria-label` + le `title` : la pince est
+   muette à l'œil, parlante au clavier. */
+.abs-pli-plier {
+  margin-left: auto;                   /* la pince se range RIVE de la colonne, pas du mot */
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--abs-pli-case);
+  height: var(--abs-pli-case);
+  padding: 0;
+  box-sizing: border-box;
+  border: var(--abs-pli-encre) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+
+.abs-pli-plier:hover { background: var(--charte-bordure) }
+
+/* l'état se LIT (C7 : jamais la couleur seule) : ouverte, la pince est pleine */
+.abs-pli-plier[aria-pressed='true'] { background: var(--charte-aplat); color: var(--charte-blanc) }
+
+.abs-pli-plier:focus-visible { outline: var(--charte-trait) solid var(--charte-encre); outline-offset: 2px }
+
 /* LA PISTE. Les traits de jour sont un fond, pas trente et un éléments : posés au
    pas du tiers de cellule, ils sont exactement là où le dessin les met, et toute
    planche pleine les recouvre sans qu'on ait à le lui demander. */
@@ -2503,20 +2640,28 @@ img.abs-pli-figure { border: 0 }
     50% - var(--abs-pli-planche) / 2 - var(--abs-pli-décalage) + var(--abs-pli-montée)
   );
   height: var(--abs-pli-planche);
-  /* LE PLANCHER EST LE MOT, PAS LE JOUR. Le dessin donne 163 de corps à une
-     planche d'une journée posée sur une cellule de 145 : ce n'est pas une « aile »
-     de plus à coller de chaque côté (le jeton est mort avec cette lecture), c'est
-     son étiquette qui ne tient pas. `left` + `right` donnent le cadre des jours ;
-     `min-width: max-content` laisse le mot pousser la planche vers la droite —
-     jamais l'inverse, jamais une coupe. */
-  min-width: max-content;
-  /* et elle pousse JUSQU'À LA PLAQUETTE, pas au-delà : la borne se relit sur la
-     même `--abs-pli-entree` que le `left`, et elle rend au solde la largeur que le
-     dessin lui donne à la rive du champ. Une planche qui glisserait SOUS la
-     plaquette perdrait sa rive droite dans le sable — c'est exactement ce que le
-     fondateur a vu sur la planche « Formation · 1 j » : on ne disait plus où le
-     jour s'arrêtait. Un seul nombre à gauche, trois usages, et la rive se lit. */
-  max-width: calc(100% - var(--abs-pli-entree) - var(--abs-pli-solde) - 2px);
+  /* LE PLANCHER EST LE JOUR, PAS LE MOT. Le dessin donne 162 de corps à une planche
+     d'une journée posée sur une cellule de 145 — seize de pointe à gauche, huit de
+     rive à droite, et son mot ne fait que 125 : il TIENT dans sa planche. Laissé en
+     `min-width: max-content`, c'était l'inverse : « la flèche déborde EN FONCTION DE
+     LA LONGUEUR DU TEXTE », une journée d'« Absence injustifiée » remplissait deux
+     jours (fondateur, 12/12). Une planche est une MESURE DE PÉRIODE ; si elle se
+     pousse au mot, elle ne dit plus la période. Donc : les deux rives seules font la
+     largeur (`left` + `right`), et c'est le MOT qui s'écourte — l'ellipsis est dans
+     `.abs-pli-motif`, la durée « · N j » reste entière, et le libellé complet se lit
+     dans le `title`, l'`aria-label` et le tiroir. PAS d'`overflow: hidden` ici : la
+     pointe de ruban est un enfant posé à `left: -16px`, hors de l'encre — le cadre
+     la mangerait. */
+  min-width: 0;
+  /* la rive ne se marche pas par la plaquette du solde : la borne se relit sur la
+     même `--abs-pli-entree` que le `left` et rend au solde la largeur que le dessin
+     lui donne à la rive du champ. `fit-content` sous ce plafond : un mot court ne
+     gonfle pas jusqu'à la rive du jour, le dessin finit sa planche HUIT pixels avant
+     la dernière cellule morte, pas à la limite. */
+  max-width: min(
+    fit-content,
+    calc(100% - var(--abs-pli-entree) - var(--abs-pli-solde) - 2px)
+  );
   display: flex;
   align-items: center;
   gap: var(--charte-espace-2);
@@ -2631,6 +2776,11 @@ img.abs-pli-figure { border: 0 }
 
 .abs-pli-marque { flex-shrink: 0 }
 
+/* LE MOT SE COUPE, PAS LA DURÉE. Une planche qui tient son jour ne peut plus tenir
+   son libellé : c'est le nom du motif qui s'écourte (« Absence injustifi… · 1 j »),
+   jamais le « · 1 j » qui dit la période, jamais l'emoji qui dit la famille. */
+.abs-pli-durée, .abs-pli-séparateur { flex-shrink: 0 }
+
 .abs-pli-motif {
   min-width: 0;
   overflow: hidden;
@@ -2665,7 +2815,14 @@ img.abs-pli-figure { border: 0 }
   justify-content: flex-end;
   gap: var(--charte-espace-1);
   padding: 0 var(--abs-pli-solde-repli) 0 0;
-  background: var(--charte-sable);
+  /* AUCUN FOND. La plaquette était peinte du sable de la page : une bande opaque
+     de cent trente pixels sur la rive droite de chaque ligne, qui effaçait les
+     traits de jour, mangeait la pointe de la dernière planche et faisait croire
+     qu'il y avait une colonne de solde à droite du champ — alors que le dessin,
+     lui, pose sa jauge et son nombre DIRECTEMENT sur les cellules (sa planche la
+     plus à droite finit à x 1076, loin de la plaquette). `pointer-events: none`
+     reste : la plaquette se lit, elle ne se clique pas. */
+  background: transparent;
   pointer-events: none;
 }
 
@@ -2681,13 +2838,22 @@ img.abs-pli-figure { border: 0 }
 }
 
 .abs-pli-jauge i {
+  /* le remplissage se lit dans la CHAPE DE la pilule, pas sous son cerne : la
+     jauge a deux pixels d'encre à chaque bout (`border-box`), et un `left: 0`
+     posait l'argile SOUS le trait — à 100 % pris, plus rien ne se distinguait, et
+     à 80 % le cerclage avalait la moitié du plein. La cote du dessin, elle, se
+     lit : pilule x 1178..1228, argile jusqu'à x 1218 = 82 % du champ. */
   position: absolute;
-  left: 0;
+  left: var(--charte-trait);
   top: 0;
   bottom: 0;
-  width: var(--abs-pli-plein, 0%);
+  /* le pourcentage se lit sur le Border-Box du CONTENEUR le plus proche positionné —
+     ici la jauge elle-même, qui est `relative` : le trait est donc compté DEUX fois
+     dans la largeur disponible, et `100%` tout seul ferait déborder l'argile sous le
+     cerclage droit. Le calc rendu à la main garde le plein DANS la chape. */
+  width: calc((100% - 2 * var(--charte-trait)) * var(--abs-pli-plein, 0%) / 100%);
   background: var(--charte-aplat);
-  border-radius: var(--charte-rayon-champ);
+  border-radius: calc(var(--charte-rayon-champ) / 2);
 }
 
 .abs-pli-nombre {
@@ -2731,7 +2897,45 @@ img.abs-pli-figure { border: 0 }
   font-weight: 700;
 }
 
-img.abs-pli-chip { object-fit: cover }
+/* LA PASTILLE SE CLIQUE. Elle était écrite « muette » : le dessin ne lui prêtait
+   aucun geste. Mais le dessin ne montre PAS non plus de liste de lignes pliées — et
+   le fondateur en veut une : la pastille est donc LE contrôle du pli ligne à ligne,
+   la seule entrée de la grille pour un employé qui n'a rien à signaler. Un clic la
+   soulève en ligne, un second la referme. */
+.abs-pli-chip { cursor: pointer }
+
+.abs-pli-chip:hover { background: var(--charte-texte) }
+
+/* la pastille dont la ligne est ouverte se lit OUVERTE : son coin replié se retourne
+   et son cerclage s'épaissit d'un trait d'argile — un état, pas une couleur. */
+.abs-pli-chip[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 var(--charte-trait) var(--charte-blanc);
+}
+
+.abs-pli-chip:focus-visible { outline: var(--charte-trait) solid var(--charte-encre); outline-offset: 2px }
+
+.abs-pli-chip { overflow: hidden }
+
+.abs-pli-chip-figure {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* l'état vide : la largeur du champ, le pas d'une ligne, et le mot au centre —
+   rien de plus. Un cadre de plus dans le plateau serait un dessin de plus. */
+.abs-pli-vide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--charte-espace-3);
+  margin: 0;
+  min-height: var(--abs-pli-pas);
+  padding: 0 var(--charte-espace-4);
+  font-size: var(--charte-taille-corps);
+  color: var(--charte-douce);
+}
 
 /* le coin replié : un triangle rectangle, l'angle droit en haut à gauche, qui
    pend à la droite de la pastille (x 126..144, y 649..667 pour une pastille
@@ -2763,6 +2967,26 @@ img.abs-pli-chip { object-fit: cover }
 
 .abs-pli-planche[data-trait='pointillé']:hover,
 .abs-pli-planche[data-trait='barré']:hover { background: var(--charte-surface) }
+
+/* LE MODE MOIS EST UNE VIGNETTE, PAS UNE SEMAINE PRESSÉE. Le dessin du 10/12 est
+   une semaine à sept colonnes de 145 ; le mois en donne trente et une de 36. Trois
+   choses n'y ont plus leur place, et le fondateur les a toutes signalées le 12/12
+   (« il y a bcp d'anomalie quand la grille passe en mode mois ») : la plaquette du
+   solde, qui mangeait trois jours et demi de champ sur une cellule de trente-six ;
+   le pli, qui envoyait les absents se faire hacher en pastilles pour une ligne vide ;
+   et l'étiquette de vingt pixels dans une planche de trente-six, qui débordait de
+   tous les côtés. Rien n'est supprimé du métier — le solde se lit à l'étage Soldes de
+   la page, le motif complet se lit dans le `title` et le tiroir. Et les valeurs sont
+   des JETONS relus par les règles, pas des règles récrites : un seul endroit où le
+   mois diffère de la semaine. */
+.abs-cal[data-mode='mois'] {
+  --abs-pli-solde: var(--abs-pli-solde-mois);
+  --abs-pli-jauge: var(--abs-pli-jauge-mois);
+}
+
+.abs-cal[data-mode='mois'] .abs-pli-jauge { display: none }
+.abs-cal[data-mode='mois'] .abs-pli-planche { font-size: var(--charte-taille-micro) }
+.abs-cal[data-mode='mois'] .abs-pli-statut { font-size: var(--charte-taille-micro) }
 
 /* Le repli ne déplace RIEN : à 650 px, le prénom se borne et la jauge se
    raccourcit. Les planches, les traits, le plomb et le lavage n'ont pas de règle
