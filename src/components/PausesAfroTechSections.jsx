@@ -161,6 +161,7 @@ export function PausesCulturalHero({
 
   return (
     <header aria-label="En-tête Pauses En-Check">
+      <div className="pauses-v2-planche">
       <div className="pauses-v2-topbar">
         {/*  ═══ L'ENSEIGNE (25/11, maquette B) ═══
             Le pied s'ouvre en grand dans un cercle à double trait, le titre
@@ -370,6 +371,7 @@ export function PausesCulturalHero({
               <span>{showAddForm ? 'Fermer' : 'Ajouter une pause'}</span>
             </button>
           )}
+        </div>
         </div>
       </div>
     </header>
