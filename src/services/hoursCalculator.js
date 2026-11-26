@@ -1698,11 +1698,24 @@ function evaluerSemainesParPalier(semaines, seuilsParLundi, { enterpriseTimezone
     null,
   )
   const nonResolues = partySemaines.filter((sem) => sem.regle_resolue === false)
+  //  ⚠️ DEUX CAUSES, DEUX PHRASES. « Aucun seuil choisi » et « la règle n'a pas
+  //  pu être résolue » ne s'excusent pas de la même manière : la première est un
+  //  état de configuration, la seconde une lecture qui a échoué. Les confondre
+  //  enverrait chercher un réglage qui existe déjà — ou l'inverse.
+  //
+  //  Le discriminant est le motif de la SEMAINE, pas une liste de libellés :
+  //  seule l'absence de règle résolue parle de « règle qui n'a pu être
+  //  résolue ». Tout le reste décrit un seuil absent, non confirmé ou illisible.
+  const nonResoluesSansSeuil = nonResolues.filter(
+    (sem) => !/r[eè]gle n.a pu être r[eé]solue/i.test(String(sem.motif || '')),
+  ).length
 
   return {
     disponible: nonResolues.length === 0 && partySemaines.length > 0,
     motif: nonResolues.length > 0
-      ? `${nonResolues.length} semaine(s) sans règle résolue : aucun verdict n'est prononcé pour elles`
+      ? (nonResoluesSansSeuil === nonResolues.length
+        ? `${nonResolues.length} semaine(s) sans seuil choisi : aucun verdict n'est prononcé pour elles`
+        : `${nonResolues.length} semaine(s) sans règle résolue : aucun verdict n'est prononcé pour elles`)
       : null,
     seuil: porteGlobal?.seuil ?? null,
     seuil_majeur: porteGlobal?.seuilMajeur ?? null,
@@ -1758,6 +1771,79 @@ function empreinteDeRegles(brut, seuilsFixes, lundi) {
   const source = brut.seuil?.origine === 'aucune' || brut.seuil?.origine === undefined
     ? (seuilsFixes.source || 'entreprise')
     : brut.seuil.origine
+
+  //  ⚠️ B — UN SEUIL PROPOSÉ N'EST PAS UN SEUIL APPLIQUÉ.
+  //
+  //  Le réglage d'entreprise fusionne toujours les défauts du produit : sans
+  //  aucune ligne enregistrée, `weekly_threshold` vaut 48. Cette valeur sert à
+  //  PRÉ-REMPLIR un formulaire — elle ne doit jamais servir à comparer des
+  //  heures. Avant ce correctif, une alerte cochée sans seuil enregistré
+  //  produisait un dépassement « contre 48 h » qu'aucun humain n'avait choisi.
+  //
+  //  D'où vient la preuve qu'un seuil a été CHOISI ? De la TABLE VERSIONNÉE.
+  //
+  //  `brut.seuil.valeur` n'est non nul que si une version existe pour ce lundi
+  //  (`normaliserResolution` ramène `null` quand aucune ligne n'est résolue).
+  //  Une version, c'est un acte daté : quelqu'un l'a écrite, on sait quand.
+  //
+  //  À l'inverse, le repli sur le réglage d'entreprise (`seuilsFixes`) est
+  //  TOUJOURS servi, même sans aucune ligne : `getOvertimeSettingsAvecOrigine`
+  //  fusionne les défauts du produit (`weekly_threshold: 48`). Ce repli ne
+  //  prouve donc rien par lui-même. `origineEnregistree` le qualifie :
+  //  `defaut_produit`, `historique_incertain` et `inconnue` disent toutes
+  //  qu'aucune décision n'est établie — une valeur identique à un défaut du
+  //  produit ne prouve rien, c'est exactement ce que `historique_incertain`
+  //  signifie.
+  //
+  //  ⚠️ On ne teste PAS `brut.seuil.origine` : elle vaut `'aucune'` quand la
+  //  table ne rend rien, mais un appelant peut fournir une version sans ce
+  //  champ. La VALEUR est le fait ; l'étiquette n'en est qu'un commentaire.
+  const seuilVientDeLaTable = valeurSeuil !== null
+  const provenance = String(seuilsFixes.origineEnregistree || 'inconnue')
+  const provenanceEtablie = provenance === 'entreprise' || provenance === 'employe'
+  const seuilChoisi = seuilVientDeLaTable || provenanceEtablie
+
+  //  Aucun seuil choisi : la semaine n'est pas évaluée. `disponible: false`
+  //  n'est pas un silence — c'est le constat qu'aucune comparaison n'est
+  //  possible, et le motif le dit.
+  //
+  //  ⚠️ Le motif nomme la VRAIE raison. `defaut_produit` (la valeur n'existe
+  //  qu'en mémoire), `historique_incertain` (une valeur égale à un défaut connu
+  //  a pu être écrite sans décision) et `inconnue` ne se corrigent pas de la
+  //  même façon : annoncer « défaut du produit » à un client dont la ligne
+  //  existe mais n'est pas qualifiable l'enverrait chercher au mauvais endroit.
+  if (!seuilChoisi) {
+    const motif = provenance === 'defaut_produit'
+      ? 'aucun seuil hebdomadaire choisi : seule la valeur par défaut du produit existe, elle ne sert pas à comparer'
+      : provenance === 'historique_incertain'
+        ? 'seuil hebdomadaire non confirmé : sa valeur est celle d’un défaut connu, aucun humain ne l’a validée'
+        : 'seuil hebdomadaire introuvable ou illisible : aucun seuil n’a pu être établi'
+    return {
+      cle: `sans_seuil:${lundi ?? 'inconnu'}`,
+      disponible: false,
+      motif,
+      lundi: lundi ?? null,
+      seuil: null,
+      seuilMajeur: null,
+      source: provenance,
+    }
+  }
+
+  //  Un seuil nul alors qu'une valeur a été choisie : il n'y a rien à comparer.
+  //  Le motif le dit — sans confondre ce cas avec « aucun seuil choisi ».
+  //  L'alerte désactivée est un cas VOULU : le seuil existe, c'est la
+  //  comparaison qui n'a pas lieu. Elle garde son motif connu.
+  if (seuil === null) {
+    return {
+      cle: `sans_seuil:${lundi ?? 'inconnu'}`,
+      disponible: false,
+      motif: 'aucun seuil hebdomadaire valide enregistré : la semaine n’est pas évaluée',
+      lundi: lundi ?? null,
+      seuil: null,
+      seuilMajeur: null,
+      source: provenance,
+    }
+  }
 
   return {
     cle: `${seuil}|${seuilMajeur}|${alerteActivee}|${source}`,
