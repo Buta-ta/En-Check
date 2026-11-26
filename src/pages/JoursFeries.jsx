@@ -14,6 +14,15 @@
 // ══════════════════════════════════════════════════════════
 
 import { useState, useEffect, useMemo } from 'react'
+/*  LA SIDEBAR ET SON RAIL — sa demande du 26/11 : « ramène la sidebar et son
+    rail dans cette page », comme la page Employés. On ne recopie pas le
+    patron : on rend `CoqueAdmin` + `SidebarUnique`, avec la fabrique de
+    sections que Planning, Employés, Pauses et Retards lisent déjà. La
+    rubrique « Jours fériés » y figure (Temps de travail), donc le rail
+    s'allume au bon endroit tout seul. */
+import CoqueAdmin from '../components/coque/CoqueAdmin'
+import SidebarUnique from '../components/SidebarUnique'
+import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Globe, Building2, Calendar, CalendarDays,
@@ -28,7 +37,6 @@ import { modeleFeries, paysAvecModele, feriesAAjouter } from '../services/modele
 import { useTheme } from '../contexts/ThemeContext'
 import useLoadingMinimum from '../hooks/useLoadingMinimum'
 import PageCulturalBand from '../components/PageCulturalBand'
-import RaccourcisPages from '../components/RaccourcisPages'
 import JoursFeriesAnnee from '../components/JoursFeriesAnnee'
 import JoursFeriesLoading from '../components/JoursFeriesLoading'
 import { LesothoSceauSvg, LesothoLosangeSvg, LesothoCoutureSvg } from '../components/LesothoMotif'
@@ -158,6 +166,10 @@ export default function JoursFeries() {
   // Activation en masse
   const [togglingAll, setTogglingAll] = useState(false)
 
+  //  Le repère de la lisière qu'on vient de cliquer : il reste allumé tant
+  //  qu'on n'en choisit pas un autre.
+  const [repereActif, setRepereActif] = useState(null)
+
   // Modèle de fêtes du pays (Bénin, …)
   const [showModele, setShowModele] = useState(false)
   const [chargementModele, setChargementModele] = useState(false)
@@ -190,7 +202,9 @@ export default function JoursFeries() {
   const loadEnterprises = async () => {
     const { data } = await supabase
       .from('enterprises')
-      .select('id, name, code')
+      /*  `logo_url` est indispensable : sans lui, la pastille de la sidebar
+          retombe sur l'initiale. Même leçon qu'à la page Pauses le 26/11. */
+      .select('id, name, code, logo_url')
       .eq('is_active', true)
       .order('name')
     setEnterprises(data || [])
@@ -532,8 +546,44 @@ export default function JoursFeries() {
 
   const formulaireGlobal = registre === REGISTRES.PAYS && isSuperAdmin
 
+  /*  Le rail : la même fabrique que les autres pages. La rubrique de cette
+      page est « Temps de travail », où Jours fériés figure déjà. */
+  const sectionsNav = sectionsNavAdmin({
+    admin,
+    moduleActif: (champ) => {
+      if (admin?.role === 'super_admin') return true
+      const ligne = enterprises.find((e) => e.id === selectedEntId)
+      return Boolean(ligne?.[champ])
+    },
+  })
+  const nomAdmin =
+    `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim()
+    || admin?.name || admin?.email || 'Administrateur'
+
   return (
-    <div className={`jf-page${darkMode ? '' : ' jf-clair'}`}>
+    <CoqueAdmin
+      sidebar={
+        <SidebarUnique
+          sections={sectionsNav}
+          nomAdmin={nomAdmin}
+          initialeAdmin={(admin?.first_name || nomAdmin || 'A').charAt(0).toUpperCase()}
+          darkMode={darkMode}
+          surTheme={toggleTheme}
+          surDeconnexion={() => {
+            localStorage.removeItem('admin')
+            localStorage.removeItem('last_enterprise_id')
+            navigate('/login')
+          }}
+          entreprises={enterprises}
+          entrepriseActive={enterprises.find((e) => e.id === selectedEntId) || null}
+          surEntreprise={(e) => {
+            const id = typeof e === 'string' ? e : e?.id || null
+            handleEntChange(id)
+          }}
+        />
+      }
+    >
+    <div className="jf-page jf-clair">
       <PageCulturalBand pathname="/jours-feries" />
       <div className="jf-bordure" aria-hidden="true" />
 
@@ -581,17 +631,6 @@ export default function JoursFeries() {
             </div>
           )}
 
-          <button
-            type="button"
-            className="jf-bascule"
-            role="switch"
-            aria-checked={darkMode}
-            onClick={toggleTheme}
-            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
-            title={darkMode ? 'Thème clair' : 'Thème sombre'}
-          >
-            {darkMode ? <Moon size={14} aria-hidden="true" /> : <Sun size={14} aria-hidden="true" />}
-          </button>
         </div>
 
         <div className="jf-sceaux">
@@ -673,9 +712,6 @@ export default function JoursFeries() {
             </div>
           </div>
 
-          <div className="jf-raccourcis">
-            <RaccourcisPages compact excludePaths={['/jours-feries']} />
-          </div>
                 </div>
       </header>
 
@@ -699,6 +735,21 @@ export default function JoursFeries() {
                 ? `La prochaine fête tombe en ${prochain.date.getFullYear()} : ${formaterJour(prochain.date)} ${prochain.date.getFullYear()}.`
                 : ''
             }
+            onChoisirRepère={(r) => {
+              /*  Un repère cliqué ouvre sa pièce : le bon registre d'abord,
+                  puis le pays si c'est une fête du pays, enfin le défilement
+                  et le surlignage. */
+              setRegistre(r.origine === 'pays' ? REGISTRES.PAYS : REGISTRES.MAISON)
+              if (r.origine === 'pays') setFilterCountry(r.pays || 'ALL')
+              setRepereActif(r.cle)
+              window.setTimeout(() => {
+                const piece = document.getElementById(`jf-piece-${r.id}`)
+                if (!piece) return
+                piece.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                piece.classList.add('jf-piece-appelee')
+                window.setTimeout(() => piece.classList.remove('jf-piece-appelee'), 1600)
+              }, 60)
+            }}
           />
           </aside>
 
@@ -834,6 +885,7 @@ export default function JoursFeries() {
                   return (
                     <article
                       key={holiday.id}
+                      id={`jf-piece-${holiday.id}`}
                       className="jf-jour"
                       data-origine="pays"
                       data-actif={active ? 'oui' : 'non'}
@@ -948,6 +1000,7 @@ export default function JoursFeries() {
                       return (
                         <article
                           key={holiday.id}
+                          id={`jf-piece-${holiday.id}`}
                           className="jf-jour"
                           data-origine="entreprise"
                           style={{ animationDelay: `${Math.min(i, 12) * 0.02}s` }}
@@ -1337,6 +1390,7 @@ export default function JoursFeries() {
         </div>
       )}
     </div>
+    </CoqueAdmin>
   )
 }
 
