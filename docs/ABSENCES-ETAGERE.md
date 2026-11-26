@@ -704,3 +704,116 @@ positionné, donc `calc((100% - 2 × trait) × plein / 100%)`) et le sens.
 | verrous réécrits, pas relâchés | 5 (le plancher du mot devient celui du jour), 14 (plaquette sans fond, jauge intérieure, 4/30 = 13 %), 16 (la pastille muette devient le contrôle), 17 (le mois ne plie pas, la partition se relit), 18 (la case n'est plus un `useState`) |
 | `npm run charte` | **inchangé** : 64 · 43 · 27, recompté sur `git archive HEAD src` et sur l'arbre d'aujourd'hui — aucune valeur neuve |
 | `npm run build` · `npx eslint` | ✓ (17,7 s) · 0 problème neuf sur les trois fichiers (trois erreurs de variables mortes préexistantes dans `Absences.jsx`, laissées telles quelles) |
+
+# La pile, refaite aux pixels du dessin (13/12)
+
+Deux fois le même reproche dans la même semaine, pour la même raison : je dessinais la
+pile au lieu de la relever. Ma première réponse d'aujourd'hui (des `border-left`
+verticales aux reculs mesurés) était **juste de nombre et fausse de droiture** — le
+profil d'encre du dessin dit autre chose, et c'est lui qui tranche. Deux mots du
+fondateur, donc, sur les deux seuls endroits où je dessinais au lieu de mesurer : *« c'est ça que tu appelles feuilles pliées,
+désolé mais là tu ne respectes absolument pas la maquette choisie »*, et
+*« optimise l'espace pour moins scroller. Retravaille cette section »* (la barre
+d'outils, `image-123.png`).
+
+## Ce que le dessin rend, et ce que je rendais
+
+Le profil d'encre du flanc gauche, **ligne à ligne** (montant du plateau à x 50..53) :
+
+| y | encre relevée à gauche du montant | lecture |
+|---|---|---|
+| 205..209 | 50..53, puis 47..52 | le coin haut courbe : la première feuille naît du montant |
+| 225 | **34..37** et **42..45** | seize et huit de recul — les deux feuilles ouvertes |
+| 300 | 37..39 et 43..46 | elles se referment |
+| 400 | 41..43 et 45..48 | |
+| 434 | 42..55, une seule encre | la feuille du **dedans** est rentrée (4 pas de ligne) |
+| 600 | 50..53 | la feuille du **dessous** est rentrée (5 pas) |
+
+| | le dessin | cycle 55 | premier cycle 56 |
+|---|---|---|---|
+| la pile | deux **traits obliques** sur le seul flanc gauche, pleins au sommet (−16 et −8) et refermés **dans le montant** en descendant | deux pseudo-éléments `inset: 0` cerclés sur quatre côtés, translatés de −8/−16 | deux `border-left` verticales sur toute la hauteur : reculs justes, **droiture fausse** — une gouttière, pas une pile |
+| la rive droite | rien d'autre qu'une ombre : x 1328..1333 encre, x 1334..1337 teinte grise (222,201,174) | la même boîte cerclée → un double montant | — |
+| la chute | un pas de pile | `--abs-pli-ombre: 6`, cote à part | l'ombre se relit sur `--abs-pli-pli` |
+
+Chaque feuille est donc **une bande remplie** — large du recul plus la règle — taillée
+en parallélogramme par un `clip-path` à quatre sommets :
+
+    --abs-pli-pli: 8px                                      le recul du dedans
+    --abs-pli-recul: calc(2 * var(--abs-pli-pli))     →  16px   celui du dessous
+    --abs-pli-rentrée: var(--abs-pli-pas)              →  78px   l'unité d'éventail
+    --abs-pli-pile: calc(recul + rule)                 →  19px   la bande entière
+    --abs-pli-évasement: var(--abs-pli-pile)                    l'air du CONTENEUR seul
+    ::before → polygon(0 0, 3px 0, 19px 5×rentrée, 16px 5×rentrée)
+    ::after  → polygon(0 0, 3px 0, 11px 4×rentrée,  8px 4×rentrée)
+
+Le trait se **construit**, il ne se tourne pas : une rotation de 1,9° sur un tracé de
+trois pixels l'antialiaserait, et le dessin est net. La pointe rentrée retombe sous le
+fond de sable du plateau (`z-index: -1`, isolé), donc la forme n'a rien à soustraire
+quand la grille défile. Comme l'éventail se referme au lieu de pendre, le souffle du
+bas et de droite n'est plus la queue de la pile mais la seule chute de l'ombre — un pas
+au lieu de vingt-deux : onze pixels de hauteur rendus à la page.
+
+**Ce que je ne rends pas, et pourquoi.** Sous le trait du bas (y 681..766), le fichier
+garde deux verticales de trois pixels, x 51..54 et x 1330..1333, qui courent jusqu'au
+bord de l'image. Le dessin est coupé à 768 : ce sont les montants d'un **support** dont
+on ne voit pas la fin, pas une décoration finie. Les inventer en `::after` du registre
+aurait été ajouter au dessin au lieu de le continuer — je le signale et je le pose dès
+que tu me dis si la planche a une fin (et à combien).
+
+## Le rang d'outils, qui en faisait trois
+
+`image-123.png` (2346 × 232, soit 1173 CSS px) : le champ de recherche **seul** sur son
+rang, la tringle Planning/Mois/Liste sur le second, « 4 absences » nud sur le troisième.
+La cause n'était pas un excès de zèle responsive mais un **trou** : en sortant la barre
+des `style` inline de la page (cycle précédent), la loi du rang — `display: flex`,
+`justify-content: space-between` — était partie avec l'attribut et n'avait jamais été
+écrite à la feuille. Deux `div` block l'un sous l'autre, voilà trois bandeaux.
+
+| décision | cote |
+|---|---|
+| le rang s'écrit dans `.abs-outils` (feuille), plus dans un attribut | `display:flex · align-items:center · justify-content:space-between`, écart `--charte-espace-3` |
+| le repli n'est plus la loi de l'ordinateur | `flex-wrap: nowrap` sur les deux moitiés, **levé** par la seule `@media (max-width: 650px)` |
+| le champ ne s'étale plus à tout le vide | `flex: 1 1 220px`, plancher 150, **plafond 320** |
+| le compte de la page | il quitte sa rangée pour la tête de la rive droite, à la taille micro, et **ne s'écrit plus en mode Planning** — le plateau dit déjà le bilan de la période ; deux écritures du même nombre, c'est la retouche qui les sépare. `S.resultCount` est supprimé avec sa ligne |
+| la pince de ligne | `--abs-pli-pince: calc(case − pas)` = **22**, et non le gabarit de la case d'entête (30, cote du bandeau du dessin). Le dessin ne dessine aucune pince de ligne : ce sont huit pixels rendus au prénom, à chaque rangée |
+| la largeur du champ | `min-width: max-content` seul. Le `width: max-content; min-width: 100%` d'avant était une double naissance : la largeur du contenu **et** celle de l'écran, la plus grande gagnant — soit, sur un plateau de 1 207, un défilement horizontal permanent pour aller chercher la seule jauge du solde |
+
+Ce qui **ne bouge pas**, parce que le dessin le tient : le pas de ligne de 78 (200 →
+278 → 356), le jour de 145 (x 305..1320 = 7 × 145), l'entête de 76, le registre de 76.
+« Moins scroller » se paie dans le chrome, pas dans l'étage — raccourcir les rangées
+pour tenir plus d'employés à l'écran aurait été trahir la maquette qu'on me reproche
+justement de ne pas respecter.
+
+## Et le cadre qui avait disparu tout seul
+
+En reprenant le bandeau, une troisième cause est apparue, la plus vicieuse parce
+qu'elle ne se lit pas dans le code : `image-123.png` montre des boîtes **sans encre**.
+La barre d'outils emprunte deux cotes à la rubrique du pli, `--abs-pli-rule` (3) et
+`--abs-pli-case` (30) — et la rubrique ne vivait que sur `.abs-cal`. Le bandeau, lui,
+est le **frère** du calendrier dans la page, pas son enfant : une propriété
+personnalisée qui ne résout pas n'annule pas la valeur, elle annule **la propriété
+entière**, donc `border` retombe à son `initial`, `border-style: none`, et le trait de
+trois disparaît sans un mot. Les boîtes perdaient aussi leur `min-height` (30), d'où le
+bandeau bas et nu.
+
+La correction n'est pas de recopier `3px` dans la rubrique du bandeau — ce serait une
+seconde naissance du nombre — mais d'**élargir l'hôte** de la rubrique :
+
+    .abs-page,
+    .abs-cal { --abs-pli-pas: 78px; … }
+
+Le bloc ne contient que des jetons (contrôlé : aucune déclaration hors `--abs-pli-*`),
+donc rien ne déborde sur la page ; et le nombre reste écrit une fois, c'est sa
+**portée** qui est déclarée deux fois — seule duplication que la cascade autorise. Le
+verrou 36 lit précisément cet en-tête, parce qu'un `var()` non résolu n'est pas une
+erreur d'exécution : sans aiguille, il ne se voit que sur l'image.
+
+## Les chiffres du contrôle (13/12)
+
+| mesure | valeur |
+|---|---|
+| `npx vitest run` | **199 fichiers ✓ · 2 847 tests ✓** — pli **36** verrous (34, 35, 36 sont neufs), tringle 24, modes 21, rendu 10, section haute / étagère / charte 46 |
+| échec préexistant, étranger à la page | `alerteHebdoSansPaie.test.js` : 5 tests en timeout de 5 s **aussi sur `8ac940c` sans mes changements** (vérifié en remisant) ; rien à voir avec les absences, rien n'y a été touché |
+| verrous réécrits à la mesure, pas relâchés | 3 (l'ombre se relit sur le pas, le souffle du bas aussi, et le champ ne s'étale plus), 16 (la pince de ligne se déduit de la case), 22 (mort de `--abs-pli-ombre` puis de `--abs-pli-deuil` ; `recul`/`pile`/`rentrée`/`pince` écrits en calculs), 28 (la feuille est une **bande clinquée** : ni `inset:0`, ni `border-left` droite, ni `transform:rotate`), 30 (le plateau ne se garde plus d'air en padding interne), 35 (l'arithmétique de l'éventail : 16·13 et 8·5 au sommet, rentrées à quatre et cinq pas) ; 36 porte la loi de portée du bandeau |
+| `npm run charte` | **inchangé** : 64 tailles · 43 marges · 27 rayons, recompté sur `git archive HEAD src` (8ac940c) **et** sur l'arbre d'aujourd'hui — aucune valeur neuve |
+| `npm run build` · `npx eslint` | ✓ (23,1 s) · 3 erreurs et 3 warnings **préexistants** dans `Absences.jsx`, aucun neuf |

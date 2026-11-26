@@ -1937,6 +1937,18 @@ export default function Absences() {
                   )}
                 </div>
                 <div className="abs-toolbar-right abs-outils-droite">
+                  {/* Le compte « N absences / M » ne se paie plus une ligne pour lui
+                      (13/12 : « optimise l'espace pour moins scroller ») : le
+                      plateau écrit déjà le bilan de la période, et un nombre écrit
+                      deux fois se contredit à la première retouche. Il se range en
+                      tête de la rive droite du bandeau, et n'existe que là où il
+                      est la SEULE mesure — la liste et le mois. */}
+                  {viewMode !== 'planning' && (
+                    <div className="abs-outils-compte" data-testid="abs-compte-ligne">
+                      {filteredAbsences.length} absence{filteredAbsences.length > 1 ? 's' : ''}
+                      {filteredAbsences.length !== absences.length && <span className="abs-outils-compte-total"> / {absences.length}</span>}
+                    </div>
+                  )}
                   <button type="button" className="abs-outils-pince" aria-label="Afficher les filtres" aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}><Filter size={18} /></button>
                   <div className="abs-outils-vues" role="group" aria-label="Mode d'affichage">
                     <button type="button" className="abs-outils-vue" aria-pressed={viewMode === 'planning'} onClick={() => setViewMode('planning')} title="Planning — calendrier par employé"><CalendarDays size={15} /><span>Planning</span></button>
@@ -2017,13 +2029,6 @@ export default function Absences() {
                   <button onClick={resetFilters} style={S.resetBtn}><RefreshCw size={14} /> Réinitialiser</button>
                 </div>
               )}
-
-              <div style={S.resultCount}>
-                <span style={S.resultText}>
-                  {filteredAbsences.length} absence{filteredAbsences.length > 1 ? 's' : ''}
-                  {filteredAbsences.length !== absences.length && <span style={{ color: 'var(--abs-text-faint)' }}> / {absences.length}</span>}
-                </span>
-              </div>
 
               {/* Le dock « Motifs à glisser-déposer » est enlevé de la vue (9/12,
                   à la demande du fondateur) : les sept pinces de la tringle
@@ -2990,7 +2995,6 @@ const S = {
   filterLabel: { color: 'var(--abs-text-soft)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 },
   filterSelectSmall: { background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line)', color: 'var(--abs-text)', padding: '10px 12px', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' },
   resetBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', color: 'var(--abs-coral)', padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', alignSelf: 'flex-end' },
-  resultCount: { marginBottom: 16, paddingLeft: 4 },
   resultText: { color: 'var(--abs-text)', fontSize: 14, fontWeight: 500 },
   list: { 
     display: 'grid', 

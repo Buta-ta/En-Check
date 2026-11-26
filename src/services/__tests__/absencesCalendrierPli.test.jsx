@@ -43,6 +43,7 @@ const RACINE = path.resolve(import.meta.dirname, '../../..')
 const lire = (...chemins) => fs.readFileSync(path.join(RACINE, ...chemins), 'utf8')
 
 const COMPOSANT = lire('src', 'components', 'AbsencesCalendrier.jsx')
+const PAGE = lire('src', 'pages', 'Absences.jsx')
 const FEUILLE = lire('src', 'pages', 'AbsencesAfroTech.css')
 const CSS = FEUILLE.replace(/\/\*[\s\S]*?\*\//g, '')
 // La rubrique du pli commence à ses jetons et court jusqu'à la fin de la
@@ -64,6 +65,23 @@ const corps = (sélecteur) => {
   if (i === -1) throw new Error(`règle absente de la rubrique du pli : ${sélecteur}`)
   const début = PLI.indexOf('{', i)
   return PLI.slice(début + 1, PLI.indexOf('}', début))
+}
+
+/** Le corps d'une règle n'importe où dans la feuille. Le bandeau d'outils n'est PAS
+ * de la rubrique du pli — il la précède, et verrouiller sa lecture sur `PLI`
+ * ferait échouer le verrou pour une raison d'ordre, pas de fond. */
+const corpsFeuille = (sélecteur) => {
+  const i = CSS.indexOf(`${sélecteur} {`)
+  if (i === -1) throw new Error(`règle absente de la feuille : ${sélecteur}`)
+  const début = CSS.indexOf('{', i)
+  return CSS.slice(début + 1, CSS.indexOf('}', début))
+}
+
+/** La règle complète (sélecteurs compris) d'un bloc à deux sélecteurs accolés. */
+const règleFeuille = (début) => {
+  const i = CSS.indexOf(début)
+  if (i === -1) throw new Error(`règle absente de la feuille : ${début}`)
+  return CSS.slice(i, CSS.indexOf('}', CSS.indexOf('{', i)) + 1)
 }
 
 /** Un jeton de la rubrique, en nombre — la cote du dessin, pas une intention. */
@@ -227,7 +245,13 @@ describe('📐 le pli par employé', () => {
     expect(plateau).toContain('border:var(--abs-pli-rule)solidvar(--charte-encre)')
     expect(plateau).toContain('background:var(--charte-sable)')
     expect(plateau).toContain('border-radius:var(--charte-rayon-champ)')
-    expect(plateau).toContain('box-shadow:var(--abs-pli-ombre)var(--abs-pli-ombre)00var(--charte-bordure)')
+    expect(plateau).toContain('box-shadow:var(--abs-pli-pli)var(--abs-pli-pli)00var(--charte-bordure)')
+    // L'OMBRE SE RELIT SUR LE PAS DE LA PILE, plus sur un `--abs-pli-ombre` à part.
+    // Le dessin grise sa chute à x 1328..1337 pour une rive à 1325 : la chute fait
+    // un pas, et ce pas est celui des feuilles. Deux lois d'ombre (6 d'un côté, 11
+    // de l'autre) sur le même plateau, c'est un dessin qu'on Commente au lieu de le
+    // continuer — le jeton orphelin est supprimé, pas conservé « au cas où ».
+    expect(plateau).not.toContain('--abs-pli-ombre')
     // le dessin grise le sable à (222, 200, 176) : c'est `--charte-bordure`, pas
     // un noir à l'aveugle, et le flou est à zéro (contrôle C9 de la charte)
     expect(plateau).not.toMatch(/blur|rgba\(/)
@@ -238,13 +262,26 @@ describe('📐 le pli par employé', () => {
     // un montant à 50..52.
     const champ = nud(corps('.abs-cal-champ'))
     expect(champ).toContain('padding-left:var(--abs-pli-évasement)')
-    expect(champ).toContain('padding-bottom:var(--abs-pli-évasement)')
-    expect(champ).toContain('padding-right:calc(var(--abs-pli-pli)+var(--abs-pli-ombre))')
+    // l'éventail se REFERME dans le cadre au lieu de pendre dessous : en bas et à
+    // droite, seule la chute de l'ombre compte — un pas, pas une queue. Onze pixels
+    // de hauteur rendus à la page (« moins scroller »), et la `overflow-x` ne rogne
+    // plus que ce qui déborde vraiment.
+    expect(champ).toContain('padding-bottom:var(--abs-pli-pli)')
+    expect(champ).toContain('padding-right:var(--abs-pli-pli)')
     expect(cote('--abs-pli-pli')).toBe(8)
-    // LE PLATEAU PREND LA LARGEUR DE SES JOURS, pas celle de l'écran : un plancher
-    // écrit en JavaScript était une seconde naissance du nombre de jour.
-    expect(champ).toContain('width:max-content')
-    expect(champ).toContain('min-width:100%')
+    // LE CHAMP BORNE SES JOURS, IL NE S'ÉTALE PAS SUR L'ÉCRAN. `width: max-content`
+    // + `min-width: 100%` était une DOUBLE naissance : la largeur du contenu et
+    // celle du conteneur, la plus grande gagnant — soit, sur un écran de 1 173, un
+    // plateau de 1 207 ALONGÉ de ses 36 de padding, et un défilement horizontal
+    // permanent pour aller chercher la seule jauge du solde. `min-width: max-content`
+    // seul garde la borne basse (un écran étroit défile, c'est voulu) sans jamais
+    // imposer au plateau une largeur qu'il n'a pas demandée
+    // (« optimise l'espace pour moins scroller », fondateur, 13/12).
+    expect(champ).toContain('min-width:max-content')
+    // aucune largeur `max-content` en DUR : la négation se fait sur la déclaration,
+    // pas sur un sous-chaîne que `min-width: max-content` contient aussi
+    expect(champ).not.toMatch(/(^|;)width:max-content/)
+    expect(champ).not.toContain('min-width:100%')
   })
 
   it('4. la ligne fait 78 et se sépare par la règle, pas par le ton', () => {
@@ -608,7 +645,15 @@ describe('📐 le pli par employé', () => {
     // et sa ligne a SA pince, dans la colonne d'identité — jamais sur la piste
     const pince = corps('.abs-pli-plier')
     expect(nud(pince)).toContain('margin-left:auto')
-    expect(nud(pince)).toContain('width:var(--abs-pli-case)')
+    // la pince de ligne est un CARRE, mais pas au gabarit du bandeau : la case
+    // d'entête de trente est la cote du dessin (x 1143..1173), et le dessin ne
+    // dessine aucune pince de ligne. La payer 30 rendait le prénom en ellipses sur
+    // un écran d'ordinateur — la colonne d'identité est à 252 pour toute la
+    // famille, huit pixels de pince en moins sont huit pixels de nom en plus
+    // (« optimise l'espace », fondateur, 13/12).
+    expect(nud(pince)).toContain('width:var(--abs-pli-pince)')
+    expect(nud(pince)).toContain('height:var(--abs-pli-pince)')
+    expect(valeur('--abs-pli-pince')).toBe('calc(var(--abs-pli-case) - var(--abs-pli-pli))')
     const tete = nud(corps('.abs-pli-tete'))
     expect(tete).toContain('width:var(--abs-pli-employe)')
     expect(tete).toContain('position:sticky')
@@ -756,7 +801,10 @@ describe('📐 le pli par employé', () => {
     expect(cote('--abs-pli-jauge-hauteur')).toBe(18)
     expect(cote('--abs-pli-registre')).toBe(76)
     expect(cote('--abs-pli-noeud')).toBe(13)
-    expect(cote('--abs-pli-ombre')).toBe(6)
+    // `--abs-pli-ombre` est MORT : la chute du plateau se relit sur le pas de la
+    // pile. Un jeton déclaré que plus personne ne lit est une promesse de plus —
+    // la loi du dépôt, c'est qu'on le supprime au lieu de le laisser s'ossifier.
+    expect(PLI).not.toContain('--abs-pli-ombre')
     // et ce ne sont PAS les cotes de la corde, recopiées pour faire plaisir :
     // la corde avait un pas de 50 et une carte de 46
     expect(valeur('--abs-pli-pas')).not.toBe('50px')
@@ -771,10 +819,27 @@ describe('📐 le pli par employé', () => {
     expect(cote('--abs-pli-solde')).toBe(130)
     expect(cote('--abs-pli-solde-repli')).toBe(13)
     expect(cote('--abs-pli-pli')).toBe(8)
-    // l'évasement n'est pas un nombre recopié, c'est le décalage doublé d'une
-    // règle : `calc(2 * (8 + 3))` = 22
-    expect(valeur('--abs-pli-évasement')).toBe(
-      'calc(2 * (var(--abs-pli-pli) + var(--abs-pli-rule)))'
+    // la pile, à la règle : une feuille descend de son pas PLUS la règle (11), les
+    // deux de le double (22). Et l'évasement n'est pas un nombre recopié : c'est la
+    // pile moins la règle (19) — seize de recul pour la dernière feuille, trois
+    // d'air. Relevé sur `maquettes/absences-grille-2-pli.png`, arêtes x 42..45 et
+    // x 34..37 pour un montant à 50..52, queues à y 692 et 703 pour un trait bas à
+    // 680 (le 12/12, j'avais écrit 22 pour les deux ; le souffle et la pile ne sont
+    // pas la même mesure).
+    // et l'éventail, en calculs : seize est le double de huit, la pile est le recul
+    // plus la règle, l'évasement EST la pile (un seul nombre, deux usages), la
+    // rentrée se relit sur le pas de ligne — jamais sur un 390 posé à la main.
+    expect(valeur('--abs-pli-recul')).toBe('calc(2 * var(--abs-pli-pli))')
+    expect(valeur('--abs-pli-pile')).toBe(
+      'calc(var(--abs-pli-recul) + var(--abs-pli-rule))'
+    )
+    expect(valeur('--abs-pli-évasement')).toBe('var(--abs-pli-pile)')
+    expect(valeur('--abs-pli-rentrée')).toBe('var(--abs-pli-pas)')
+    // `--abs-pli-deuil` (la queue de 11) est MORT avec les raiures droites
+    expect(PLI).not.toContain('--abs-pli-deuil')
+    // et la pince se déduit de la case, jamais d'un 22 posé à la main
+    expect(valeur('--abs-pli-pince')).toBe(
+      'calc(var(--abs-pli-case) - var(--abs-pli-pli))'
     )
   })
 
@@ -850,29 +915,45 @@ describe('📐 le pli par employé', () => {
   })
 
   it('28. les feuilles pliées se voient : le plateau est une pile, pas un cadre', () => {
-    // LE MANQUEMENT, 11/12 : « les feuilles pliées ne se voient pas ». Le dessin
-    // n'entoure pas le champ d'un trait unique : derrière le plateau, deux feuilles
-    // repliées dépassent sur sa gauche, à huit puis à seize du montant (arêtes
-    // relevées à x 42..45 et x 34..37 pour une règle à 50..52), chacune descendue
-    // d'un deuil de plus que son décalage, et leurs coins courbent au rayon du cadre.
+    // LE MANQUEMENT, 11/12 : « les feuilles pliées ne se voient pas ». Le 12/12, je
+    // les avais faites et le fondateur a re-signale autre chose : « c'est ca que tu
+    // appelles feuilles pliees, desole mais la tu ne respectes absolument pas la
+    // maquette choisie ». La cause n'etait pas la visibilite, c'etait LA FORME :
+    // j'avais pose DEUX CADRES COMPLETS decales (un cerclage sur les quatre cotes,
+    // translates de -8 et -16), ce qui dessine un double montant a droite et un
+    // double trait en haut — pas une pile. Le dessin, lui, ne decale AUCUN CADRE :
+    // il RAYE le flanc gauche de trois paralleles qui naissent au niveau du trait du
+    // haut et finissent au niveau du trait du bas.
     const feuille = nud(PLI)
     expect(feuille).toContain('.abs-pli-plateau::before,.abs-pli-plateau::after{')
-    // la feuille est un cadre complet posé DERRIÈRE le fond de sable : seul ce qui
-    // dépasse s'encre, et le plateau n'a rien à soustraire quand il défile
+    // une BANDE remplie, large de son recul plus la règle, taillée en parallélogramme
+    // par `clip-path`. Ni `inset: 0` (le cadre décalé), ni `border-left` sur toute la
+    // hauteur (la raiure droite), ni `rotate` (un trait de trois pixels tourné de
+    // 1,9° s'antialiasse et le dessin, lui, est net).
     expect(feuille).toContain(
-      'content:"";position:absolute;inset:0;z-index:-1;box-sizing:border-box'
+      'content:"";position:absolute;top:0;height:100%;z-index:-1;background:var(--charte-encre);pointer-events:none'
     )
-    expect(feuille).toContain('border:var(--abs-pli-rule)solidvar(--charte-encre)')
-    expect(feuille).toContain('background:var(--charte-sable)')
-    expect(feuille).toContain('pointer-events:none')
-    // les deux décalages se déduisent du MÊME jeton, l'un simple, l'autre doublé —
-    // écrire « -16px » à la main serait une cote orpheline
-    expect(feuille).toContain(
-      '.abs-pli-plateau::before{transform:translate(calc(-1*var(--abs-pli-pli)),calc(var(--abs-pli-pli)+var(--abs-pli-rule)));}'
+    expect(feuille).not.toContain('inset:0')
+    expect(feuille).not.toContain('border-left:var(--abs-pli-rule)')
+    expect(feuille).not.toContain('transform:rotate')
+    // les deux decalages se deduisent du MEME jeton, l'un simple, l'autre double —
+    // ecrire « -16px » a la main serait une cote orpheline ; la queue est le MEME
+    // deuil, ecrit de bas en haut (`bottom:` neg), jamais un hauteur absolue
+    const éventail = feuille
+    expect(éventail).toContain(
+      '.abs-pli-plateau::before{left:calc(-1*var(--abs-pli-pile));width:calc(var(--abs-pli-pile)+var(--abs-pli-rule));'
     )
-    expect(feuille).toContain(
-      '.abs-pli-plateau::after{transform:translate(calc(-2*var(--abs-pli-pli)),calc(2*(var(--abs-pli-pli)+var(--abs-pli-rule))));}'
+    expect(éventail).toContain(
+      '.abs-pli-plateau::after{left:calc(-1*(var(--abs-pli-pli)+var(--abs-pli-rule)));'
     )
+    // les deux rentrées : cinq rangées pour la feuille du dessous, quatre pour celle
+    // du dedans — un pas d'éventail, deux écritures du même jeton
+    expect(éventail).toContain('calc(5*var(--abs-pli-rentrée))')
+    expect(éventail).toContain('calc(4*var(--abs-pli-rentrée))')
+    // la pile est a GAUCHE seule : le dessin ne rend aucune feuille a droite (x
+    // 1328..1337 y est l'ombre grise, pas un montant). Un `right:` ici serait le
+    // double cadre que le fondateur refuse.
+    expect(feuille).not.toMatch(/\.abs-pli-plateau::(before|after)\{[^}]*right:/)
     // le cadre doit connaître sa pile : `position: relative`, sinon `z-index: -1`
     // enverrait les feuilles derrière le fond de la PAGE et non du plateau
     expect(nud(corps('.abs-pli-plateau'))).toContain('position:relative')
@@ -880,7 +961,7 @@ describe('📐 le pli par employé', () => {
     // rognée ne se lit plus pliée
     const champ = nud(corps('.abs-cal-champ'))
     expect(champ).toContain('padding-left:var(--abs-pli-évasement)')
-    expect(champ).toContain('padding-bottom:var(--abs-pli-évasement)')
+    expect(champ).toContain('padding-bottom:var(--abs-pli-pli)')
   })
 
   it('29. le pli est réversible : la case survit au geste qui la rendait inutile', () => {
@@ -949,11 +1030,17 @@ describe('📐 le pli par employé', () => {
     const feuilles = nud(PLI.slice(PLI.indexOf('.abs-pli-plateau::before,'), PLI.indexOf('.abs-pli-plateau::before {')))
     expect(feuilles).toContain('.abs-pli-plateau::before,.abs-pli-plateau::after{')
     expect(feuilles).toContain('z-index:-1')
-    expect(feuilles).toContain('border:var(--abs-pli-rule)solidvar(--charte-encre)')
+    expect(feuilles).toContain('background:var(--charte-encre)')
+    // et le plateau ne DOIT pas se garder d'air pour sa pile en padding interne : la
+    // gouttière est payée par le conteneur. Poser un `padding-left` sur le plateau
+    // (ma premiere reponse au reproche) poussait chaque ligne de vingt-cinq pixels
+    // hors de son montant — l'entête, lui, ne porte que sa règle de trois.
+    expect(nud(corps('.abs-pli-plateau'))).not.toContain('padding-left')
+    expect(nud(corps('.abs-cal-entete'))).not.toContain('--abs-pli-pile')
     // le souffle reste payé d\'avance : `overflow-x: auto` coupe la pile à ras
     const champ = nud(corps('.abs-cal-champ'))
     expect(champ).toContain('padding-left:var(--abs-pli-évasement)')
-    expect(champ).toContain('padding-bottom:var(--abs-pli-évasement)')
+    expect(champ).toContain('padding-bottom:var(--abs-pli-pli)')
   })
 
   it('31. le pli se referme sur la ligne seule, et la pince est dans la tête', () => {
@@ -1020,5 +1107,125 @@ describe('📐 le pli par employé', () => {
     const trou = large.indexOf('class="abs-pli-motif"')
     expect(large.slice(trou, trou + 160)).toContain('class="abs-pli-motif">Absence injustifiée</span>')
     expect(large.slice(trou, trou + 240)).toContain('class="abs-pli-durée">1 j<')
+  })
+  it('35. les rives des feuilles tombent aux cotes du dessin, au pixel', () => {
+    // CE VERROU NE LIT PAS UNE OPINION, il fait l'addition. Profil d'encre du flanc
+    // gauche de `maquettes/absences-grille-2-pli.png`, montant à x 50..53 :
+    //   y 225 → x 34..37 et x 42..45 ;  y 300 → 37..39 et 43..46 ;  y 400 → 41..43
+    //   et 45..48 ;  y 434 → une seule encre (le dedans est rentré) ;  y 600 → 50..53
+    //   (le dessous est rentré). Ramené au bord EXTÉRIEUR du cadre : des reculs de
+    //   16..13 et 8..5 AU SOMMET, et rien du tout en bas.
+    const pli = cote('--abs-pli-pli')        // 8
+    const règle = cote('--abs-pli-rule')     // 3
+    // `--abs-pli-recul` et `--abs-pli-rentrée` sont des CALCULS, pas des px : ils se
+    // relisent d'abord comme tels (une aiguille qui ferait `Number('calc(…')`
+    // comparerait `NaN` à `NaN` et croirait mesurer quelque chose)
+    expect(valeur('--abs-pli-recul')).toBe('calc(2 * var(--abs-pli-pli))')
+    expect(valeur('--abs-pli-rentrée')).toBe('var(--abs-pli-pas)')
+    const recul = 2 * pli                    // 16
+    const pas = cote('--abs-pli-pas')       // 78
+    expect([recul, recul - règle]).toEqual([16, 13])
+    expect([pli, pli - règle]).toEqual([8, 5])
+    // les rentrées, en pas de ligne : quatre rangées pour le dedans (312 → l'encre
+    // est déjà rentrée à y 434 pour un plateau ouvert à 200), cinq pour le dessous
+    // (390 → y 590, et le montant est seul à y 600)
+    expect(4 * pas).toBe(312)
+    expect(5 * pas).toBe(390)
+    // la bande part de l'ARÊTE EXTÉRIEURE du montant moins son recul : `left: -pile`
+    // pour le dessous (−19 dans la boîte de padding, soit −16 au bord du cadre), et
+    // `-(pli + règle)` pour le dedans (−8). Écrire les deux en `translateX`, comme au
+    // premier cycle, payait la règle deux fois.
+    const nœuds = nud(PLI).slice(
+      nud(PLI).indexOf('.abs-pli-plateau::before{'),
+      nud(PLI).indexOf('.abs-pli-comptes{')
+    )
+    expect(nœuds).not.toContain('right:')
+    // pas de `clip-path` sans points : le parallélogramme a bien quatre sommets
+    expect((nœuds.match(/polygon\(/g) || []).length).toBe(2)
+    expect((nœuds.match(/,/g) || []).length).toBeGreaterThanOrEqual(6)
+  })
+
+  it('36. le bandeau d\'outils est un rang, écrit une seule fois', () => {
+    // LA SECTION DE L'IMAGE (13/12 : « retravaille cette section », « optimise
+    // l'espace pour moins scroller »). La capture montrait le champ de recherche SEUL
+    // sur son rang, la tringle Planning/Mois/Liste sur le second, « 4 absences » nud
+    // sur le troisième. La cause n'était pas un excès de zèle : la barre d'outils
+    // était sortie des `style` inline SANS que la loi du rang (`display:flex`,
+    // `justify-content:space-between`) soit écrite à la feuille — deux `div` block
+    // l'un sous l'autre, et voilà trois bandeaux avant la grille.
+    const outils = nud(corpsFeuille('.abs-outils'))
+    expect(outils).toContain('display:flex')
+    expect(outils).toContain('justify-content:space-between')
+    expect(outils).toContain('align-items:center')
+    // la tringle ne se replie plus sur un écran d'ordinateur : le `wrap` est la loi
+    // du petit écran, pas celle du rang. Les deux moitiés partagent la règle, et la
+    // media ne fait que la LEVER — une seule écriture de la largeur du souffle.
+    const moitiés = nud(règleFeuille('.abs-outils-gauche,'))
+    expect(moitiés).toContain('flex-wrap:nowrap')
+    expect(moitiés).toContain('min-width:0')
+    // le champ ne s'étale plus à tout l'écran : un plafond, pas un élastique
+    expect(nud(corpsFeuille('.abs-outils-champ'))).toContain('max-width:320px')
+    // la règle est écrite À LA FEUILLE : ni `!important`, ni attribut `style` sur le
+    // bandeau. Une règle qui gagne en criant n'est pas une règle — et le rang d'hier
+    // vivait dans un `style` que plus personne ne relisait.
+    expect(outils).not.toContain('!important')
+    expect(nud(corpsFeuille('.abs-outils-compte'))).not.toContain('!important')
+    expect(PAGE).toMatch(/<div className="toolbar-top abs-outils">/)
+    // LA PORTÉE, pas seulement la valeur. Le bandeau lit `--abs-pli-rule` (3) et
+    // `--abs-pli-case` (30), deux jetons de la rubrique du pli — et la rubrique ne
+    // vivait que sur `.abs-cal`. Or le bandeau est le FRÈRE du calendrier, pas son
+    // enfant : une propriété personnalisée non résolue n'annule pas la valeur, elle
+    // annule la PROPRIÉTÉ toute entière (`border` retombe à `initial`,
+    // `border-style: none`) — c'est la barre d'outils NUE de l'image du fondateur.
+    // La rubrique est donc déclarée sur les deux hôte, et les nombres restent écrits
+    // une fois (c'est la portée qui est dupliquée, pas la cote).
+    const hôte = CSS.search(/\.abs-cal \{\s*--abs-pli-pas/)
+    expect(CSS.slice(hôte - '.abs-page,\n'.length, hôte)).toBe('.abs-page,\n')
+    // le compte ne prend plus de rangée pour lui : il est dans la rive droite du
+    // bandeau, et son style objet a disparu de la page avec sa ligne.
+    expect(PAGE).toContain('className="abs-outils-compte"')
+    expect(PAGE).not.toContain('S.resultCount')
+    expect(FEUILLE).toContain('.abs-outils-compte {')
+    // en Planning, c'est le plateau qui écrit le bilan : le compte de la page n'y a
+    // pas sa place (deux écritures du même nombre, et c'est la retouche qui les
+    // sépare — la loi du verrou 17, appliquée à la page).
+    expect(PAGE).toMatch(/viewMode !== 'planning' && \(\s*<div className="abs-outils-compte"/)
+    // et le repli reste permis, mais écrit une seule fois : la media lève le nowrap
+    const media = FEUILLE.slice(FEUILLE.indexOf('@media (max-width: 650px) {\n  .abs-outils-vue span'))
+    const relevé = nud(media.slice(0, media.indexOf('\n}') + 2))
+    expect(relevé).toContain('.abs-outils-gauche,')
+    expect(relevé).toContain('flex-wrap:wrap')
+    // la media ne fait QUE lever le nowrap : elle n'écrit aucune largeur nouvelle,
+    // sinon le nombre vivrait deux fois (une par écran) — la loi de la page.
+    expect(relevé).toContain('.abs-outils-champ{flex-basis:100%;max-width:none}')
+  })
+
+  it('34. la colonne d\'identité rend l\'air que la pince lui prenait', () => {
+    // LA MESURE, 13/12 : « optimise l'espace pour moins scroller ». La capture du
+    // plateau rendait le prénom réduit à trois points de suspension : la colonne
+    // d'identité est une cote du dessin (252, x 54..305, partagée entre le nom ET la
+    // pince), et chaque ligne payait en plus une pince au gabarit de la case
+    // d'entête — 30 relevés à x 1143..1173 sur le bandeau. La planche, elle, ne se
+    // réduit pas : c'est une mesure de période, ses bords sont la vérité du
+    // calendrier (verrou 32). C'est donc la pince qui rend l'air, et rien d'autre.
+    expect(COMPOSANT).toContain('const LARGEUR_EMPLOYE = 252')
+    const tete = nud(corps('.abs-pli-tete'))
+    expect(tete).toContain('width:var(--abs-pli-employe)')
+    // la pince de ligne est un carré DÉDUIT (la case moins un pas de pile = 22),
+    // pas une recopie du gabarit du bandeau : deux largeurs écrites à la main, et
+    // c'est la retouche qui les sépare.
+    const pince = nud(corps('.abs-pli-plier'))
+    expect(pince).toContain('width:var(--abs-pli-pince)')
+    expect(pince).toContain('height:var(--abs-pli-pince)')
+    expect(cote('--abs-pli-case')).toBe(30)
+    expect(cote('--abs-pli-pli')).toBe(8)
+    // et la case d'entête, elle, garde sa cote : le bandeau est dans le dessin, la
+    // ligne ne l'est pas. Un `--abs-pli-pince` qui remplacerait les deux serait une
+    // égalité fausse, écrite pour éviter une discussion.
+    const caseTete = nud(corps('.abs-pli-deplier input'))
+    expect(caseTete).toContain('width:var(--abs-pli-case)')
+    expect(caseTete).not.toContain('--abs-pli-pince')
+    // le mot du prénom garde sa priorité : c'est la troncature qui paie l'espace
+    expect(nud(corps('.abs-pli-nom'))).toContain('min-width:0')
   })
 })
