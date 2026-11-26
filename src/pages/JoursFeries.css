@@ -2058,7 +2058,12 @@
   --jf-feutre-2: 8px 9px 0 0 color-mix(in srgb, var(--charte-encre) 20%, transparent);
   --jf-trait: 2px solid var(--charte-encre);
   --jf-radius-capsule: 999px;
-  --jf-radius-piece: 999px;
+  /*  Le galet d'une pièce cousue : un ovale large, PAS un cercle. Il valait
+      999 px — j'avais posé cette valeur pour ne pas sortir de la liste de
+      rayons de la charte, et la modale (qui lit le même jeton) est devenue un
+      disque où l'on ne voyait rien. Sa capture du 26/11 est la preuve : le
+      panneau se refermait sur le titre et sur les boutons. */
+  --jf-radius-piece: 34px;
 
   background: var(--charte-sable);
   color: var(--charte-encre);
@@ -3838,4 +3843,125 @@
 @media (max-width: 900px) {
   .jf-entete .jf-entete-droite { grid-column: 1 / -1; grid-row: 3; justify-content: flex-start; }
   .jf-seuil-item { padding: 0 12px; }
+}
+
+/* ═══ LE SEUIL : PLUS COURT, ET LE BANDEAU QUI L'ENTOURE (image 4) ═════════
+
+     Sa demande : « Réduis ce bloc, et je veux que le bandeau motif en haut
+     puisse entourer ce bloc ».
+
+     Le bloc, c'est le seuil — Entreprise / Année / Prochain. Il était haut
+     parce qu'il portait aussi les raccourcis ; ceux-ci sont partis, mais il
+     avait gardé leurs 11 px de marge et son interligne de carte. Il devient
+     une BANDE : une seule ligne, 44 px, posée juste sous le bandeau.
+
+     « Entourer » pris au mot : le bandeau culturel n'est plus une frise
+     collée en haut de page, il devient le CADRE du seuil. On ne change pas
+     son dessin — c'est le même motif, la même hauteur, les mêmes SVG — on
+     change sa place : il fait le tour de la bande, sur ses quatre côtés, et
+     la bande vient se loger dedans. */
+.jf-seuil-bandeau {
+  position: relative;
+  margin: 0 30px;
+  padding: 0;
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-sable);
+  border: var(--jf-trait);
+  box-shadow: var(--jf-feutre-1);
+  overflow: hidden;
+}
+/*  le bandeau en haut … */
+.jf-seuil-bandeau > .ec-cultural-band {
+  position: static;
+  display: block;
+  width: 100%;
+  height: 27px;
+  min-height: 27px;
+  border-radius: 0;
+  flex: none;
+}
+/*  … et le même, retourné, en bas : c'est ce qui fait le tour complet.
+     C'est le MÊME composant, avec son SVG et son motif — pas un dégradé
+     recopié, qui aurait dérivé au premier changement de bandeau. */
+.jf-seuil-bandeau > .ec-cultural-band:last-child {
+  transform: scaleY(-1);
+}
+
+/*  La bande du seuil, maintenant étroite et basse. */
+.jf-seuil {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 9px 20px;
+  border: 0;
+  border-radius: 0;
+  background: var(--charte-surface);
+  box-shadow: none;
+  min-height: 44px;
+}
+.jf-seuil-gauche {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.jf-seuil-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  min-width: 0;
+}
+.jf-seuil-item:first-child { padding-left: 0; }
+.jf-seuil-item + .jf-seuil-item { border-left: 1px solid var(--charte-bordure); }
+.jf-seuil-libelle {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--charte-encre-douce);
+}
+.jf-seuil-valeur {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--charte-encre);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/*  le logo de l'entreprise : un rond d'encre, comme les pastilles du rail */
+.jf-seuil-logo {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface2);
+  color: var(--charte-encre);
+  overflow: hidden;
+}
+
+/*  Le seuil quitte la grille de l'en-tête : il vit dans son cadre, sous
+     l'en-tête, et l'en-tête reprend ses quatre colonnes. */
+.jf-entete {
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  padding-bottom: 0;
+}
+.jf-entete .jf-seuil { grid-column: auto; }
+
+@media (max-width: 900px) {
+  .jf-seuil-bandeau { margin: 0 14px; }
+  .jf-seuil { flex-wrap: wrap; gap: 8px 0; padding: 10px 14px; }
+  .jf-seuil-gauche { flex-wrap: wrap; gap: 8px 0; }
+  .jf-seuil-item { padding: 0 12px; }
+  .jf-seuil-item:nth-child(3) { padding-left: 0; border-left: 0; }
+  .jf-seuil-bandeau > .ec-cultural-band { height: 22px; min-height: 22px; }
 }
