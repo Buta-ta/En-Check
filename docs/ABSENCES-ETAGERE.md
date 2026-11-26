@@ -470,3 +470,151 @@ document qui réécrit son histoire ne permet plus de savoir quelle erreur a ét
 | `npx vite build` | ✓ | ✓ (22 entrées precachees) |
 | `npm run charte` | 4 488 · 126 · 332 · 63/42/27 | à vérifier ci-dessous, aucun hex ajouté |
 | portée du patch | — | `AbsencesCalendrier.jsx` (les deux rives de la planche, la branche `nbJours === 1`), `AbsencesAfroTech.css` (rubrique de corde : six cotes, l'entête à 76, le lavage dans l'entête, la barre du solde, quatre tailles de lettre), `absencesCalendrierCorde.test.jsx`, `absencesCalendrierModes.test.jsx` |
+
+---
+
+# Le pli (10/12) — la corde est déposée
+
+Le fondateur, après la seconde copie : « **tu ne réussis pas à exactement faire comme
+la maquette. retravaille ça et utilise la 2e maquette comme modèle** ». Et sur la
+structure, laissé plus tôt dans la même journée : « la tringle, les anneaux, la
+corde, tout ça tu peux le remplacer si ça ne colle pas au dessin ».
+
+C'est la phrase que je n'avais pas entendue. Depuis trois tours je **re-cotais la
+corde** : le fil à 21, l'anneau à la borne de cellule, la descente de 14, les
+cordons à douze du bord — des nombres exacts, relevés sur une image qui n'était plus
+le modèle. `maquettes/absences-grille-1-corde.png` est la maquette 1. Le modèle est
+`maquettes/absences-grille-2-pli.png`, 1 376 × 768, et il ne contient **ni corde, ni
+anneau, ni carte suspendue**. La différence n'est pas un habillage : le second dessin
+ne suspend rien du tout.
+
+## Le plateau, et rien d'autre autour
+
+Le canevas se lit d'abord par ses règles. Un plateau : montant gauche x 50-52,
+montant droit x 1326-1329, règle haute y 199-202, règle basse y 680-683, toutes de
+**trois**, posé sur le sable de la page — il n'y a plus de carte blanche derrière le
+calendrier, et le sable des deux côtés du plateau est le même (243, 232, 212) :
+**pas de zébrage d'alternance**. Dehors, à gauche, l'encre grise le sable de
+L 233 à 168-180 sur huit pixels : c'est une **ombre dure**, `6px 6px 0 0`, jamais
+floue (C9). Le dessin en repète un second décalage à x 1333-1337 et un trait isolé à
+x 1341 — la plaque du montant droit, pas une règle de plus.
+
+Le bas du plateau n'est pas une règle simple : **deux traits**, y 594-597 et
+y 601-603, avec quatre pixels d'air entre les deux. C'est le **pli**. Sous lui, une
+bande de 76 (604..680) : le registre.
+
+| ce que le dessin mesure | la cote | ce que ça devient dans la feuille |
+|---|---|---|
+| pas de ligne : règles à y 200, 278, 355, 433, 511 | **78** | `--abs-pli-pas: 78px`, et le `min-height` de la ligne = pas + (rangs − 1) × empilement |
+| colonne d'employé : x 53 → 305, **une seule coupure** du rang | **252** | `LARGEUR_EMPLOYE = 252`, relu par l'entête (`width: var(--abs-pli-employe)`) — le même jeton, deux usages |
+| champ des jours x 305 → 1320, sept cellules | **145 par jour** | les étiquettes sont centrées DANS la cellule : le champ court sous la jauge, la jauge se pose à sa rive |
+| traits de jour tous les 48,3 px | **le tiers de la cellule**, deux fois 22, teinte `--charte-bordure` | `--abs-pli-tiers: 3` en `background-size` : un fond, pas trente et un éléments |
+| planche y 220..259, cerne 3, bouts ~8 | **40**, encre **3** | `--abs-pli-planche`, `--abs-pli-encre` |
+| ligne 2 « Maladie · 1 j » : x 590..752 pour une cellule 595..740 | débords **17 gauche / 12 droite** | la planche se pose sur les **bords** des cellules, plus aux centres |
+| rive gauche : encre x 321 @ y 220 → 302 @ y 240 → 318 @ y 258, fente claire x 320-322 sur y 234..244 | **pointe de ruban de 16** + caret ‹ crème | `--abs-pli-pointe: 16px`, un carré tourné en `::before` sous la planche (`z-index: -1`), le glyphe `‹` dedans ; aucune pointe si la journée est née avant la fenêtre |
+| rive droite à 8 px de la fin du jour | **8** | `--abs-pli-rive: 8px`, même à la dernière cellule du champ |
+| refusée : cerne **pointillé**, aucun brun (244, 233, 213 à x 764), « REFUSÉE » x 772..860, y 415..427 | capitale 13, **sous le trait, à sa droite** | `[data-trait='barré']` déremplit la planche et `.abs-pli-statut` écrit le mot hors du cerne |
+| conflit de pointage : carré de corail x 586..597 pour une rive à 595 | **11-13 px centré sur la rive gauche** | `--abs-pli-noeud: 13px`, `left: calc(-1 * noeud/2 - encre/2)` |
+| lavage du jour : x 591..734, y 150 (dans l'entête) → 594, (217,195,177) sur (243,232,212) | **UNE cellule**, ambre à **0,26**, et il ne descend pas dans le registre | `--abs-pli-lavage: 1`, `--abs-pli-opacité: 0.26`, `--abs-pli-ciel: 27` (76 − 49) |
+| plomb d'encre x 655-658, à l'aplomb du centre du jour 662, toutes rangées, **sous les planches**, nulle part ailleurs | **3 px** | `--abs-pli-plomb: 3px`, même `left` que le lavage et que l'étiquette |
+| hachures de week-end à la rive droite de l'entête, x 1133..1177 et 1270..1323 | **40 × 37**, pas de 7, traits de 3 à 45°, **mordant de 3 sur la règle** | `.abs-cal-jour[data-weekend]::after` en `repeating-linear-gradient`, `bottom: calc(-1 * var(--abs-pli-rule))` |
+| jauge : pilule x 1179..1222, y 231..249, cerne 2, argile à gauche, nue à droite ; « + 26/30 » écrit **à côté**, x 1225..1299 | **43 × 19**, plaquette **147**, repli du nombre **27** | `--abs-pli-jauge`, `LARGEUR_SOLDE = 147`, `LARGEUR_SOLDE_REPLI = 27` — la plaquette est peinte à la rive du champ, ce n'est plus une colonne |
+| registre : pastilles à x 74, 190, 306, 429, 557, 683, 811, 943, **coin replié 18 × 18** (x 126..144, y 649..667) | pas de 125, pastille de **51**, huit puces | `--abs-pli-carré: 51px`, `--abs-pli-coin: 18px`, `--abs-pli-écart: 74px` (125 − 51) |
+| « 9 · rien à signaler » x 1121..1307, capitale 20 | le 9 est un **compteur**, pas le nombre de puces | `.abs-pli-compte` relit `sansObjet.length` : il ne se recopie pas du dessin |
+
+Ce que le dessin ne dit pas, et que je n'ai donc pas inventé : les prénoms, les
+soldes et les motifs réels (des taches), le remplissage des chômés dans les lignes
+(les traits de crayon suffisent), et le ✏️ de la refusée. Le **nombre** de traits par
+jour, lui, est pris au mot : trois, pas un.
+
+## Un seul chiffre pour deux usages, encore
+
+La dérive du 25/11 (−8 px au lundi, −97 px au dimanche) venait d'une cote écrite deux
+fois. Le pli a les mêmes couples, et ils sont verrouillés dans
+`absencesCalendrierPli.test.jsx` (verrous 10 et 12) :
+
+* la **coupure** du rang : `--abs-pli-employe` pour l'entête ET pour la tête de ligne,
+  plus aucun `calc` de rattrapage ;
+* le **repère du jour** : le lavage, le plomb et l'étiquette de l'entête lisent le même
+  `left` (le test vérifie que l'ensemble des `left` rendus a une seule valeur) ;
+* la **hauteur de ligne** : `--abs-pli-empilement` sert à la montée de la planche et
+  au `min-height` de la ligne — et le rang 0 ne se centre pas dans la ligne, c'est le
+  **bloc** des rangs qui se centre (`--abs-pli-décalage`), sinon la seconde planche
+  touchait la règle du dessous ;
+* le **solde** : `LARGEUR_SOLDE` (147) est à la fois le plancher de défilement et la
+  largeur de la plaquette.
+
+Et le mot du statut reste un mot : `la carte reste crème cerclée d'encre`, seule la
+**pointe** de ruban et le **lavage** apportent de la couleur, le trait dit le statut.
+La feuille ne connaît d'ailleurs plus les noms de statut — elle lit `data-trait`
+(`plein`, `pointillé`, `barré`), posé d'après `styleBarreAbsence` ; écrire
+`en_attente` dans le CSS eût été redémarrer la loi à partir de sa liste de mots.
+
+## Le pli se ferme, et ne dit pas plus qu'il ne fait
+
+Les lignes sans absence se replient sous la double règle. Trois décisions, toutes
+prises contre une facilité :
+
+* le registre **n'est pas un bouton**. Le dessin ne lui prête aucun geste, et rien n'a
+  de fiche à ouvrir quand la période est vide : c'est un `<span>` avec un `title`, et
+  la feuille n'a ni `cursor` ni `:hover` dessus. Le verrou 16 vérifie le balisage.
+* « Déplier tout » est une **case de l'entête de grille**, pas un billet pendu à la
+  tringle : `masquerSansAbsence` sort du composant, le billet sort de la tringle, et
+  le verrou 11 de la tringle vérifie l'absence de l'ancien `data-testid`.
+* le pli **ne se ferme pas en mode jour**. Le second étage du dessin est une semaine ;
+  la feuille du jour a déjà son « Présents (n) », et un registre en dessous répéterait
+  la même liste sous une autre forme. La loi de l'étage — `lignes + sansObjet =
+  toutesLesLignes` — est gardée par le verrou 17 (en mois : 3 lignes + 1 puce =
+  4 employés) et par le verrou 19 (en jour : 4 lignes, aucune puce).
+
+## Les chiffres du contrôle (10/12)
+
+| mesure | la seconde copie | **le pli** |
+|---|---|---|
+| `npx vitest run` | 200 · 2 839 ✓ | **200 · 2 843 ✓** (0 échec) — pli **28** verrous, tringle 23 (dont le 11, qui vérifie maintenant l'ABSENCE du billet), modes 21, rendu 10 |
+| `npm run charte` | à vérifier ci-dessous | **inchangé** : 4 488 couleurs en dur · 126 ombres floues · 332 rayons hors liste, et 64 tailles · 42 marges · 27 rayons — vérifié en relançant le même comptage sur l'arbre de `HEAD` et sur celui d'aujourd'hui : **aucune valeur ajoutée** (le VERDICT reste NON CONFORME, il l'était avant) |
+| fichier de la grille | `absencesCalendrierCorde.test.jsx`, 24 verrous | `absencesCalendrierPli.test.jsx`, 28 verrous — le fichier est **renommé**, pas doublé : la corde n'existe plus dans la feuille |
+| bornage de la tringle | s'arrêtait à `--abs-corde-fil` | s'arrête à `--abs-pli-pas`, avec son `throw` ; les rails `--abs-corde: 30px` et leurs anneaux **restent**, ils ne sont pas de la grille |
+| modes | verrou 18 sur `--abs-corde-aile` | verrou 18 sur `--abs-pli-pointe` / `--abs-pli-rive`, et la branche `nbJours === 1` (les deux rives à 2 px) |
+| portée du patch | — | `AbsencesCalendrier.jsx` (largeurs 252/147/27, `déplierTout`, `toutesLesLignes`, planches aux bords, registre, légende), `AbsencesAfroTech.css` (la rubrique de corde remplie par la rubrique du pli), `absencesCalendrierPli.test.jsx`, `…Tringle`, `…Modes` |
+
+## Trois cotes relevées après coup, sur mon propre rendu
+
+La première passe du pli était cotée sur le fichier du dépôt. En rouvrant les deux
+images côte à côte (le dessin et `image-116`, la copie que le fondateur a renvoyée),
+trois choses sont tombées — et les trois se mesuraient dans la bande du haut, celle
+que je ne regardais plus.
+
+| ce que j'avais posé | la mesure | ce qui a bougé |
+|---|---|---|
+| la case « Déplier tout » à **20 × 20**, à seize du montant droit | **30 × 30**, cerclés de **3**, coins de 6, **vide de fond** (le centre lit (244, 234, 216), le sable) ; douze pixels jusqu'au mot, et le mot finit à **x 1323** pour un montant à 1326 | `--abs-pli-case: 30px`, `right: 0`, `gap: espace-3`, `background: transparent`. À seize du bord, la ligne de compte ne tombait plus d'aplomb avec le montant droit du plateau |
+| l'entête de la colonne des prénoms écrit « EMPLOYÉ · 5 » | **rien** : x 53..305 sur y 165..192 ne contient pas un pixel d'encre. Le compte se lit **une** fois, dans la ligne du haut, centré sur le champ (x 447..930 pour un champ de 53..1320, centre 688 vs 686) | le caption et son icône sortent du composant, la `<div>` reste comme spacer de largeur. Un nombre écrit deux fois se contredit à la première retouche — c'est LA loi de l'étage, et je l'avais violée moi-même |
+| la planche bornée par ses deux rives, avec une « aile » de seize pixels pour qu'une journée déborde | le dessin ne déborde pas pour faire joli : sa planche d'une journée fait **163 de corps** (x 590..752) parce que son étiquette fait 115 et réclame dix à gauche, seize à droite. Sa planche de trois jours, elle, **s'arrête** à x 735 pour une dernière cellule morte à 740 | `left` + `right` donnent le CADRE des jours ; `min-width: max-content` laisse le mot pousser la planche, et `max-width: calc(100% - var(--abs-pli-entree) - 2px)` la borne au mur. **`--abs-pli-aile` est supprimé** : c'était une déduction, pas une mesure — le jeton d'une largeur que je déduisais au lieu de la lire |
+
+Et le mot du statut, dans tout ça : je l'écrivais **à droite du cerne**, hors de la
+planche. Le dessin le pose **sous le trait, aligné à sa rive droite** — sa REFUSÉE
+court de x 772 à x 860 pour une enveloppe finissant à x 879 (dix-neuf pixels de
+retrait, soit `espace-4` + le cerne), son sommet à y 415 pour un trait bas à y 408.
+Le mot est donc dans l'empreinte de la planche, en capitales micro (le dessin mesure
+treize, la charte offre onze et quatorze — et quatorze avec leur interligne
+franchissait la règle du bas). `data-rive`, l'attribut qui retournait le mot quand il
+touchait le bord du champ, est mort avec la règle qui s'en servait : un attribut que
+plus personne ne lit est une promesse de plus.
+
+## Ce qui reste ouvert, à dire
+
+* **la nuit.** Les règles du pli sont écrites sur les teintes du jour et ne portent
+  aucun `@media` de thème : le passage en nuit (sable → `#1C1109`, encre → `#F3E9DA`)
+  garde le cerclage, mais le **lavage** à 0,26 sur un fond sombre et l'ombre dure en
+  `--charte-bordure` demandent un relevé — le dessin n'a qu'un thème, je ne
+  l'invente pas.
+* **l'échelle.** Le dessin donne **145 px par jour** sur son canevas de 1 376 ; la
+  maison rend `LARGEUR_JOUR_SEMAINE = 108` (et 36 en mois, 460 en jour). Le pas de
+  ligne, la planche, la pointe, les hachures sont pris au mot ; la largeur du jour,
+  non — c'est le seul endroit où j'ai laissé une proportion de la maison plutôt
+  qu'une mesure du dessin, et le goût est à dire : à 108, une journée de congé fait
+  cent huit pixels, pas cent quarante-cinq.
+* **les trois largeurs de coupure** (1 560 / 900 / 360) : à 360 px, la media ne
+  déplace rien, elle borne le prénom (110) et raccourcit la jauge de moitié. Le
+  plateau défile. Tenir sept colonnes d'aplomb sans colonne de solde réelle — est-ce
+  que ça se lit encore, ou faut-il passer le champ en `min-width: 0` sec ?
