@@ -5785,492 +5785,427 @@
   }
 }
 
+
 /* ═══════════════════════════════════════════════════════════════════════════
-   LA PAUSE-CAFÉ — la section analytique (26/11, maquette B retenue)
+   LA PAUSE-CAFÉ — la section analytique, d'après la maquette B
    ═══════════════════════════════════════════════════════════════════════════
 
-   CE QUI CHANGE. Les quatre tuiles, l'histogramme, le donut et le journal
-   étaient des cartes à angles droits, aux dégradés mous et aux ombres
-   floues : le vocabulaire générique d'un tableau de bord. Une pause, dit
-   la maquette, c'est une TASSE. Alors la section parle ce langage-là :
+   CE QUE LA MAQUETTE DEMANDE, ET QUE JE N'AVAIS PAS FAIT. Regardée de près,
+   elle ne contient presque AUCUNE carte : les tasses, la planche et la
+   serviette sont des OBJETS posés sur le papier, sans cadre autour. J'avais
+   gardé des tuiles encadrées, des tasses petites et une planche pâle — d'où
+   l'impression de ne pas respecter le rendu.
 
-     · les quatre KPI ......... quatre tasses sur leur soucoupe
-     · l'activité horaire ..... une planche de service, douze cuillères
-     · la répartition ......... une tasse vue de dessus (la crème, le donut)
-     · le journal ............. une serviette à franges
+   Ce que fait cette feuille :
 
-   Tout est dessiné par la charte : `--charte-encre` pour le trait,
-   `--charte-surface` pour la porcelaine, `--charte-surface2` pour la
-   planche, `--charte-aplat` pour l'action. Aucune teinte nouvelle n'est
-   écrite ici — le thème sombre bascule tout seul.
+     · les quatre KPI ne sont plus des cartes mais QUATRE TASSES posées sur
+       le fond, chacune avec sa pastille d'icône, sa soucoupe et son
+       étiquette colorée. Aucune bordure de tuile.
+     · la planche de service est un OBJET : bois franc (`--charte-aplat` très
+       clair tenant de l'argile), deux trous, ombre dure, bouts arrondis.
+     · la répartition est une tasse vue de dessus, posée à droite du panneau,
+       avec ses trois étiquettes de légende à cheval.
+     · le journal est une serviette à franges, sans carte non plus.
 
-   RÈGLE TENUE ICI : aucun angle droit. Chaque boîte est un cercle, une
-   pastille (`999px`) ou une tuile à rayon de la charte (12 px).
+   Toutes les teintes passent par la charte : encre, surface, surface2,
+   aplat, succes, erreur, douce. Rien en dur.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /*  ── 1 · LES QUATRE TASSES ─────────────────────────────────────────────── */
 
-/*  La tuile redevient une soucoupe : fond porcelainé, trait d'encre, ombre
-    dure. Le `overflow: hidden` du JSX est parti — il coupait l'anse. */
+/*  Plus de grille de cartes : quatre colonnes nues, larges, qui laissent
+    respirer les objets. */
 .pauses-v2-kpi-grid {
-  gap: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 26px;
+  margin-bottom: 26px;
+  align-items: start;
 }
 
-.pauses-v2-kpi-card {
-  --pv-kpi-teinte: var(--charte-aplat);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 16px 18px 15px;
-  overflow: visible;
-  text-align: left;
-  border: var(--charte-trait) solid var(--charte-encre);
-  border-radius: var(--charte-rayon-tuile);
-  background: var(--charte-surface);
-  box-shadow: var(--charte-ombre-dure);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-}
-
-/*  La soucoupe : un ovale pâle posé sous la tasse, et la goutte de café
-    qui a manqué la tasse. Deux pseudo-éléments, aucune balise de plus. */
-.pauses-v2-kpi-card::before {
-  content: '';
-  position: absolute;
-  right: 12px;
-  bottom: 42px;
-  left: 12px;
-  height: 20px;
-  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 26%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--charte-surface2) 55%, transparent);
-  pointer-events: none;
-}
-.pauses-v2-kpi-card::after {
-  content: '';
-  position: absolute;
-  top: 9px;
-  right: 13px;
-  width: 9px;
-  height: 9px;
-  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.pauses-v2-kpi-card:hover {
-  transform: translate(-1px, -2px);
-  box-shadow: 4px 5px 0 0 var(--charte-encre);
-}
-
-/*  Les quatre teintes : le trait de la tasse et le remplissage de la barre.
-    Elles LISENT la charte — l'ambre et le corail n'existent pas dans la
-    palette, on prend donc l'argile et l'erreur, qui disent la même chose
-    (une matière chaude, une alerte). */
+/*  La tuile s'efface : plus de fond, plus de bord, plus d'ombre. Elle reste
+    un <button> (donc cliquable et accessible), mais elle ne SE VOIT plus. */
+.pauses-v2-kpi-card,
 .pauses-v2-kpi-card.is-amber,
 .pauses-v2-kpi-card.is-emerald,
 .pauses-v2-kpi-card.is-copper,
 .pauses-v2-kpi-card.is-coral {
-  border-color: var(--charte-encre);
-  background: var(--charte-surface);
-}
-.pauses-v2-kpi-card.is-amber { --pv-kpi-teinte: var(--charte-aplat); }
-.pauses-v2-kpi-card.is-emerald { --pv-kpi-teinte: var(--charte-succes); }
-.pauses-v2-kpi-card.is-copper { --pv-kpi-teinte: var(--charte-texte); }
-.pauses-v2-kpi-card.is-coral { --pv-kpi-teinte: var(--charte-erreur); }
-
-.pauses-v2-kpi-card.is-amber.is-selected,
-.pauses-v2-kpi-card.is-emerald.is-selected,
-.pauses-v2-kpi-card.is-copper.is-selected,
-.pauses-v2-kpi-card.is-coral.is-selected {
-  border-color: var(--charte-encre);
-  box-shadow: var(--charte-ombre-dure), inset 0 0 0 2px var(--pv-kpi-teinte);
-}
-
-/*  La boîte de la tasse : c'est elle qui porte le chiffre. */
-.pauses-v2-tasse-boite {
+  --pv-kpi-teinte: var(--charte-aplat);
   position: relative;
-  align-self: center;
-  width: 152px;
-  max-width: 100%;
-  margin: 2px 0 8px;
-  color: var(--pv-kpi-teinte);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  overflow: visible;
+  text-align: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
 }
 
-.pauses-v2-tasse {
+.pauses-v2-kpi-card.is-amber { --pv-kpi-teinte: var(--charte-alerte); --pv-kpi-fond: var(--charte-surface2); }
+.pauses-v2-kpi-card.is-emerald { --pv-kpi-teinte: var(--charte-succes); --pv-kpi-fond: var(--charte-succes); }
+.pauses-v2-kpi-card.is-copper { --pv-kpi-teinte: var(--charte-aplat); --pv-kpi-fond: var(--charte-aplat); }
+.pauses-v2-kpi-card.is-coral { --pv-kpi-teinte: var(--charte-erreur); --pv-kpi-fond: var(--charte-erreur); }
+
+/*  Au survol, ce n'est plus une carte qui se soulève : c'est la tasse qui
+    se penche d'un demi-degré. */
+.pauses-v2-kpi-card:hover .pauses-v2-tasse-dessein,
+.pauses-v2-kpi-card:focus-visible .pauses-v2-tasse-dessein {
+  transform: rotate(-1.2deg) translateY(-2px);
+}
+
+/*  Aucune des décorations de carte d'avant (soucoupe peinte, goutte). */
+.pauses-v2-kpi-card::before,
+.pauses-v2-kpi-card::after {
+  content: none;
+}
+
+/*  LE DESSIN DE LA TASSE. Trois SVG superposés : vapeur, corps, soucoupe.
+    La boîte est le repère ; le chiffre et la pastille se posent dessus. */
+.pauses-v2-tasse-dessein {
+  --pv-tasse-porcelaine: var(--charte-surface);
+  position: relative;
+  width: 100%;
+  max-width: 236px;
+  padding-top: 34px;
+  color: var(--pv-kpi-teinte);
+  transition: transform 0.18s ease;
+}
+
+.pauses-v2-tasse-vapeur-svg {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 46px;
+  height: 34px;
+  transform: translateX(-62%);
+  color: var(--pv-kpi-teinte);
+  opacity: 0.9;
+}
+
+.pauses-v2-tasse-corps-svg {
+  position: relative;
   display: block;
   width: 100%;
   height: auto;
-  overflow: visible;
 }
 
-/*  Le chiffre s'imprime SUR la panse, un peu au-dessus du niveau. */
+.pauses-v2-tasse-soucoupe {
+  display: block;
+  width: 122%;
+  height: auto;
+  margin: -10px 0 0 -11%;
+  color: var(--pv-kpi-teinte);
+}
+
+/*  Le chiffre, imprimé sur la panse : gros, en encre, comme les « 00 » de la
+    maquette. */
+.pauses-v2-tasse-boite {
+  position: relative;
+  align-self: center;
+  width: 100%;
+  max-width: 236px;
+  margin: 0 auto;
+  color: var(--pv-kpi-teinte);
+}
+
 .pauses-v2-tasse-boite .pauses-v2-kpi-number {
   position: absolute;
-  top: 46%;
-  left: 46%;
+  top: 58%;
+  left: 47%;
   transform: translate(-50%, -50%);
-  color: var(--pv-kpi-teinte);
-  font-size: 2.35rem;
+  color: var(--charte-encre);
+  font-size: 2.9rem;
   font-weight: 850;
   line-height: 1;
   letter-spacing: -0.04em;
-  text-shadow: 0 1px 0 var(--charte-surface);
+  font-variant-numeric: tabular-nums;
 }
 
+/*  La pastille d'icône, posée sur le bord haut droit de la tasse. */
+.pauses-v2-tasse-pastille {
+  position: absolute;
+  top: 30px;
+  left: 61%;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: var(--pv-kpi-fond);
+  border: 2.5px solid var(--charte-encre);
+  border-radius: 50%;
+  background: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.pauses-v2-kpi-card.is-emerald .pauses-v2-tasse-pastille,
+.pauses-v2-kpi-card.is-copper .pauses-v2-tasse-pastille,
+.pauses-v2-kpi-card.is-coral .pauses-v2-tasse-pastille {
+  background: var(--charte-surface);
+}
+
+/*  L'ÉTIQUETTE : une pastille colorée, sous la soucoupe, comme dans la
+    maquette. C'est elle qui porte le nom du compteur. */
 .pauses-v2-kpi-top {
   position: relative;
   z-index: 1;
   display: block;
-  margin-top: auto;
+  width: 100%;
+  margin-top: 8px;
 }
 
 .pauses-v2-kpi-label {
-  display: block;
-  margin-top: 0;
+  display: inline-block;
+  margin: 0;
+  padding: 7px 20px;
+  color: var(--charte-blanc);
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  border: 2px solid var(--charte-encre);
+  border-radius: 999px;
+  background: var(--pv-kpi-fond);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.pauses-v2-kpi-card.is-amber .pauses-v2-kpi-label {
   color: var(--charte-encre);
-  font-size: 0.86rem;
-  font-weight: 750;
-  letter-spacing: 0.005em;
+  background: var(--charte-surface2);
 }
 
-/*  La barre de progression devient un trait de crayon sur la soucoupe :
-    plus courte, plus fine, et elle ne touche pas les bords. */
+/*  Le pourcentage : posé à droite de la soucoupe, petit. Plus de barre de
+    progression — la maquette n'en a pas, et une jauge sous une tasse vide
+    n'apportait rien. */
 .pauses-v2-kpi-bar-row {
-  position: relative;
-  z-index: 1;
-  gap: 8px;
-  margin-top: 8px;
+  width: 100%;
+  margin-top: 7px;
+  gap: 0;
 }
 .pauses-v2-kpi-track {
-  height: 6px;
-  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 22%, transparent);
-  background: transparent;
-}
-.pauses-v2-kpi-fill {
-  /*  aucune donnée = aucun trait : on ne ment pas sur un remplissage */
-  background: var(--pv-kpi-teinte) !important;
+  display: none;
 }
 .pauses-v2-kpi-pct {
+  margin: 0 auto;
   color: var(--charte-douce);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 800;
 }
 
+/*  Le détail « en direct » reste sous l'étiquette, discret. */
 .pauses-v2-kpi-live-sub {
-  border: 1px solid color-mix(in srgb, var(--charte-encre) 20%, transparent);
-  background: var(--charte-surface2);
+  display: inline-flex;
+  margin-top: 6px;
+  padding: 2px 9px;
   color: var(--charte-encre);
-  font-size: 0.7rem;
-}
-
-/*  L'Adinkra de fond : il était dans un coin de carte, il devient un motif
-    de porcelaine, très faible, sous la tasse. */
-.pauses-v2-kpi-card .pointages-kpi-watermark {
-  right: 50%;
-  bottom: 34px;
-  width: 132px;
-  height: 132px;
-  transform: translateX(50%);
-  color: var(--charte-encre);
-  opacity: 0.05;
-}
-
-/*  ── 1 bis · LA GÉOMÉTRIE DE LA TASSE, MESURÉE ──────────────────────────
-    Trois choses ne collaient pas au premier jet :
-      · l'Adinkra de fond tombait PILE derrière la tasse et faisait une
-        tache grise — il descend sur la soucoupe, en trait de crayon ;
-      · la soucoupe était posée à 42 px du bas, donc SOUS le libellé ;
-        elle remonte juste sous la tasse ;
-      · le chiffre touchait la vapeur — un peu plus bas, sur la panse. */
-.pauses-v2-kpi-card .pointages-kpi-watermark {
-  right: 50%;
-  bottom: 74px;
-  width: 118px;
-  height: 118px;
-  transform: translateX(50%);
-  color: var(--charte-encre);
-  opacity: 0.06;
-}
-
-/*  La soucoupe : un trait fin + un lavis, juste sous la tasse. */
-.pauses-v2-kpi-card::before {
-  right: 20px;
-  bottom: 64px;
-  left: 20px;
-  height: 15px;
-  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 22%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--charte-surface2) 60%, transparent);
+  background: var(--charte-surface);
+  font-size: 0.68rem;
 }
 
-/*  Le grain de café, en haut à droite : plus discret, posé sur le fond. */
-.pauses-v2-kpi-card::after {
-  top: 11px;
-  right: 15px;
-  width: 7px;
-  height: 7px;
-  background: color-mix(in srgb, var(--charte-aplat) 16%, transparent);
-  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 26%, transparent);
+/*  L'Adinkra n'est plus une tache derrière la tasse : il redevient un motif
+    de porcelaine, très pâle, dans le corps de la tasse. */
+.pauses-v2-kpi-card .pointages-kpi-watermark {
+  right: 50%;
+  bottom: 96px;
+  width: 78px;
+  height: 78px;
+  transform: translateX(50%);
+  color: var(--charte-encre);
+  opacity: 0.045;
 }
 
-/*  Le chiffre descend sur la panse et respire. */
-.pauses-v2-tasse-boite .pauses-v2-kpi-number {
-  top: 60%;
-  left: 45%;
-  font-size: 2.15rem;
-  text-shadow: none;
-}
+/*  ── 2 · LA PLANCHE DE SERVICE ─────────────────────────────────────────── */
 
-/*  La tasse remonte un peu : la soucoupe a besoin de place sous elle. */
-.pauses-v2-tasse-boite {
-  margin: 0 0 16px;
-}
-
-/*  ── 2 · LA PLANCHE DE SERVICE (activité horaire) ─────────────────────── */
-
-/*  La planche : un bois clair, bout arrondi, deux trous de suspension.
-    On lit `--charte-surface2` (le lavis) et l'encre ; la texture vient de
-    deux rayures très légères, pas d'une image. */
+/*  Un objet, pas un panneau : bois franc, deux trous, ombre dure, bouts
+    arrondis. La teinte vient de l'argile de la charte, éclaircie — c'est le
+    seul endroit de la page où l'on voit du bois. */
 .pauses-v2-panel.pauses-v2-planche-service {
   position: relative;
   overflow: visible;
-  border: var(--charte-trait) solid var(--charte-encre);
+  padding: 24px 62px 30px 66px;
+  border: 2.5px solid var(--charte-encre);
   border-radius: 999px;
   background:
     repeating-linear-gradient(
-      98deg,
-      transparent 0 26px,
-      color-mix(in srgb, var(--charte-encre) 5%, transparent) 26px 27px
+      97deg,
+      transparent 0 30px,
+      color-mix(in srgb, var(--charte-encre) 6%, transparent) 30px 31px
     ),
-    var(--charte-surface2);
-  box-shadow: var(--charte-ombre-dure);
+    color-mix(in srgb, var(--charte-aplat) 44%, var(--charte-surface));
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
 }
 
-/*  Les deux trous, à hauteur du titre. */
 .pauses-v2-planche-trou {
   position: absolute;
-  top: 26px;
-  width: 11px;
-  height: 11px;
-  border: var(--charte-trait) solid var(--charte-encre);
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  transform: translateY(-50%);
+  border: 2.5px solid var(--charte-encre);
   border-radius: 50%;
   background: var(--charte-sable);
 }
-.pauses-v2-planche-trou--g { left: 18px; }
-.pauses-v2-planche-trou--d { right: 18px; }
+.pauses-v2-planche-trou--g { left: 24px; }
+.pauses-v2-planche-trou--d { right: 24px; }
 
-/*  Les cuillères : manche encre, cuilleron vide et pointillé tant qu'il n'y
-    a rien à compter. Elles prennent la teinte de la planche, pas l'or des
-    graphiques — elles sont dessinées, pas mesurées. */
-.pauses-v2-cuillere {
-  color: color-mix(in srgb, var(--charte-encre) 55%, transparent);
-  transition: color 0.16s ease;
-}
-.pauses-v2-cuillere.is-pleine { color: var(--charte-aplat); }
-.pauses-v2-hour-slot:hover .pauses-v2-cuillere,
-.pauses-v2-hour-slot:focus-visible .pauses-v2-cuillere { color: var(--charte-encre); }
-
-/*  Les libellés d'heure restent des libellés : on ne les habille pas. */
-
-/*  ── 3 · LA TASSE VUE DE DESSUS (répartition) ─────────────────────────── */
-
-.pauses-v2-tasse-dessus {
-  --pv-tasse-taille: 168px;
-  position: relative;
-  width: var(--pv-tasse-taille);
-  height: var(--pv-tasse-taille);
-  margin: 0 auto;
-  color: var(--charte-encre);
-}
-
-/*  L'anse : un croissant posé à droite, derrière la tasse. */
-.pauses-v2-tasse-dessus-anse {
-  position: absolute;
-  top: 50%;
-  left: 100%;
-  width: 46px;
-  height: 69px;
-  transform: translate(-14px, -50%);
-  color: color-mix(in srgb, var(--charte-encre) 72%, transparent);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/*  Le corps de la tasse : un disque porcelainé, cerclé d'encre, avec le
-    creux de la boisson marqué d'un filet. C'est ce creux qui porte le
-    graphique. */
-.pauses-v2-tasse-dessus > svg:last-of-type {
-  position: relative;
-  z-index: 1;
-  border-radius: 50%;
-  background: var(--charte-surface);
-  box-shadow:
-    0 0 0 var(--charte-trait) var(--charte-encre),
-    3px 3px 0 0 var(--charte-encre);
-}
-
-/*  Le chiffre au centre, dans la crema. */
-.pauses-v2-tasse-dessus .pointages-donut-center {
-  z-index: 2;
-}
-
-/*  ── 4 · LA SERVIETTE (journal des décisions) ─────────────────────────── */
-
-/*  Une serviette de table : fond lavis, franges en bas, léger grain.
-    Les lignes de décision restent des lignes — on ne met pas un tableau
-    dans une ondulation. */
-.pauses-v2-panel.pauses-v2-journal-panel {
-  position: relative;
-  border: var(--charte-trait) solid var(--charte-encre);
-  border-radius: var(--charte-rayon-tuile);
-  background: var(--charte-surface2);
-  box-shadow: var(--charte-ombre-dure);
-}
-
-/*  Les franges : un peigne de traits courts sous la serviette. */
-.pauses-v2-panel.pauses-v2-journal-panel::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: -9px;
-  left: 0;
-  height: 9px;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--charte-encre) 0 1.5px,
-    transparent 1.5px 9px
-  );
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-/*  ── 2 bis · LA PLANCHE, REPRISE ───────────────────────────────────────
-    Un stade de 360 px de haut avec `radius: 999px` coupe le texte : la
-    courbe passe DANS la zone de contenu. Une planche de service n'est pas
-    une gélule — ses bouts sont arrondis, pas semi-circulaires. On garde
-    donc un grand rayon (96 px), on élargit les marges intérieures pour que
-    rien ne touche la courbe, et les trous descendent à mi-hauteur, aux
-    extrémités, là où la main les prend. */
-.pauses-v2-panel.pauses-v2-planche-service {
-  /*  999 px : la charte ne connaît que {6, 8, 11, 12, 999}. Le rayon est
-      borné par la hauteur, donc la planche garde ses bouts arrondis sans
-      redevenir une gélule qui coupe le texte — c'est le padding qui fait
-      le travail. */
-  border-radius: 999px;
-  padding: 26px 74px 34px 78px;
-}
-
-.pauses-v2-planche-trou {
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  transform: translateY(-50%);
-}
-.pauses-v2-planche-trou--g { left: 26px; }
-.pauses-v2-planche-trou--d { right: 26px; }
-
-/*  Le titre de la planche ne doit pas buter sur le trou : il garde sa place
-    dans le flux, le trou est en absolu, aux extrémités. */
 .pauses-v2-planche-service .pauses-v2-panel-head {
   position: relative;
   z-index: 1;
+  margin-bottom: 4px;
 }
-
-/*  ── 2 ter · LA CUILLÈRE, REDESSINÉE ───────────────────────────────────
-    Au premier jet elle ressemblait à une épingle : cuilleron trop rond,
-    manche trop grêle. Une cuillère a un ovale HAUT (plus long que large),
-    un manche qui s'affine vers le bas et une petite lèvre au col. */
-.pauses-v2-cuillere-manche {
-  stroke-width: 3;
-}
-.pauses-v2-cuillere-cuilleron {
-  stroke-width: 2.2;
-}
-
-/*  La ligne de pose : les cuillères se tiennent sur la planche, pas dans
-    le vide. Un trait d'encre très pâle à la base. */
-.pauses-v2-planche-service svg line[stroke-opacity="0.1"]:last-of-type {
-  stroke-opacity: 0.16;
-}
-
-/*  ── 3 bis · LA TASSE VUE DE DESSUS, REPRISE ───────────────────────────
-    La crema était grise (`currentColor` à 10 %). Dans une tasse, c'est du
-    café au lait : on lit le lavis de la charte, et l'anneau extérieur reste
-    la porcelaine. L'anse rentre un peu pour ne pas mordre la légende. */
-.pauses-v2-tasse-dessus > svg:last-of-type circle:first-of-type {
-  stroke: var(--charte-encre);
-  stroke-opacity: 0.16;
-}
-.pauses-v2-tasse-dessus-anse {
-  transform: translate(-26px, -50%);
-  width: 42px;
-  height: 62px;
-}
-
-/*  L'anse de la tasse : porcelaine cerclée d'encre (deux traits superposés
-    dans le SVG), et posée PLUS loin pour qu'on lise une anse et non une
-    ombre portée. */
-.pauses-v2-tasse-dessus-anse {
-  width: 52px;
-  height: 74px;
-  transform: translate(-34px, -50%);
+.pauses-v2-planche-service .pauses-v2-panel-title {
   color: var(--charte-encre);
+  font-size: 1.24rem;
+  font-weight: 850;
+}
+.pauses-v2-planche-service .pauses-v2-panel-subtitle {
+  color: color-mix(in srgb, var(--charte-encre) 72%, transparent);
+  font-size: 0.8rem;
+}
+.pauses-v2-planche-service .pauses-v2-panel-icon {
+  width: 38px;
+  height: 38px;
+  color: var(--charte-encre);
+  border: 2px solid var(--charte-encre);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--charte-surface) 70%, transparent);
 }
 
-/*  ── 2 quater · LES DOUZE TASSES DE LA PLANCHE ──────────────────────────
-    Les règles des cuillères sont mortes avec elles. Les tasses prennent le
-    relais : corps pointillé au repos, encre pleine dès qu'il y a une pause,
-    et la vapeur — qui est la donnée — dans la teinte de l'action. */
+/*  Les tasses de la planche : pointillés au repos, pleines dès une pause.
+    La vapeur est la donnée — c'est elle qui monte. */
 .pauses-v2-tasse-slot {
-  color: color-mix(in srgb, var(--charte-encre) 52%, transparent);
+  color: color-mix(in srgb, var(--charte-encre) 45%, transparent);
   transition: color 0.16s ease;
 }
 .pauses-v2-tasse-slot.is-pleine {
   color: var(--charte-encre);
 }
 .pauses-v2-tasse-slot .pauses-v2-tasse-vapeur {
-  color: var(--charte-aplat);
+  color: var(--charte-encre);
+  opacity: 0.75;
 }
 .pauses-v2-hour-slot:hover .pauses-v2-tasse-slot,
 .pauses-v2-hour-slot:focus-visible .pauses-v2-tasse-slot {
   color: var(--charte-encre);
 }
-.pauses-v2-hour-slot:hover .pauses-v2-tasse-vapeur,
-.pauses-v2-hour-slot:focus-visible .pauses-v2-tasse-vapeur {
-  color: var(--charte-texte);
-}
 
-/*  ── 5 · LA LÉGENDE ET LES RANGS DU JOURNAL ─────────────────────────────
-    La légende était une pile de lignes séparées par un filet pleine largeur,
-    façon liste de courses. Ici elle devient trois « sachets de sucre »
-    crantés, posés à côté de la tasse : un galet par nature de pause. */
-.pauses-v2-legend-item {
-  padding: 8px 14px;
-  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 26%, transparent);
+/*  Le détail de la tranche : une ligne de ticket posée sur la planche. */
+.pauses-v2-hour-detail {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 2px solid var(--charte-encre);
   border-radius: 999px;
   background: var(--charte-surface);
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-}
-.pauses-v2-legend-item:hover {
-  border-color: var(--charte-encre);
-  background: var(--charte-surface);
-  transform: translate(-1px, -1px);
   box-shadow: 2px 2px 0 0 var(--charte-encre);
 }
-.pauses-v2-legend-item:last-child {
-  border-bottom-color: color-mix(in srgb, var(--charte-encre) 26%, transparent);
+.pauses-v2-hour-detail-head strong { color: var(--charte-encre); }
+.pauses-v2-hour-detail-close {
+  padding: 3px 12px;
+  color: var(--charte-encre);
+  font-size: 0.7rem;
+  font-weight: 800;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: 999px;
+  background: var(--charte-surface2);
+  cursor: pointer;
 }
-.pauses-v2-legend-dot {
-  width: 10px;
-  height: 10px;
-  margin-top: 5px;
-  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 55%, transparent);
+.pauses-v2-hour-detail-hint {
+  color: color-mix(in srgb, var(--charte-encre) 70%, transparent);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+/*  ── 3 · LA TASSE VUE DE DESSUS ────────────────────────────────────────── */
+
+/*  Comme dans la maquette, ce panneau n'a PAS de fond : le titre, la tasse
+    et les étiquettes sont posés sur le papier. */
+.pauses-v2-panel:has(.pauses-v2-tasse-dessus) {
+  border: 0;
+  background: transparent;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.pauses-v2-donut-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding-top: 10px;
+}
+
+.pauses-v2-tasse-dessus {
+  position: relative;
+  width: 196px;
+  height: 196px;
+  margin: 0 auto;
+  color: var(--charte-encre);
+}
+
+/*  L'anse : un petit croissant posé à droite, derrière la tasse. */
+.pauses-v2-tasse-dessus-anse {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  width: 40px;
+  height: 58px;
+  transform: translate(-16px, -50%);
+  color: var(--charte-encre);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/*  Le corps : un disque porcelainé cerclé d'encre, ombre dure. */
+.pauses-v2-tasse-dessus > svg:last-of-type {
+  position: relative;
+  z-index: 1;
+  display: block;
+  border-radius: 50%;
+  background: var(--charte-surface);
+  box-shadow:
+    0 0 0 2.5px var(--charte-encre),
+    4px 4px 0 0 var(--charte-encre);
+}
+
+/*  Le chiffre au centre. */
+.pauses-v2-tasse-dessus .pointages-donut-center {
+  z-index: 2;
+  color: var(--charte-encre);
+  font-weight: 850;
+}
+
+/*  Les trois étiquettes de légende : des pastilles cerclées, à cheval sur
+    le bord de la tasse comme dans la maquette. */
+.pauses-v2-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pauses-v2-legend-item {
+  padding: 8px 14px;
+  color: var(--charte-encre);
+  text-align: left;
+  border: 2px solid var(--charte-encre);
+  border-radius: 999px;
+  background: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.pauses-v2-legend-item:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 0 var(--charte-encre);
+}
+.pauses-v2-legend-item:last-child {
+  border-bottom-color: var(--charte-encre);
 }
 .pauses-v2-legend-left strong {
   color: var(--charte-encre);
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 850;
 }
 .pauses-v2-legend-left small {
   color: var(--charte-douce);
@@ -6281,67 +6216,145 @@
   font-size: 0.9rem;
   font-weight: 850;
 }
+.pauses-v2-legend-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border: 1.5px solid var(--charte-encre);
+}
 
-/*  Les rangs du journal : de vraies lignes de ticket, sans boîte autour de
-    chacune. Un filet pointillé les sépare, comme sur une note. */
+/*  ── 4 · LA SERVIETTE (journal) ────────────────────────────────────────── */
+
+.pauses-v2-panel.pauses-v2-journal-panel {
+  position: relative;
+  padding: 20px 24px 24px;
+  border: 2.5px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-surface2);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+/*  Les franges, sous la serviette. */
+.pauses-v2-panel.pauses-v2-journal-panel::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  bottom: -10px;
+  left: 6px;
+  height: 10px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--charte-encre) 0 1.5px,
+    transparent 1.5px 9px
+  );
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.pauses-v2-journal-panel .pauses-v2-panel-title { color: var(--charte-encre); }
+.pauses-v2-journal-panel .pauses-v2-panel-subtitle { color: var(--charte-douce); }
+.pauses-v2-journal-count {
+  color: var(--charte-douce);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+/*  Les rangs : des lignes de note, séparées par un filet pointillé. */
 .pauses-v2-journal-row {
-  padding: 9px 4px;
-  border: none;
-  border-bottom: 1.5px dashed color-mix(in srgb, var(--charte-encre) 28%, transparent);
+  padding: 9px 2px;
+  border: 0;
+  border-bottom: 1.5px dashed color-mix(in srgb, var(--charte-encre) 30%, transparent);
   border-radius: 0;
   background: transparent;
 }
 .pauses-v2-journal-row.is-validee,
 .pauses-v2-journal-row.is-ecartee {
-  border-color: color-mix(in srgb, var(--charte-encre) 28%, transparent);
+  border-color: color-mix(in srgb, var(--charte-encre) 30%, transparent);
   background: transparent;
 }
-.pauses-v2-journal-row.is-validee .pauses-v2-journal-pill {
-  color: var(--charte-succes);
-  border: 1.5px solid var(--charte-succes);
-}
-.pauses-v2-journal-row.is-ecartee .pauses-v2-journal-pill {
-  color: var(--charte-erreur);
-  border: 1.5px solid var(--charte-erreur);
-}
 .pauses-v2-journal-pill {
+  padding: 2px 10px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
   background: var(--charte-surface);
   font-size: 0.7rem;
   font-weight: 850;
 }
+.pauses-v2-journal-row.is-validee .pauses-v2-journal-pill { color: var(--charte-succes); }
+.pauses-v2-journal-row.is-ecartee .pauses-v2-journal-pill { color: var(--charte-erreur); }
 .pauses-v2-journal-emp { color: var(--charte-encre); }
-.pauses-v2-journal-count { color: var(--charte-douce); }
-.pauses-v2-journal-empty {
-  color: var(--charte-douce);
-  padding: 10px 0 4px;
-  border-top: 1.5px dashed color-mix(in srgb, var(--charte-encre) 24%, transparent);
-}
-
-/*  Les en-têtes de panneau parlent la même langue que les tuiles. */
-.pauses-v2-panel-title { color: var(--charte-encre); }
-.pauses-v2-panel-subtitle { color: var(--charte-douce); }
-.pauses-v2-panel-icon {
-  width: 34px;
-  height: 34px;
+.pauses-v2-journal-mat,
+.pauses-v2-journal-when,
+.pauses-v2-journal-nature { color: var(--charte-douce); }
+.pauses-v2-journal-btn {
   color: var(--charte-encre);
-  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 32%, transparent);
-  border-radius: 50%;
-  background: var(--charte-surface);
-}
-.pauses-v2-select {
-  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 32%, transparent);
+  border: 1.5px solid var(--charte-encre);
   border-radius: 999px;
   background: var(--charte-surface);
+}
+.pauses-v2-journal-empty {
+  margin: 8px 0 0;
+  padding-top: 10px;
+  color: var(--charte-douce);
+  border-top: 1.5px dashed color-mix(in srgb, var(--charte-encre) 26%, transparent);
+}
+
+/*  ── 2 bis · LES CUILLÈRES ──────────────────────────────────────────────
+    Le manche est une tige large qui s'élargit au talon, le cuilleron un
+    ovale penché. Vides, elles restent en contour pointillé ; pleines, elles
+    prennent le lavis de la charte — jamais un aplat d'encre, qui ferait une
+    tache sur le bois. */
+.pauses-v2-cuillere {
+  color: color-mix(in srgb, var(--charte-encre) 55%, transparent);
+  transition: color 0.16s ease;
+}
+.pauses-v2-cuillere.is-pleine {
+  color: var(--charte-encre);
+}
+.pauses-v2-hour-slot:hover .pauses-v2-cuillere,
+.pauses-v2-hour-slot:focus-visible .pauses-v2-cuillere {
   color: var(--charte-encre);
 }
 
-/*  ── 6 · LE MOBILE ──────────────────────────────────────────────────────
-    À 560 px, la planche gardait sa bordure arrondie de 96 px et le SVG se
-    comprimait : les heures tombaient à 5 px. On ne comprime plus — on
-    laisse le graphique glisser dans la planche, à taille lisible. */
-@media (max-width: 700px) {
+/*  La ligne de pose : les cuillères se tiennent SUR la planche. Un trait
+    d'encre plein, pas la grille pâle d'un graphique. */
+.pauses-v2-planche-service svg[role="img"] line {
+  stroke-opacity: 0.22;
+}
+
+/*  ── 5 · LES PALIERS ────────────────────────────────────────────────────
+    Ma grille à quatre colonnes est écrite APRÈS les paliers existants
+    (`@media (max-width: 1120px)` / `640px`) : elle les écrasait, et à
+    560 px les quatre tasses se chevauchaient. Les paliers sont donc
+    redonnés ici, dans le même bloc, pour qu'ils gagnent. */
+@media (max-width: 1120px) {
+  .pauses-v2-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 18px;
+  }
+  .pauses-v2-tasse-boite { max-width: 210px; }
+  .pauses-v2-tasse-dessein { max-width: 210px; }
+}
+
+@media (max-width: 760px) {
+  .pauses-v2-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 10px;
+  }
+  .pauses-v2-tasse-boite .pauses-v2-kpi-number { font-size: 2.1rem; }
+  .pauses-v2-tasse-pastille {
+    top: 22px;
+    left: 58%;
+    width: 32px;
+    height: 32px;
+  }
+  .pauses-v2-kpi-label {
+    padding: 6px 14px;
+    font-size: 0.72rem;
+  }
+  /*  La planche : le graphique défile plutôt que de se comprimer. */
   .pauses-v2-panel.pauses-v2-planche-service {
-    padding: 20px 20px 24px;
+    padding: 18px 20px 22px;
     border-radius: var(--charte-rayon-tuile);
     overflow-x: auto;
     overflow-y: hidden;
@@ -6351,14 +6364,7 @@
     flex-direction: column;
     align-items: flex-start;
   }
-  .pauses-v2-planche-service svg[role="img"] {
-    min-width: 520px;
-  }
-  .pauses-v2-planche-service .pauses-v2-hour-detail-hint.is-idle {
-    min-width: 0;
-  }
-  .pauses-v2-tasse-dessus { --pv-tasse-taille: 148px; }
-  .pauses-v2-donut-layout { gap: 16px; }
-  .pauses-v2-kpi-card { padding: 14px 16px 13px; }
-  .pauses-v2-tasse-boite .pauses-v2-kpi-number { font-size: 1.9rem; }
+  .pauses-v2-planche-service svg[role="img"] { min-width: 520px; }
+  .pauses-v2-tasse-dessus { width: 150px; height: 150px; }
+  .pauses-v2-donut-layout { grid-template-columns: 1fr; gap: 18px; }
 }

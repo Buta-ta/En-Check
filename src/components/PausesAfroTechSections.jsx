@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   ArrowLeft,
   BarChart3,
   Building2,
@@ -12,6 +13,7 @@ import {
   Coffee,
   Download,
   FileText,
+  Hourglass,
   PieChart,
   Plus,
   Search,
@@ -389,58 +391,67 @@ export function PausesCulturalHero({
     Tout est en `currentColor` sauf la porcelaine : la tuile choisit sa
     teinte (`--pv-kpi-teinte`), le dessin suit. Aucune couleur écrite ici.
     ═══════════════════════════════════════════════════════════════════════ */
-function TassePause({ niveau = 0 }) {
+function TassePause({ niveau = 0, icone = null }) {
   return (
-    <svg
-      className="pauses-v2-tasse"
-      viewBox="0 0 152 96"
-      fill="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {/*  La vapeur : deux volutes, celle de gauche plus haute — une tasse
-          qui fume n'est jamais symétrique. */}
-      <g className="pauses-v2-tasse-vapeur" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <path d="M52 30c-5-6 4-10-1-16" />
-        <path d="M66 26c-4-5 3-8-1-13" />
-      </g>
-      {/*  L'anse, dessinée d'un trait qui revient sur la panse. */}
-      <path
-        d="M104 44h8a15 15 0 0 1 0 30h-10"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      />
-      {/*  La panse : fond bombé, ouverture évasée. */}
-      <path
-        d="M34 40h72l-5 30a16 16 0 0 1-16 14H55a16 16 0 0 1-16-14L34 40Z"
-        fill="var(--pv-tasse-porcelaine)"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinejoin="round"
-      />
-      {/*  Le bord de l'ouverture. */}
-      <path d="M30 40h80" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      {/*  La ligne de niveau : pointillés quand la tasse est vide, trait
-          plein et rempli quand elle ne l'est plus. */}
-      <g className="pauses-v2-tasse-niveau">
+    <div className="pauses-v2-tasse-dessein">
+      {/*  La vapeur : deux volutes qui partent du bord. Elles ne portent pas
+          de donnée ici — c'est la pastille qui dit la nature du compteur. */}
+      <svg className="pauses-v2-tasse-vapeur-svg" viewBox="0 0 60 40" fill="none" aria-hidden="true">
+        <path d="M22 34c-6-6 4-9-1-15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M36 32c-5-5 3-8-1-12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      </svg>
+
+      {/*  Le corps : parois légèrement rentrantes, fond bombé — une tasse de
+          cantine, comme sur la maquette. */}
+      <svg className="pauses-v2-tasse-corps-svg" viewBox="0 0 150 92" fill="none" aria-hidden="true">
+        {/*  l'anse, pleine, à droite */}
         <path
-          d="M42 66h56"
+          d="M112 36h5a14 14 0 0 1 0 30h-8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M112 36h5a14 14 0 0 1 0 30h-8"
+          fill="none"
+          stroke="var(--pv-tasse-porcelaine)"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        />
+        {/*  la panse */}
+        <path
+          d="M16 26h96l-3 30a22 22 0 0 1-22 20H41a22 22 0 0 1-22-20L16 26Z"
+          fill="var(--pv-tasse-porcelaine)"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          strokeLinejoin="round"
+        />
+        {/*  le bord */}
+        <path d="M12 26h104" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+        {/*  la ligne de niveau : pointillés si vide, lavis si remplie */}
+        <path
+          d="M24 62h80"
           stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"
-          strokeDasharray={niveau > 0 ? '0' : '3 4'}
-          opacity={niveau > 0 ? 1 : 0.45}
+          strokeDasharray={niveau > 0 ? '0' : '4 4'}
+          opacity={niveau > 0 ? 0.9 : 0.5}
         />
         {niveau > 0 ? (
-          <path
-            d={`M42 66h56v6a14 14 0 0 1-14 12H56a14 14 0 0 1-14-12v-6Z`}
-            fill="currentColor"
-            opacity="0.22"
-          />
+          <path d="M24 63h80l-2 14a16 16 0 0 1-16 12H42a16 16 0 0 1-16-12l-2-14Z" fill="currentColor" opacity="0.14" />
         ) : null}
-      </g>
-    </svg>
+      </svg>
+
+      {/*  La soucoupe, large et plate, qui déborde sous la tasse. */}
+      <svg className="pauses-v2-tasse-soucoupe" viewBox="0 0 190 26" fill="none" aria-hidden="true">
+        <ellipse cx="95" cy="12" rx="92" ry="8" fill="var(--pv-tasse-porcelaine)" stroke="currentColor" strokeWidth="2.4" />
+        <ellipse cx="95" cy="10" rx="60" ry="4" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.5" />
+      </svg>
+
+      {/*  La pastille d'icône, posée sur le bord comme sur la maquette. */}
+      {icone ? <span className="pauses-v2-tasse-pastille">{icone}</span> : null}
+    </div>
   )
 }
 
@@ -531,7 +542,7 @@ export function PausesExecutiveKpis({
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-tasse-boite" data-teinte="ambre">
-            <TassePause niveau={openPauses.length} />
+            <TassePause niveau={openPauses.length} icone={<Coffee size={19} />} />
             <strong className="pauses-v2-kpi-number">
               {String(openPauses.length).padStart(2, '0')}
             </strong>
@@ -574,7 +585,7 @@ export function PausesExecutiveKpis({
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-tasse-boite" data-teinte="emeraude">
-            <TassePause niveau={realPauses.length} />
+            <TassePause niveau={realPauses.length} icone={<Users size={19} />} />
             <strong className="pauses-v2-kpi-number">
               {String(realPauses.length).padStart(2, '0')}
             </strong>
@@ -611,7 +622,7 @@ export function PausesExecutiveKpis({
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-tasse-boite" data-teinte="terre">
-            <TassePause niveau={presumedPending.length} />
+            <TassePause niveau={presumedPending.length} icone={<Hourglass size={19} />} />
             <strong className="pauses-v2-kpi-number">
               {String(presumedPending.length).padStart(2, '0')}
             </strong>
@@ -646,7 +657,7 @@ export function PausesExecutiveKpis({
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-tasse-boite" data-teinte="corail">
-            <TassePause niveau={anomaliesPauses.length} />
+            <TassePause niveau={anomaliesPauses.length} icone={<AlertTriangle size={19} />} />
             <strong className="pauses-v2-kpi-number">
               {String(anomaliesPauses.length).padStart(2, '0')}
             </strong>
@@ -892,58 +903,47 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
                   height={148}
                   rx="6"
                 />
-                {/*  LA TASSE DE LA TRANCHE. Une petite tasse posée sur la
-                    planche ; sa VAPEUR monte proportionnellement au nombre
-                    de pauses. À zéro, aucune vapeur et la tasse reste en
-                    pointillés : on voit qu'il n'y a rien, pas qu'on a oublié.
+                {/*  LA CUILLÈRE — comme sur la maquette. Douze cuillères
+                    debout sur la planche, manche en bas, cuilleron en haut.
 
-                    J'ai d'abord dessiné des cuillères debout. À 47 px de
-                    large, un cuilleron sur un manche se lit comme une
-                    épingle — joli en maquette, illisible à l'écran. La tasse
-                    tient dans la largeur, et c'est la vapeur (verticale) qui
-                    porte la donnée. */}
-                <g className={`pauses-v2-tasse-slot${slot.count > 0 ? ' is-pleine' : ''}`}>
+                    UN SEUL CHEMIN, pas un ovale posé sur une tige : c'est ce
+                    qui rate quand on dessine une cuillère en deux morceaux —
+                    on voit le raccord. Le contour part du talon, remonte à
+                    gauche, s'évase dans le cuilleron, redescend à droite.
+
+                    Vide = contour pointillé. Pleine = contour franc, lavis
+                    dedans. La hauteur du cuilleron suivrait la donnée. */}
+                <g className={`pauses-v2-cuillere${slot.count > 0 ? ' is-pleine' : ''}`}>
                   <title>{`${slot.label} · ${slot.count} pause(s)`}</title>
-                  {slot.count > 0 ? (
-                    <path
-                      className="pauses-v2-tasse-vapeur"
-                      d={`M${xCenter} ${baseLine - 28} c-7 -8 7 -12 0 -20 c-6 -7 6 -10 0 -16`}
-                      style={{
-                        transformOrigin: `${xCenter}px ${baseLine - 28}px`,
-                        transform: `scale(1, ${(0.5 + 0.5 * (slot.count / Math.max(1, chartTopVal))).toFixed(2)})`,
-                      }}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeDasharray="3 3"
-                    />
-                  ) : null}
-                  <rect
-                    className="pauses-v2-tasse-corps"
-                    x={xCenter - 11}
-                    y={baseLine - 24}
-                    width="22"
-                    height="20"
-                    rx="4"
-                    fill={slot.count > 0 ? 'currentColor' : 'none'}
-                    fillOpacity={slot.count > 0 ? 0.18 : 0}
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeDasharray={slot.count > 0 ? '0' : '3 3'}
-                  />
                   <path
-                    className="pauses-v2-tasse-anse"
-                    d={`M${xCenter + 11} ${baseLine - 19} h4 a6 6 0 0 1 0 11 h-4`}
+                    className="pauses-v2-cuillere-corps"
+                    d={`M${xCenter - 5} ${baseLine}
+                        V${baseLine - 40}
+                        C${xCenter - 5} ${baseLine - 52}, ${xCenter - 15} ${baseLine - 54}, ${xCenter - 15} ${baseLine - 66}
+                        a15 22 0 1 1 30 0
+                        C${xCenter + 15} ${baseLine - 54}, ${xCenter + 5} ${baseLine - 52}, ${xCenter + 5} ${baseLine - 40}
+                        V${baseLine}Z`}
+                    fill={slot.count > 0 ? 'var(--charte-surface)' : 'none'}
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinejoin="round"
+                    strokeDasharray={slot.count > 0 ? '0' : '3.5 3.5'}
+                  />
+                  {/*  Le reflet : un arc à gauche du cuilleron. */}
+                  <path
+                    d={`M${xCenter - 7} ${baseLine - 74}
+                        a9 12 0 0 1 0 -12`}
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="1.8"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    opacity="0.45"
                   />
                 </g>
                 {slot.count > 0 && (
                   <text
                     x={xCenter}
-                    y={baseLine - barHeight - 6}
+                    y={baseLine - Math.max(26, barHeight) - 18}
                     textAnchor="middle"
                     fontSize="10"
                     fontWeight="800"
@@ -1062,14 +1062,25 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
               />
             </svg>
             <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%' }} aria-hidden="true">
+              {/*  LA CREMA : le café au lait dans le creux de la tasse.
+                  C'est le fond du graphique — la part non consommée. */}
               <circle
                 cx="60"
                 cy="60"
                 r="46"
                 fill="none"
-                stroke="currentColor"
-                strokeOpacity="0.1"
+                stroke="var(--charte-surface2)"
                 strokeWidth="14"
+              />
+              {/*  Le liseré de porcelaine, juste à l'intérieur du bord. */}
+              <circle
+                cx="60"
+                cy="60"
+                r="53.5"
+                fill="none"
+                stroke="var(--charte-encre)"
+                strokeOpacity="0.22"
+                strokeWidth="1.4"
               />
               {realArc > 0 && (
                 <circle
