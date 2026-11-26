@@ -560,6 +560,10 @@ export default function JoursFeries() {
           </p>
         </div>
 
+        {/*  LES QUATRE SCEAUX — quatre médaillons reliés par un fil de bâti,
+             à droite du titre. Sur la maquette ils racontent la même chose
+             que la bande de mesures : combien de fêtes, combien ajoutées,
+             combien éteintes, dans combien de jours la prochaine. */}
         <div className="jf-entete-droite">
           {isSuperAdmin && (
             <div className="jf-entreprise">
@@ -589,12 +593,62 @@ export default function JoursFeries() {
             {darkMode ? <Moon size={14} aria-hidden="true" /> : <Sun size={14} aria-hidden="true" />}
           </button>
         </div>
-      </header>
 
-      <main className="jf-coque">
+        <div className="jf-sceaux">
+          <span className="jf-sceaux-fil" aria-hidden="true" />
+    <div className="jf-mesures">
+                <article className="jf-mesure" data-ton="indigo">
+                  <span className="jf-mesure-libelle">Fêtes du pays</span>
+                  <span className="jf-mesure-valeur">
+                    {filteredGlobal.length}
+                    <small>{filterCountry === 'ALL' ? 'au total' : 'pour ce pays'}</small>
+                  </span>
+                  <span className="jf-mesure-detail">
+                    {paysDisponibles.length} pays représenté{paysDisponibles.length > 1 ? 's' : ''}
+                  </span>
+                </article>
+  
+                <article className="jf-mesure" data-ton="terre">
+                  <span className="jf-mesure-libelle">Fêtes de l’entreprise</span>
+                  <span className="jf-mesure-valeur">
+                    {ownHolidays.length}
+                    <small>{ownHolidays.length > 1 ? 'ajoutées' : 'ajoutée'}</small>
+                  </span>
+                  <span className="jf-mesure-detail">
+                    {selectedEntId ? nomEntreprise : 'choisissez une entreprise'}
+                  </span>
+                </article>
+  
+                <article className="jf-mesure" data-ton={nbDesactivees > 0 ? 'attente' : 'ok'}>
+                  <span className="jf-mesure-libelle">Désactivées</span>
+                  <span className="jf-mesure-valeur">
+                    {nbDesactivees}
+                    <small>par l’entreprise</small>
+                  </span>
+                  <span className="jf-mesure-detail">
+                    {nbTravaillees > 0 ? `${nbTravaillees} fête${nbTravaillees > 1 ? 's' : ''} travaillée${nbTravaillees > 1 ? 's' : ''}` : 'aucune fête travaillée'}
+                  </span>
+                </article>
+  
+                <article className="jf-mesure" data-ton="ok">
+                  <span className="jf-mesure-libelle">Prochain jour férié</span>
+                  <span className="jf-mesure-valeur">
+                    {prochain ? joursAvant(prochain.date) : '—'}
+                    <small>{prochain && joursAvant(prochain.date) === 1 ? 'jour' : 'jours'}</small>
+                  </span>
+                  <span className="jf-mesure-detail" title={prochain?.holiday?.name}>
+                    {prochain ? prochain.holiday.name : 'rien à venir cette année'}
+                  </span>
+                </article>
+              </div>
+        
+          </div>
 
-        {/* ══ LE SEUIL ══ */}
-        <section className="jf-seuil" aria-label="Entreprise, année et accès rapides">
+
+        {/*  LA CAPSULE DU SEUIL — entreprise, année, prochain et raccourcis,
+             d'un seul tenant, contre le titre : la maquette choisie la
+             remonte ici. */}
+        <div className="jf-seuil" role="group" aria-label="Entreprise, année et accès rapides">
           <div className="jf-seuil-gauche">
             <div className="jf-seuil-item">
               <span className="jf-seuil-libelle">Entreprise</span>
@@ -622,10 +676,14 @@ export default function JoursFeries() {
           <div className="jf-raccourcis">
             <RaccourcisPages compact excludePaths={['/jours-feries']} />
           </div>
-        </section>
+                </div>
+      </header>
 
-        {/* ══ L'ANNÉE ET SES MESURES ══ */}
-        <div className="jf-haut">
+      <main className="jf-coque">
+
+
+        <div className="jf-corps">
+          <aside className="jf-frise" aria-label="L’année en frise">
           <JoursFeriesAnnee
             annee={annee}
             globalHolidays={globalHolidays}
@@ -642,53 +700,9 @@ export default function JoursFeries() {
                 : ''
             }
           />
+          </aside>
 
-          <div className="jf-mesures">
-            <article className="jf-mesure" data-ton="indigo">
-              <span className="jf-mesure-libelle">Fêtes du pays</span>
-              <span className="jf-mesure-valeur">
-                {filteredGlobal.length}
-                <small>{filterCountry === 'ALL' ? 'au total' : 'pour ce pays'}</small>
-              </span>
-              <span className="jf-mesure-detail">
-                {paysDisponibles.length} pays représenté{paysDisponibles.length > 1 ? 's' : ''}
-              </span>
-            </article>
-
-            <article className="jf-mesure" data-ton="terre">
-              <span className="jf-mesure-libelle">Fêtes de l’entreprise</span>
-              <span className="jf-mesure-valeur">
-                {ownHolidays.length}
-                <small>{ownHolidays.length > 1 ? 'ajoutées' : 'ajoutée'}</small>
-              </span>
-              <span className="jf-mesure-detail">
-                {selectedEntId ? nomEntreprise : 'choisissez une entreprise'}
-              </span>
-            </article>
-
-            <article className="jf-mesure" data-ton={nbDesactivees > 0 ? 'attente' : 'ok'}>
-              <span className="jf-mesure-libelle">Désactivées</span>
-              <span className="jf-mesure-valeur">
-                {nbDesactivees}
-                <small>par l’entreprise</small>
-              </span>
-              <span className="jf-mesure-detail">
-                {nbTravaillees > 0 ? `${nbTravaillees} fête${nbTravaillees > 1 ? 's' : ''} travaillée${nbTravaillees > 1 ? 's' : ''}` : 'aucune fête travaillée'}
-              </span>
-            </article>
-
-            <article className="jf-mesure" data-ton="ok">
-              <span className="jf-mesure-libelle">Prochain jour férié</span>
-              <span className="jf-mesure-valeur">
-                {prochain ? joursAvant(prochain.date) : '—'}
-                <small>{prochain && joursAvant(prochain.date) === 1 ? 'jour' : 'jours'}</small>
-              </span>
-              <span className="jf-mesure-detail" title={prochain?.holiday?.name}>
-                {prochain ? prochain.holiday.name : 'rien à venir cette année'}
-              </span>
-            </article>
-          </div>
-        </div>
+          <section className="jf-registres">
 
         {/* ══ LES DEUX REGISTRES ══ */}
         <div className="jf-onglets" role="tablist" aria-label="Registres des jours fériés">
@@ -991,6 +1005,8 @@ export default function JoursFeries() {
             )}
           </div>
         )}
+          </section>
+        </div>
 
         {/* ══ CE QUE FAIT UN JOUR FÉRIÉ ══ */}
         <details className="jf-explication">
