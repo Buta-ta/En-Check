@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jours fériés — deux pistes de forme</title>
+<link rel="stylesheet" href="/src/styles/tokens.css">
+<link rel="stylesheet" href="/src/styles/charte.css">
+<link rel="stylesheet" href="/maquettes/maquette.css">
+<style>
+  .jf-page-maquette { max-width: 1180px; margin: 0 auto; padding: 40px 24px 90px; display: flex; flex-direction: column; gap: 26px; }
+  .jf-tete p { margin: 0; max-width: 760px; line-height: 1.7; color: var(--charte-douce); }
+  .jf-tete h1 { margin: 6px 0 10px; font-size: 25px; font-weight: 700; letter-spacing: -0.01em; }
+  .jf-surtitre { margin: 0; font-size: 10.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--charte-texte); }
+
+  .jf-pistes { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 1000px) { .jf-pistes { grid-template-columns: 1fr; } }
+
+  .jf-piste {
+    display: flex; flex-direction: column; overflow: hidden;
+    border: 2px solid var(--charte-encre);
+    border-radius: 22px;
+    background: var(--charte-surface);
+    box-shadow: 4px 4px 0 0 var(--charte-encre), 9px 10px 0 0 color-mix(in srgb, var(--charte-encre) 22%, transparent);
+  }
+  .jf-piste-tete { padding: 18px 20px 14px; border-bottom: 2px solid var(--charte-encre); background: var(--charte-surface2); }
+  .jf-lettre {
+    display: inline-grid; place-items: center;
+    width: 30px; height: 30px; margin-bottom: 8px;
+    border: 2px solid var(--charte-encre); border-radius: 999px;
+    background: var(--charte-sable);
+    font-weight: 850; font-size: 14px;
+  }
+  .jf-piste-tete h2 { margin: 0 0 4px; font-size: 17px; font-weight: 800; }
+  .jf-piste-tete p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--charte-douce); }
+  .jf-piste img { display: block; width: 100%; height: auto; }
+  .jf-piste-pied { padding: 14px 20px 18px; border-top: 2px solid var(--charte-encre); background: var(--charte-surface); }
+  .jf-piste-pied dl { margin: 0; display: grid; gap: 7px; font-size: 12px; }
+  .jf-piste-pied dt { font-size: 9.5px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: var(--charte-texte); }
+  .jf-piste-pied dd { margin: 0; line-height: 1.5; color: var(--charte-encre); }
+
+  .jf-communs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .jf-communs { grid-template-columns: 1fr; } }
+  .jf-commun {
+    padding: 16px 18px;
+    border: 1px solid var(--charte-bordure);
+    border-radius: 16px;
+    background: var(--charte-surface);
+    font-size: 12.5px; line-height: 1.65;
+  }
+  .jf-commun strong { display: block; margin-bottom: 5px; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--charte-texte); }
+
+  .jf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .jf-table th, .jf-table td { text-align: left; padding: 11px 13px; border-bottom: 1px solid var(--charte-bordure); vertical-align: top; }
+  .jf-table th { font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--charte-douce); font-weight: 700; }
+  .jf-table td:first-child { font-weight: 700; white-space: nowrap; }
+  .jf-table code { font-size: 11.5px; }
+
+  .jf-note { padding: 16px 18px; border: 1px dashed var(--charte-bordure); border-radius: 16px; font-size: 12.5px; line-height: 1.7; color: var(--charte-douce); }
+  .jf-note strong { color: var(--charte-encre); }
+</style>
+</head>
+<body style="margin:0;background:var(--charte-sable);color:var(--charte-encre);font-family:var(--charte-police)">
+<div class="jf-page-maquette">
+
+  <div class="jf-tete">
+    <p class="jf-surtitre">En-Check · atelier · Jours fériés</p>
+    <h1>Deux pistes de forme — la page ne change pas, ses interfaces si</h1>
+    <p>
+      Même contenu, mêmes blocs, même ordre : l'en-tête, la barre d'entreprise, l'année en lisière,
+      les quatre mesures, les onglets, le registre, la ligne de calculs. Ce qui change, c'est la
+      <strong>forme des interfaces</strong> : plus de rectangle, du <strong>brut adouci</strong>
+      (contour d'encre 2 px, remplissage plein, coin large) et du <strong>double feutre</strong>
+      (deux ombres dures décalées, sans flou, comme du papier posé sur du papier).
+    </p>
+  </div>
+
+  <div class="jf-pistes">
+
+    <article class="jf-piste">
+      <div class="jf-piste-tete">
+        <span class="jf-lettre">A</span>
+        <h2>Les fiches décalées</h2>
+        <p>
+          La page garde ses deux colonnes et son ordre actuel. Chaque fête devient une
+          <strong>capsule de papier</strong> qui flotte, légèrement décalée de la précédente — des
+          billets posés sur un établi. Les mesures prennent des silhouettes franchement différentes
+          (arche, galet, pétale, pastille) au lieu de quatre cartes identiques.
+        </p>
+      </div>
+      <img src="/maquettes/jours-feries-A-fiches-decalees.png" alt="Piste A — les fiches décalées">
+      <div class="jf-piste-pied">
+        <dl>
+          <dt>Le geste</dt>
+          <dd>Chaque ligne du registre est une capsule indépendante, décalée de 6 à 8 px et inclinée d'un demi-degré.</dd>
+          <dt>Les mesures</dt>
+          <dd>Quatre silhouettes distinctes, une par indicateur — plus de grille de cartes.</dd>
+          <dt>L'année</dt>
+          <dd>Ruban de papier ondulé, mois posés dessus, repères en pastilles.</dd>
+          <dt>Ce qu'on garde</dt>
+          <dd>Le médaillon de date, la bascule, l'œil d'édition : mêmes gestes, autre habillage.</dd>
+        </dl>
+      </div>
+    </article>
+
+    <article class="jf-piste">
+      <div class="jf-piste-tete">
+        <span class="jf-lettre">B</span>
+        <h2>La frise cousue</h2>
+        <p>
+          La composition change : l'année passe en <strong>bande verticale</strong> à gauche, le
+          registre devient des <strong>pièces posées sur un fil</strong> — un fil de bâti en
+          pointillés, une boucle cousue en haut de chaque pièce. Les quatre mesures montent en
+          <strong>grands médaillons brodés</strong> juste sous le titre.
+        </p>
+      </div>
+      <img src="/maquettes/jours-feries-B-frise-cousue.png" alt="Piste B — la frise cousue">
+      <div class="jf-piste-pied">
+        <dl>
+          <dt>Le geste</dt>
+          <dd>Des pièces de tailles et de formes différentes (feuille, arche, galet, capsule), chacune cousue sur un fil de bâti.</dd>
+          <dt>Les mesures</dt>
+          <dd>Quatre médaillons ronds pleins, chiffre au centre, libellé dans le cercle.</dd>
+          <dt>L'année</dt>
+          <dd>Bande de tissu verticale, les douze mois le long du bord, épingles de couleur.</dd>
+          <dt>Ce qu'on garde</dt>
+          <dd>Tout le contenu et l'ordre des blocs ; seule la composition se déplace.</dd>
+        </dl>
+      </div>
+    </article>
+
+  </div>
+
+  <h2 style="margin:6px 0 0;font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--charte-texte)">Les règles tenues par les deux pistes</h2>
+  <div class="jf-communs">
+    <div class="jf-commun">
+      <strong>Plus de rectangle</strong>
+      Capsule, arche, galet, pétale, pastille, médaillon. Les quatre coins droits disparaissent —
+      y compris des boutons, des onglets et des champs.
+    </div>
+    <div class="jf-commun">
+      <strong>Brut adouci</strong>
+      Contour d'encre 2 px partout, remplissage plein, rayon généreux. Le contour est le même sur
+      une capsule de 40 px et sur un panneau de 600.
+    </div>
+    <div class="jf-commun">
+      <strong>Double feutre</strong>
+      Deux ombres dures décalées — 3 px puis 7 px — et <em>aucun flou</em>. C'est la superposition
+      qui donne l'épaisseur, pas la diffusion.
+    </div>
+  </div>
+
+  <h2 style="margin:10px 0 0;font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--charte-texte)">Ce qui ne bouge pas</h2>
+  <table class="jf-table">
+    <thead>
+      <tr><th>Bloc</th><th>Contenu conservé</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>En-tête</td><td>Sceau, surtitre « Le calendrier tissé », titre, sous-titre, sélecteur d'entreprise, bascule de thème</td></tr>
+      <tr><td>Seuil</td><td>Entreprise · Année · Prochain, et les quatre raccourcis (Pointages, Planning, Absences, Fiches de paie)</td></tr>
+      <tr><td>Année en lisière</td><td>Les douze mois, la légende, les repères de fêtes</td></tr>
+      <tr><td>Mesures</td><td>Fêtes du pays · Fêtes de l'entreprise · Désactivées · Prochain jour férié</td></tr>
+      <tr><td>Registre</td><td>Onglets, filtre pays, actions, médaillon de date, badges, bascule, édition, suppression</td></tr>
+      <tr><td>Bas de page</td><td>« Ce qu'un jour férié change dans les calculs »</td></tr>
+    </tbody>
+  </table>
+
+  <div class="jf-note">
+    <strong>Les deux images sont des maquettes générées, montrées pour choisir une direction — pas du code.</strong>
+    Les textes des fêtes et certaines dates y sont approximatifs : ils servent à juger la forme, pas le contenu.
+    Une fois la piste choisie, je la relève bloc par bloc et je l'écris en CSS sur la vraie page, avec
+    les vrais composants, les vrais jetons et les vrais textes.
+  </div>
+
+</div>
+</body>
+</html>
