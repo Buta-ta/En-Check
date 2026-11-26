@@ -32,13 +32,14 @@ const FEUILLE = lire('src', 'pages', 'AbsencesAfroTech.css')
 const CSS = FEUILLE.replace(/\/\*[\s\S]*?\*\//g, '')
 // la rubrique de la tringle court jusqu'à la fin de la feuille — elle est
 // posée là parce qu'elle doit tenir devant les correctifs `!important` du tas
-// de fin — mais elle s'ARRÊTE où commence celle de la corde (10/12) : la
-// corde a son propre fichier de serrures, `absencesCalendrierCorde.test.jsx`,
-// et une serrure qui lit le bloc du voisin se déclenche pour les mauvaises
-// raisons (le rayon de la planche n'est pas une affaire de tringle).
-const DÉBUT_CORDE = CSS.search(/\.abs-cal\s*\{\s*--abs-corde-fil/)
-if (DÉBUT_CORDE === -1) throw new Error('rubrique de la corde introuvable : la tringle ne sait plus où elle finit')
-const TRINGLE = CSS.slice(CSS.indexOf('.abs-tringle {'), DÉBUT_CORDE)
+// de fin — mais elle s'ARRÊTE où commence celle du pli (10/12 : la corde est
+// déposée, le second dessin a pris sa place) : le pli a son propre fichier de
+// serrures, `absencesCalendrierPli.test.jsx`, et une serrure qui lit le bloc du
+// voisin se déclenche pour les mauvaises raisons (le rayon de la planche n'est
+// pas une affaire de tringle).
+const DÉBUT_PLI = CSS.search(/\.abs-cal\s*\{\s*--abs-pli-pas/)
+if (DÉBUT_PLI === -1) throw new Error('rubrique du pli introuvable : la tringle ne sait plus où elle finit')
+const TRINGLE = CSS.slice(CSS.indexOf('.abs-tringle {'), DÉBUT_PLI)
 
 const DESSIN = 'maquettes/absences-outils-1-rideau.png'
 
@@ -264,20 +265,23 @@ describe('🪝 la tringle du calendrier', () => {
     expect(jeton(jetons, '--abs-tringle-ficelle')).toBeGreaterThan(jeton(jetons, '--abs-tringle-saut'))
   })
 
-  it('11. les six commandes du bandeau existent encore, toutes pendues', () => {
+  it('11. les commandes du bandeau existent encore, toutes pendues', () => {
     for (const id of [
       'abs-cal-titre',
       'abs-cal-modes',
       'abs-cal-aujourdhui',
-      'abs-cal-masquer-sans-absence',
       'abs-cal-declarer',
       'Période précédente',
       'Période suivante',
     ]) {
       expect(rendu).toContain(id)
     }
-    // l'interrupteur garde sa mécanique d'accessibilité
-    expect(rendu).toMatch(/role="switch"[^>]*aria-checked=/)
+    // « Masquer sans absence » ne pend plus à la tringle : le second dessin en a
+    // fait la case « Déplier tout » de l'entête de grille (10/12), et la tringle
+    // n'a pas à commander les étages de la grille. Le test du verrou vit dans
+    // `absencesCalendrierPli.test.jsx`, avec la case et le registre.
+    expect(rendu).not.toContain('abs-cal-masquer-sans-absence')
+    expect(rendu).toContain('abs-cal-deplier-tout')
   })
 
   it('12. « Réallumer » ne s’accroche que s’il y a quelque chose à rallumer', () => {

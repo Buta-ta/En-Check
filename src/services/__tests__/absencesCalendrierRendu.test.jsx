@@ -47,7 +47,11 @@ const grille = renderToStaticMarkup(
 
 it('1. le calendrier se monte et affiche le mois demandé', () => {
   expect(grille).toContain('Avril 2025')
-  expect(grille).toContain('Employé')
+  // plus de titre au-dessus des prénoms : le second dessin (10/12) ne met RIEN
+  // dans la colonne de tête de l'entête (x 53..305, y 165..192 : pas un pixel
+  // d'encre), et le compte des lignes se lit déjà dans la ligne du haut. Ce
+  // verrou-là garde la charpente, pas la légende.
+  expect(grille).toContain('data-testid="abs-pli-plateau"')
   expect(grille).toContain('data-testid="abs-cal-barre"')
 })
 

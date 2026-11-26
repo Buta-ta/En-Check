@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, CalendarOff, Users, CalendarDays, CalendarSearch } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, CalendarOff, CalendarDays, CalendarSearch } from 'lucide-react'
 import { styleBarreAbsence, DATA_TRANSFER_MOTIF } from '../constants/motifsAbsence'
 import { ecartEnMois } from '../services/absencesCalendrier'
 import ChoixPeriode from './ChoixPeriode'
@@ -32,14 +32,22 @@ import {
 import AbsenceTiroir from './AbsenceTiroir'
 import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
 
-const LARGEUR_EMPLOYE = 236
-// La colonne de droite porte l'ornière du solde ET le nombre. Sa largeur est
-// relevée sur le dessin, pas arrondie pour faire joli : l'ornière mesure 104 px
-// (x 1226 → 1329) et le nombre court jusqu'à x 1361, la colonne fait donc
-// 136 px. Elle est réservée dans l'entête comme dans les lignes — c'est ce
-// terme qui manquait, et qui faisait dériver les sept anneaux sous sept jours
-// de largeurs différentes (mesuré : −8 px au lundi, −97 px au dimanche).
-const LARGEUR_SOLDE = 136
+/* Le second dessin (10/12) ne sépare plus le champ en trois colonnes : la
+   coupure est ENTRE la colonne d'identité et le champ des jours, et c'est tout.
+   252, c'est x 53 (l'intérieur du plateau) → x 305 (la naissance de la première
+   cellule, celle que touche la pointe de la planche). Le prénom du dessin court
+   jusqu'à x 311 — il ne pousse pas la coupure, il la borde. */
+const LARGEUR_EMPLOYE = 252
+// À droite, le dessin ne réserve rien : la plaquette DU SOLDE est peinte par-dessus
+// la dernière cellule, de x 1179 (le bord gauche de la pilule) à x 1326 (le bord
+// intérieur du plateau), soit 147 px. Ce nombre reste un plancher de défilement
+// — `LARGEUR_EMPLOYE + nbJours × largeurJour + LARGEUR_SOLDE` — parce qu'une jauge
+// écrasée contre le plomb du jour ne se lit plus ; il ne réserve aucune colonne, et
+// l'entête ne le lit pas. Le RETRAIT du nombre, lui (vingt-sept pixels avant le
+// bord), ne se mesure qu'en CSS : l'écrire aussi ici, ce serait un nombre dans
+// deux fichiers dont un seul est lu — la dérive du 25/11 en miniature. Il vit donc
+// sous `--abs-pli-solde-repli`, et le verrou 14 du pli le relit là.
+const LARGEUR_SOLDE = 147
 const LARGEUR_JOUR_MOIS = 36
 const LARGEUR_JOUR_SEMAINE = 108
 const LARGEUR_JOUR_UNIQUE = 460
@@ -88,7 +96,11 @@ export default function AbsencesCalendrier({
   }
   // Filtre en creux : rien de masqué par défaut, un motif créé ensuite est visible aussitôt
   const [motifsMasques, setMotifsMasques] = useState(() => new Set())
-  const [masquerSansAbsence, setMasquerSansAbsence] = useState(false)
+  // LE PLI. Le second dessin ferme la grille par défaut : les lignes sans absence
+  // ne sont pas masquées, elles se REPLIENT en pastilles sous le plateau, avec le
+  // compte écrit en clair. La case « Déplier tout » de l'entête les rouvre — c'est
+  // l'inverse exact de l'ancien billet « Masquer sans absence », qui effaçait.
+  const [déplierTout, setDéplierTout] = useState(false)
   const [absenceActive, setAbsenceActive] = useState(null)
   // La pince qu'on est en train de porter : elle se décolle du bois, pas du fil
   const [motifGlissé, setMotifGlissé] = useState(null)
@@ -157,7 +169,7 @@ export default function AbsencesCalendrier({
   }
 
   // ── Construction des lignes : un employé = une ligne ────────────────
-  const lignes = useMemo(() => {
+  const toutesLesLignes = useMemo(() => {
     const parEmploye = new Map()
     employes.forEach((e) => parEmploye.set(e.id, { employe: e, segments: [] }))
 
@@ -173,14 +185,26 @@ export default function AbsencesCalendrier({
 
     return [...parEmploye.values()]
       .map((l) => ({ ...l, segments: empilerSegments(l.segments) }))
-      .filter((l) => !masquerSansAbsence || l.segments.length > 0)
       .sort((a, b) =>
         `${a.employe.last_name || ''} ${a.employe.first_name || ''}`.localeCompare(
           `${b.employe.last_name || ''} ${b.employe.first_name || ''}`,
           'fr'
         )
       )
-  }, [employes, absences, jours, motifsMasques, masquerSansAbsence])
+  }, [employes, absences, jours, motifsMasques])
+
+  // Un seul tri, deux lectures : la grille montre ce qui a un trait, le registre
+  // du pli garde le reste. `lignes.length + sansObjet.length + 0 ===
+  // toutesLesLignes.length` est LA loi de l'étage — un nombre écrit deux fois se
+  // contredit à la première retouche, donc les deux étages lisent le même tableau.
+  //
+  // Le pli ne se ferme que là où le dessin le ferme : le second dessin est une
+  // semaine. En mode jour, la feuille du jour a déjà son second étage — « Présents
+  // (n) » — et un registre de pastilles en dessous répéterait la même liste, sous
+  // une autre forme. Donc : pas de pli en jour, tous les employés restent en ligne.
+  const pliActif = mode !== 'jour' && !déplierTout
+  const lignes = pliActif ? toutesLesLignes.filter((l) => l.segments.length > 0) : toutesLesLignes
+  const sansObjet = pliActif ? toutesLesLignes.filter((l) => l.segments.length === 0) : []
 
   // ── Récapitulatif de la période affichée ────────────────────────────
   const stats = useMemo(() => {
@@ -274,7 +298,8 @@ export default function AbsencesCalendrier({
           les motifs — qui consommaient cent cinquante pixels avant la première
           information, et le bouton « Tous les motifs », qui répétait ce qu'une
           pince fait déjà (ôter la pince = éteindre le motif). Rien n'est perdu :
-          « Masquer les employés sans absence » est devenu un billet, et
+          « Masquer les employés sans absence » est devenu la case « Déplier tout »
+          de l'entête de grille (10/12), et
           « Réallumer tout » n'existe que quand il y a quelque chose à rallumer —
           un bouton qui ne sert à rien ne s'accroche nulle part.
 
@@ -373,19 +398,11 @@ export default function AbsencesCalendrier({
               >
                 Aujourd’hui
               </button>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={masquerSansAbsence}
-                aria-label="Masquer les employés sans absence"
-                title="Retirer de la grille les lignes sans absence sur la période"
-                onClick={() => setMasquerSansAbsence((v) => !v)}
-                data-testid="abs-cal-masquer-sans-absence"
-                className={`abs-tringle-billet${masquerSansAbsence ? ' est-actif' : ''}`}
-              >
-                <span className="abs-tringle-detente" aria-hidden="true" />
-                Masquer sans absence
-              </button>
+              {/* Le billet « Masquer sans absence » est descendu dans la grille :
+                  le second dessin en fait une case d'entête, « Déplier tout », et
+                  le pli ne masque plus rien — il replie. Un interrupteur accroché à
+                  la tringle pour commander les lignes serait un deuxième mot pour
+                  la même chose. */}
               {motifsMasques.size > 0 && (
                 <button
                   type="button"
@@ -463,41 +480,94 @@ export default function AbsencesCalendrier({
         </details>
       </div>
 
-      {/* ═══ Grille ═══ */}
-      {/* Le champ nu du dessin : pas de cadre, pas de carte blanche autour —
-          le champ EST le fond de sable, et les lignes s'y posent en bandes. */}
+      {/* ═══ Grille — LE PLI PAR EMPLOYÉ ═══
+          Maquette `maquettes/absences-grille-2-pli.png` (10/12, « retravaille ça
+          et utilise la 2e maquette comme modèle »). La corde est déposée : plus de
+          fil, plus d'anneaux, plus de carte suspendue au-dessus du voisin.
+
+          Le dessin répond à « qui est absent, et pendant quels jours ? » par une
+          planche POSÉE SUR LE JOUR : sa pointe touche la naissance de sa première
+          cellule, sa rive touche la fin de sa dernière, sa hauteur tient dans la
+          ligne (40 dans 78). Le champ est nu mais ENCADRÉ — un plateau de trois
+          pixels sur le sable de la page, et son ombre est dure. Les jours vides
+          portent un trait de crayon tous les tiers de cellule, le jour courant est
+          lavé d'argile sur une cellule et traversé d'un plomb, les week-ends sont
+          hachurés dans l'entête, et le solde est peint À LA RIVE DROITE DU CHAMP,
+          par-dessus la dernière cellule — ce n'est plus une colonne à côté.
+
+          Le second étage du dessin, celui que la corde n'avait pas : ce que la
+          grille ne montre pas n'est pas effacé. Les lignes sans absence se replient
+          en pastilles, chacune marquée de son coin plié, avec le compte écrit en
+          clair à droite. « Déplier tout », case d'entête, rouvre le pli.
+
+          Le métier est intact, seul le dessin change : `segmentSurJours` positionne
+          en pourcentage de la période, `empilerSegments` empile les chevauchements
+          en rangs, `styleBarreAbsence` garde sa loi (le trait dit le statut), le
+          clic ouvre le tiroir, la pince de la tringle se dépose au jour sous le
+          pointeur. Les jours chômés ne se peignent plus : le dessin ne les hache
+          que dans l'entête, et le mot du jour se lit dans le titre de la planche. */}
       <div className="abs-cal-scroll">
         <div
           className="abs-cal-champ"
           style={{
             minWidth: LARGEUR_EMPLOYE + nbJours * largeurJour + LARGEUR_SOLDE,
-            '--abs-corde-employe': `${LARGEUR_EMPLOYE}px`,
-            '--abs-corde-solde': `${LARGEUR_SOLDE}px`,
-            // le lavage du jour se mesure en colonnes, pas en pixels : la piste
-            // s'étire au-delà de `largeurJour` sur un écran large, et un `1.5 ×
-            // largeurJour` posé ici serait trop étroit de vingt-quatre pixels.
-            '--abs-corde-nb-jours': nbJours,
+            '--abs-pli-employe': `${LARGEUR_EMPLOYE}px`,
+            /* le solde n'est plus une colonne : `LARGEUR_SOLDE` ne réserve plus
+               que le plancher de défilement, et le même jeton donne à la plaquette
+               sa largeur. Un seul champ, deux usages — la dérive du 25/11 (−8 px
+               au lundi, −97 px au dimanche) reste impossible à écrire. */
+            '--abs-pli-solde': `${LARGEUR_SOLDE}px`,
+            // le lavage et les traits de jour se mesurent en colonnes, pas en
+            // pixels : la piste s'étire au-delà de `largeurJour` sur un écran
+            // large, et un pas fixé ici serait faux de vingt-quatre pixels.
+            '--abs-pli-nb-jours': nbJours,
           }}
         >
 
+          {/* LA LIGNE DE COMPTE — le dessin écrit le bilan de la période entre la
+              tringle et l'entête des jours, et sa case de pli est là, à sa droite.
+              Deux nombres, une seule source : ce que la grille montre et ce
+              qu'elle replie, jamais « ce qu'il y a dans la base ». */}
+          <div className="abs-pli-comptes" data-testid="abs-cal-comptes">
+            <span>
+              <span className="abs-pli-compte-nombre">{stats.total}</span> à signaler
+              <span aria-hidden="true"> · </span>
+              <span className="abs-pli-compte-nombre">{sansObjet.length}</span> rien{' '}
+              {mode === 'mois' ? 'ce mois-ci' : mode === 'jour' ? 'aujourd’hui' : 'cette semaine'}
+            </span>
+            {sansObjet.length > 0 && (
+              <label className="abs-pli-deplier">
+                <input
+                  type="checkbox"
+                  checked={déplierTout}
+                  onChange={() => setDéplierTout((v) => !v)}
+                  data-testid="abs-cal-deplier-tout"
+                />
+                Déplier tout
+              </label>
+            )}
+          </div>
+
           {/* Entête des jours — la cote du dessin : « L 23 » sur une seule ligne,
-              aucun filet entre les colonnes, aucune case teintée en dur, et la
-              MÊME largeur de champ que la piste des lignes (le solde est réservé
-              ici aussi : `abs-cal-entete-solde` et `abs-corde-solde` lisent le même
-              jeton posé plus haut). C'est ce terme qui manquait : la piste était
-              raccourcie d'une colonne entière et les sept anneaux se serraient
-              sous sept jours plus larges — mesuré sur l'écran : −8 px au
-              lundi, −97 px au dimanche, le trait du jour hors de sa colonne. Un seul
-              champ, deux usages : la dérive devient impossible à écrire. */}
+              centré dans sa cellule, haché à sa rive droite le week-end, aucun
+              filet entre les colonnes, aucune colonne de solde réservée. Les
+              étiquettes sont ÉCRITES AU-DESSUS du plateau (x 169..185 pour une
+              règle à 199) et lisent le même `--abs-pli-employe` que la piste. */}
           <div className="abs-cal-entete">
-            <div className="abs-cal-entete-employes">
-              <Users size={13} /> Employé · {lignes.length}
-            </div>
+            {/* La colonne de tête de l'entête est VIDE, et c'est une cote : le
+                dessin ne écrit rien au-dessus des prénoms (x 53..305, y 165..192
+                : aucun pixel d'encre). Le compte, lui, se lit une seule fois,
+                dans la ligne du haut — un nombre écrit deux fois se contredit à
+                la première retouche. Ce div reste : il porte la largeur de la
+                coupure, et sans lui les sept étiquettes glisseraient d'un
+                demi-jour. */}
+            <div className="abs-cal-entete-employes" aria-hidden="true" />
             <div className="abs-cal-entete-jours">
               {jours.map((j) => (
                 <div
                   key={j.iso}
                   data-jour={j.iso}
+                  data-weekend={j.weekend ? 'vrai' : 'faux'}
                   className="abs-cal-jour"
                   data-aujourdhui={j.iso === aujourdhuiIso ? 'vrai' : 'faux'}
                 >
@@ -508,29 +578,11 @@ export default function AbsencesCalendrier({
                 </div>
               ))}
             </div>
-            <div className="abs-cal-entete-solde" aria-hidden="true" />
           </div>
 
-          {/* Lignes employés — UNE CORDE PAR EMPLOYÉ
-              (maquette `maquettes/absences-grille-1-corde.png`, retenue le 10/12 :
-              « je choisis le 1… je veux absolument avoir ce rendu »).
-
-              Ce que la grille ne disait pas : elle répondait « qui est là ? » par
-              l'ABSENCE de marque. Une case vide, un dimanche et un férié se
-              ressemblaient tous, et quatorze lignes de 78 px ne montraient rien
-              du tout. Ici le trait est la preuve : un anneau par jour — creux si
-              l'entreprise travaille ce jour-là, plein si c'est chômé — et la
-              planche d'absence pend au jour de son départ, sur SA corde.
-
-              Le métier est intact, seul le dessin change : `segmentSurJours`
-              positionne en pourcentage de la période, `empilerSegments` empile les
-              chevauchements en rangs, `styleBarreAbsence` garde sa loi (la couleur
-              dit le motif, le trait dit le statut), le clic ouvre le tiroir, et la
-              pince de la tringle se dépose au jour sous le pointeur. Les deux
-              nombres de hauteur ne sont plus ici : ils vivent dans la feuille, une
-              seule fois — un nombre écrit deux fois se contredit à la première
-              retouche. */}
-          {lignes.map((ligne, ligneIdx) => {
+          <div className="abs-pli-plateau" data-testid="abs-pli-plateau">
+          {/* Lignes employés — UNE PLANCHE POSÉE PAR ABSENCE. */}
+          {lignes.map((ligne) => {
             const feriers = getHolidaySet(ligne.employe.enterprise_id)
             const nbRangees = ligne.segments.reduce((max, s) => Math.max(max, s.rangeesTotal || 1), 1)
             const solde = soldeDe(ligne.employe.id)
@@ -539,33 +591,32 @@ export default function AbsencesCalendrier({
             return (
               <div
                 key={ligne.employe.id}
-                className="abs-corde-ligne"
-                data-testid="abs-corde-ligne"
+                className="abs-pli-ligne"
+                data-testid="abs-pli-ligne"
                 data-employe={ligne.employe.id}
-                // la bande alterne par le TON, pas par un filet : le dessin n'a
-                // pas de ligne entre les employés. Un `:nth-child` ne peut pas le
-                // porter — l'entête occupe le premier rang du champ, et un rang de
-                // décalage inverserait toutes les bandes.
-                data-alterné={ligneIdx % 2 === 1 ? 'vrai' : undefined}
-                style={{ '--abs-corde-rangs': nbRangees }}
+                // deux planches qui se chevauchent ne se marchent pas dessus :
+                // la ligne grandit du MÊME cran que la montée, un seul calcul des
+                // deux côtés (écrit deux fois, le deuxième rang mangeait la ligne).
+                style={{ '--abs-pli-rangs': nbRangees }}
               >
-                <div className="abs-corde-tete">
+                <div className="abs-pli-tete">
                   {ligne.employe.photo_url ? (
-                    <img className="abs-corde-figure" src={ligne.employe.photo_url} alt="" />
+                    <img className="abs-pli-figure" src={ligne.employe.photo_url} alt="" />
                   ) : (
-                    <span className="abs-corde-figure" aria-hidden="true">
+                    <span className="abs-pli-figure" aria-hidden="true">
                       {initialesDe(ligne.employe.first_name, ligne.employe.last_name)}
                     </span>
                   )}
-                  <span className="abs-corde-nom">
+                  <span className="abs-pli-nom">
                     {ligne.employe.first_name} {ligne.employe.last_name}
                   </span>
                 </div>
 
-                {/* LA PISTE — la corde, les anneaux, les planches. Elle est aussi
-                    la zone de dépôt : c'était déjà `data-drop-lane`. */}
+                {/* LA PISTE — les traits de jour (un fond, pas trente et un
+                    éléments), le lavage, le plomb, les planches et le solde. Elle
+                    est aussi la zone de dépôt : c'était déjà `data-drop-lane`. */}
                 <div
-                  className="abs-corde-piste"
+                  className="abs-pli-piste"
                   data-drop-lane={ligne.employe.id}
                   onDragOver={(e) => {
                     if (!onDeposerMotif) return
@@ -588,45 +639,19 @@ export default function AbsencesCalendrier({
                     if (motifId) onDeposerMotif({ employeeId: ligne.employe.id, dateIso: jours[index].iso, motifId })
                   }}
                 >
-                  <span className="abs-corde-fil" aria-hidden="true" />
-                  <span className="abs-corde-anneaux" aria-hidden="true">
-                    {jours.map((j) => {
-                      const chômé = feriers.has(j.iso) || j.weekend
-                      // Le mot est sur l'anneau, en survol : un férié d'entreprise
-                      // et un dimanche ont la MÊME pastille (le dessin choisi ne
-                      // distinguait pas les deux) mais ils n'ont pas la même
-                      // raison, et la raison doit être lisible. `aria-hidden` en
-                      // haut du rang : trente et un anneaux annoncés à un
-                      // lecteur d'écran seraient du bruit, les mots sont déjà
-                      // sur les planches et dans le tiroir.
-                      return (
-                        <i
-                          key={j.iso}
-                          data-anneau={chômé ? 'chômé' : 'travaillé'}
-                          title={`${nomJourLong(j.iso)} · ${
-                            chômé ? (feriers.has(j.iso) ? 'chômé (férié de l’entreprise)' : 'chômé (week-end)') : 'travaillé'
-                          }`}
-                        />
-                      )
-                    })}
-                  </span>
-
-                  {/* Repère « aujourd'hui » — le dessin ne se contente pas d'un
-                      trait pâle : la journée est LAVÉE d'ambre sur une largeur et
-                      demie de jour, du haut en bas de la ligne, et un trait de 2 px
-                      court dedans (mesuré : le lavage fait une colonne et demie, son
-                      trait est plus fin que le fil). Les deux partagent le même
-                      `left`, donc le même repère que les anneaux et les cartes. */}
+                  {/* Repère « aujourd'hui » : la colonne lavée et le fil à plomb
+                      partagent le même `left` que l'étiquette du jour dans
+                      l'entête — un seul champ, deux usages, pas de dérive. */}
                   {indexAujourdhui >= 0 && (
                     <>
                       <span
-                        className="abs-corde-lavage"
+                        className="abs-pli-lavage"
                         aria-hidden="true"
                         style={{ left: `${((indexAujourdhui + 0.5) / nbJours) * 100}%` }}
                       />
                       <span
-                        className="abs-corde-aujourdhui"
-                        data-testid="abs-corde-aujourdhui"
+                        className="abs-pli-plomb"
+                        data-testid="abs-pli-aujourdhui"
                         aria-hidden="true"
                         style={{ left: `${((indexAujourdhui + 0.5) / nbJours) * 100}%` }}
                       />
@@ -656,106 +681,156 @@ export default function AbsencesCalendrier({
                       `du ${formaterDateCourt(a.start_date)} au ${formaterDateCourt(a.end_date)}`,
                       st.statut.label,
                     ].join(' · ')
-                    const coupee = seg.coupeeAvant || seg.coupeeApres
+                    const coupee = seg.coupeeAvant || seg.coupeeAprès
+                    // une journée collée au bord gauche (mode jour, ou période
+                    // coupée avant son premier jour) n'a pas de naissance à
+                    // mesurer : elle se pose à deux pixels du montant.
+                    const colle = nbJours === 1 || seg.coupeeAvant
                     const joursComptés = compterJoursOuvres(
                       a.start_date,
                       a.end_date,
                       feriers,
                       a.count_holidays_as_leave
                     )
-
                     return (
                       <button
                         key={a.id}
-                        className="abs-cal-barre abs-corde-planche"
+                        className="abs-cal-barre abs-pli-planche"
                         onClick={() => setAbsenceActive(a)}
                         title={titrePlanche}
                         aria-label={titrePlanche}
                         data-testid="abs-cal-barre"
                         data-statut={a.status}
+                        data-trait={st.pointillee ? 'pointillé' : st.barree ? 'barré' : 'plein'}
+                        data-coupée={seg.coupeeAvant ? 'vrai' : 'faux'}
                         style={{
-                          /* la planche ne s'étend pas sur les cellules : elle est
-                             ACCROCHÉE aux centres de ses deux jours de rive, et
-                             l'aile du dessin (12 px) déborde chaque cordon. Mesuré
-                             08/12 : cordons à x 536 et 776 — les centres du mardi
-                             24 et du jeudi 26 — carte de x 524 à 790, soit deux
-                             pas de jour et douze pixels d'aile de chaque côté.
-                             Posée sur les bords des cellules, elle débordait d'un
-                             demi-jour et ses deux ficelles tombaient dans le vide.
-                             `left` ET `right`, jamais une largeur : la période
-                             coupée par la fenêtre doit toucher le bord, pas
-                             s'arrêter au centre du premier jour visible. */
-                          /* en mode jour, la colonne unique EST le champ : les deux
-                             rives se collent aux bords, comme avant la cote. */
-                          left: nbJours === 1 || seg.coupeeAvant
+                          /* LES BORDS, PAS LES CENTRES, ET UN SEUL NOMBRE À GAUCHE.
+                             Le dessin pose l'encre à x 302 pour une cellule née à
+                             305 — la pointe de seize rend au jour ce que le cerne
+                             lui prend — et finit sa planche de trois jours à x 735
+                             pour une dernière cellule morte à 740. `left` ET `right`,
+                             jamais une largeur calculée à la main. La naissance est
+                             un JETON, pas une chaîne recopiée : la feuille en fait
+                             deux usages, le `left` et la borne de `max-width` (la
+                             planche ne pousse jamais hors du plateau) — un seul
+                             nombre, deux lectures, la loi du champ.
+                             Ce qui manque à la largeur, c'est le mot qui ne tient
+                             pas dans une journée : c'est `min-width: max-content`
+                             qui le rattrape dans la feuille, pas un plancher de jour
+                             moyen. Et une période coupée par la fenêtre reste collée
+                             au bord, les deux rives se lisent dans le même `style`. */
+                          '--abs-pli-entree': colle
                             ? '2px'
-                            : `calc(${((seg.debut + 0.5) / nbJours) * 100}% - var(--abs-corde-aile))`,
+                            : `calc(${(seg.debut / nbJours) * 100}% + var(--abs-pli-pointe))`,
+                          left: 'var(--abs-pli-entree)',
                           right: nbJours === 1 || seg.coupeeAprès
                             ? '2px'
-                            : `calc(${100 - ((seg.fin + 0.5) / nbJours) * 100}% - var(--abs-corde-aile))`,
-                          '--abs-corde-rang': seg.rangee,
-                          /* La carte est crème cerclée d'encre, comme au dessin :
-                             la couleur du motif ne se pose PAS sur la carte (le
-                             dessin est monochrome, et l'adaptation à la charte
-                             viendra après). Restent du droit que la loi de
-                             `styleBarreAbsence` doit à l'écran : tout ce qui n'est
-                             pas acquis prend le contour pointillé, le refus garde
-                             le barré, et le mot du statut est écrit. */
+                            : `calc(${100 - ((seg.fin + 1) / nbJours) * 100}% + var(--abs-pli-rive))`,
+                          '--abs-pli-rang': seg.rangee,
+                          /* La loi reste dans `styleBarreAbsence` : le trait dit le
+                             statut — pointillé pour ce qui n'est pas acquis, barré
+                             pour le refus — et le mot du statut s'ÉCRIT sous son
+                             trait, à sa rive droite, comme le dessin écrit REFUSÉE
+                             sous son enveloppe. La couleur du motif ne se pose
+                             nulle part ici : le dessin remplit d'argile, une seule
+                             teinte pour tous les motifs. */
                           borderStyle: st.pointillee || st.barree ? 'dashed' : 'solid',
                           textDecoration: st.barree ? 'line-through' : 'none',
                         }}
                       >
-                        {/* Les DEUX cordons du dessin : ils partent du bord haut de
-                            la carte, à douze pixels des coins (cordon à x 536 pour
-                            une carte née à 524), épais de 3, et montent jusqu'au
-                            fil. Un seul cordon de 2 px, mesuré sur l'écran, ne se
-                            voyait pas — une carte sans attache est une étiquette
-                            posée. */}
-                        <span className="abs-corde-cordons" aria-hidden="true" />
-                        {/* le nœud sur la corde, quand la pointeuse conteste ce jour */}
+                        {/* le caret ‹ de la pointe, crème dans le ruban — il dit
+                            « ici commence un jour travaillé », pas « ceci est
+                            décoré » : il disparaît quand la planche est coupée. */}
+                        {!seg.coupeeAvant && (
+                          <span className="abs-pli-glyphe" aria-hidden="true">‹</span>
+                        )}
+                        {/* le carré de corail, quand la pointeuse conteste ce jour :
+                            centré sur la rive gauche de la planche (dessin :
+                            x 586..597 pour une rive à 595) */}
                         {conflitParAbsence[a.id]?.status === 'pending' && (
-                          <span className="abs-corde-noeud" aria-hidden="true" />
+                          <span className="abs-pli-noeud" aria-hidden="true" />
                         )}
-                        <span className="abs-corde-marque" aria-hidden="true">{st.motif.emoji}</span>
-                        <span className="abs-corde-motif">{st.motif.label}</span>
-                        <span className="abs-corde-séparateur" aria-hidden="true">·</span>
-                        <span className="abs-corde-durée">{joursComptés} j</span>
-                        {a.status !== 'approuve' && (
-                          <span className="abs-corde-statut">{st.statut.label}</span>
-                        )}
+                        <span className="abs-pli-marque" aria-hidden="true">{st.motif.emoji}</span>
+                        <span className="abs-pli-motif">{st.motif.label}</span>
+                        <span className="abs-pli-séparateur" aria-hidden="true">·</span>
+                        <span className="abs-pli-durée">{joursComptés} j</span>
                         {a.document_url && <span aria-hidden="true">📎</span>}
                         {coupee && (
-                          <span className="abs-corde-coupure" aria-hidden="true">
-                            {seg.coupeeAvant ? '‹' : ''}{seg.coupeeApres ? '›' : ''}
+                          <span className="abs-pli-coupure" aria-hidden="true">
+                            {seg.coupeeAvant ? '‹' : ''}{seg.coupeeAprès ? '›' : ''}
                           </span>
+                        )}
+                        {/* le mot du statut n'est pas un ornement : en attente et
+                            refusée se LISENT (C7), et le dessin l'écrit SOUS son
+                            trait, à sa droite — jamais dans la planche. */}
+                        {a.status !== 'approuve' && (
+                          <span className="abs-pli-statut">{st.statut.label}</span>
                         )}
                       </button>
                     )
                   })}
-                </div>
 
-                {/* LE SOLDE, une longueur et non plus une boîte : pleine = rien
-                    pris. Le nombre reste écrit à côté — une jauge lue seule
-                    serait un statut sans mot. */}
-                <div
-                  className="abs-corde-solde"
-                  title={`${solde.pris} jour(s) pris · plafond ${solde.plafond} jours`}
-                  style={{ '--abs-corde-plein': `${Math.max(0, Math.min(100, plein))}%` }}
-                >
-                  <span className="abs-corde-jauge" aria-hidden="true"><i /></span>
-                  <span className="abs-corde-nombre">
-                    {solde.restant}/{solde.plafond}
-                  </span>
+                  {/* LE SOLDE, peint à la rive droite du champ : pleine = rien
+                      pris. Le nombre reste écrit à côté — une jauge lue seule
+                      serait un statut sans mot. Le « + » du dessin devant
+                      « 26/30 » n'est pas une donnée : le nombre se lit nu. */}
+                  <div
+                    className="abs-pli-solde"
+                    title={`${solde.pris} jour(s) pris · plafond ${solde.plafond} jours`}
+                    style={{ '--abs-pli-plein': `${Math.max(0, Math.min(100, plein))}%` }}
+                  >
+                    <span className="abs-pli-jauge" aria-hidden="true"><i /></span>
+                    <span className="abs-pli-nombre">
+                      {solde.restant}/{solde.plafond}
+                    </span>
+                  </div>
                 </div>
               </div>
             )
           })}
-          {lignes.length === 0 && (
-            <div style={{ padding: 44, textAlign: 'center', color: theme.texteDoux }}>
-              <CalendarOff size={26} style={{ marginBottom: 10, opacity: 0.6 }} />
-              <p style={{ margin: 0, fontSize: 14 }}>Aucun employé à afficher sur cette période.</p>
+
+          {/* LE REGISTRE DU PLI — le second étage du dessin : ceux qui n'ont rien
+              à signaler ne sortent pas de la grille, ils se replient en pastilles,
+              chacune marquée de son coin plié, et le compte reste écrit en clair.
+              Un clic ouvre la même fiche que la ligne. En mode jour, le registre
+              reste vide : la feuille du jour a déjà son étage « présents », et un
+              nombre écrit deux fois se contredit à la première retouche. */}
+          {sansObjet.length > 0 && (
+            <div className="abs-pli-registre" data-testid="abs-pli-registre">
+              {sansObjet.map((ligne) => {
+                // la pastille du pli n'est PAS un contrôle : le dessin ne lui
+                // prête aucun geste, et rien n'a de fiche à ouvrir quand la
+                // période est vide. Elle se lit — le nom est dans le titre.
+                const nom = `${ligne.employe.first_name} ${ligne.employe.last_name}`
+                return (
+                  <span
+                    key={ligne.employe.id}
+                    className="abs-pli-chip"
+                    data-testid="abs-pli-chip"
+                    data-employe={ligne.employe.id}
+                    title={`${nom} · rien à signaler sur la période`}
+                  >
+                    {ligne.employe.photo_url ? (
+                      <img className="abs-pli-chip" src={ligne.employe.photo_url} alt={nom} />
+                    ) : (
+                      initialesDe(ligne.employe.first_name, ligne.employe.last_name)
+                    )}
+                  </span>
+                )
+              })}
+              <span className="abs-pli-compte">
+                <span className="abs-pli-compte-nombre">{sansObjet.length}</span> · rien à signaler
+              </span>
             </div>
           )}
+
+            {toutesLesLignes.length === 0 && (
+              <div style={{ padding: 44, textAlign: 'center', color: theme.texteDoux }}>
+                <CalendarOff size={26} style={{ marginBottom: 10, opacity: 0.6 }} />
+                <p style={{ margin: 0, fontSize: 14 }}>Aucun employé à afficher sur cette période.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -889,17 +964,31 @@ export default function AbsencesCalendrier({
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <i style={{
-            width: 8, height: 8, borderRadius: 999, display: 'block',
-            border: '2px solid var(--charte-encre)', background: 'transparent',
+            width: 2, height: 12, display: 'block', background: 'var(--charte-bordure)',
           }} />
-          anneau = jour travaillé
+          trait de crayon = jour nu
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <i style={{
-            width: 8, height: 8, borderRadius: 999, display: 'block',
-            border: '2px solid var(--charte-encre)', background: 'var(--charte-encre)',
+            width: 10, height: 10, display: 'block', background: 'var(--abs-amber)', opacity: 0.26,
           }} />
-          pastille = chômé (week-end ou férié)
+          colonne lavée = aujourd’hui
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <i style={{
+            width: 14, height: 10, borderRadius: 3, display: 'block',
+            border: '2px solid var(--charte-encre)', background: 'var(--charte-aplat)',
+            clipPath: 'polygon(0 50%, 14% 0, 100% 0, 100% 100%, 14% 100%)',
+          }} />
+          planche posée = l’absence, de son premier jour au dernier
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <i style={{
+            width: 10, height: 10, borderRadius: 3, display: 'block',
+            border: '2px solid var(--charte-encre)', background: 'var(--charte-aplat)',
+            clipPath: 'polygon(0 0, 100% 0, 0 100%)', marginLeft: 6,
+          }} />
+          pastille à coin replié = rien à signaler (bas du plateau)
         </span>
         <span>‹ › à cheval sur la période</span>
         <span>📎 justificatif joint</span>
