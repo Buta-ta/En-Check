@@ -348,7 +348,17 @@ export function PausesCulturalHero({
             plus près du pouce et du regard qui descend. */}
         <div className="pauses-v2-bord">
           <div className="pauses-v2-identite">
-            <span className="pauses-v2-avatar">{adminInitials}</span>
+            <span className="pauses-v2-avatar">
+              {/*  La même personne que dans le cercle de la table : son
+                   visage, ou ses initiales à défaut. « Je parlais d'afficher
+                   l'image du superadmin ici », 26/11. */}
+              <PhotoSignee
+                url={admin?.photo_url}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                fallback={<span aria-hidden="true">{adminInitials}</span>}
+              />
+            </span>
             <span className="pauses-v2-identite-texte">
               <span className="pauses-v2-carte pauses-v2-carte--nom">
                 <strong>{adminFullName}</strong>
@@ -457,6 +467,7 @@ function TassePause({ niveau = 0, icone = null }) {
 
 export function PausesExecutiveKpis({
   paies = [],
+  employesById = {},
   activeTab = 'all',
   subFilter = 'all',
   onSelectTab,
@@ -486,6 +497,52 @@ export function PausesExecutiveKpis({
   const realPct = activeRecords.length > 0 ? Math.min(100, Math.round((realPauses.length / totalBase) * 100)) : 0
   const presumedPct = activeRecords.length > 0 ? Math.min(100, Math.round((presumedPending.length / totalBase) * 100)) : 0
   const anomaliesPct = activeRecords.length > 0 ? Math.min(100, Math.round((anomaliesPauses.length / totalBase) * 100)) : 0
+
+  /*  LE VISAGE DE QUI A PRIS LA PAUSE — « dans l'avatar du kpi (image 2),
+      tu n'as pas affiché l'image de celui qui a fait cette pause », 26/11.
+
+      La pastille de la tasse portait une icône de série (groupe, sablier,
+      triangle). Elle porte maintenant le visage de la personne concernée, la
+      PLUS RÉCENTE de chaque carte : celle qui est en pause pour « En pause en
+      direct », la dernière à avoir pris une pause réelle, la dernière
+      présumée en attente, la dernière en anomalie.
+
+      « Plus récente » se lit sur la date de début, pas sur l'ordre du
+      tableau — le tableau est trié par ce qu'on veut, la pastille doit
+      montrer un visage précis.
+
+      L'icône reste dessous : sans photo, ou si la photo rate, on retombe
+      sur le pictogramme d'origine — la pastille n'est jamais vide. */
+  const plusRecente = (liste) =>
+    liste.reduce((recente, p) => {
+      if (!recente) return p
+      const a = new Date(p.debutISO || `${p.jour || p.date || ''}`).getTime() || 0
+      const b = new Date(recente.debutISO || `${recente.jour || recente.date || ''}`).getTime() || 0
+      return a >= b ? p : recente
+    }, null)
+
+  const pastillePause = (pause, Icone) => {
+    if (!pause) return <Icone size={19} />
+    const emp = employesById[pause.employe_id] || null
+    if (!emp?.photo_url) return <Icone size={19} />
+    const initiales = (pause.employe || emp.first_name || 'EC')
+      .split(' ')
+      .filter(Boolean)
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase()
+    return (
+      <span className="pauses-v2-tasse-pastille-vide" title={pause.employe || undefined}>
+        <PhotoSignee
+          url={emp.photo_url}
+          alt={pause.employe || ''}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          fallback={<span aria-hidden="true" className="pauses-v2-tasse-pastille-initiales">{initiales}</span>}
+        />
+      </span>
+    )
+  }
 
   return (
     <>
@@ -542,7 +599,7 @@ export function PausesExecutiveKpis({
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-tasse-boite" data-teinte="ambre">
-            <TassePause niveau={openPauses.length} icone={<Coffee size={19} />} />
+            <TassePause niveau={openPauses.length} icone={pastillePause(plusRecente(openPauses), Coffee)} />
             <strong className="pauses-v2-kpi-number">
               {String(openPauses.length).padStart(2, '0')}
             </strong>
@@ -585,7 +642,7 @@ export function PausesExecutiveKpis({
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-tasse-boite" data-teinte="emeraude">
-            <TassePause niveau={realPauses.length} icone={<Users size={19} />} />
+            <TassePause niveau={realPauses.length} icone={pastillePause(plusRecente(realPauses), Users)} />
             <strong className="pauses-v2-kpi-number">
               {String(realPauses.length).padStart(2, '0')}
             </strong>
@@ -622,7 +679,7 @@ export function PausesExecutiveKpis({
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-tasse-boite" data-teinte="terre">
-            <TassePause niveau={presumedPending.length} icone={<Hourglass size={19} />} />
+            <TassePause niveau={presumedPending.length} icone={pastillePause(plusRecente(presumedPending), Hourglass)} />
             <strong className="pauses-v2-kpi-number">
               {String(presumedPending.length).padStart(2, '0')}
             </strong>
@@ -657,7 +714,7 @@ export function PausesExecutiveKpis({
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-tasse-boite" data-teinte="corail">
-            <TassePause niveau={anomaliesPauses.length} icone={<AlertTriangle size={19} />} />
+            <TassePause niveau={anomaliesPauses.length} icone={pastillePause(plusRecente(anomaliesPauses), AlertTriangle)} />
             <strong className="pauses-v2-kpi-number">
               {String(anomaliesPauses.length).padStart(2, '0')}
             </strong>
