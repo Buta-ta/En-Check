@@ -3198,3 +3198,644 @@
   .jf-registre .jf-icone-bouton:hover,
   .jf-registre .jf-icone-bouton:active { transform: none; }
 }
+
+/* ═══ LE CONTRASTE DES COMMANDES, DANS TOUS LES ÉTATS ══════════════════════
+
+     « Regarde les anomalies, sur les boutons qui contrastent quand on clique
+     et deviennent illisibles » (26/11).
+
+     Le défaut, remis dans son contexte : la page se déclare CLAIRE par défaut
+     (`.jf-page` sans `.jf-clair` = thème sombre historique, et `jf-clair` est
+     le thème crème de la maquette). Or plusieurs commandes écrivaient leur
+     texte en dur pour l'ANCIEN thème — un crème sur la terre, un autre sur
+     l'indigo — et ces teintes passaient sur le sombre. Au clic, l'état
+     sélectionné bascule le fond sur une couleur pleine et le texte hérité
+     devient illisible : crème sur crème, ou encre sur encre.
+
+     On ne corrige pas cas par cas : on POSE la règle. Sur un fond plein
+     d'encre, le texte est blanc ; sur la terre et sur l'indigo, il est blanc
+     aussi ; sur un fond de surface, il est encre. Et l'état `:active` ne
+     change plus la couleur du texte — seulement la position du feutre. */
+
+/*  Les boutons pleins : leur texte reste blanc, dans les deux thèmes. */
+.jf-bouton[data-ton='terre'],
+.jf-bouton[data-ton='indigo'] {
+  color: var(--charte-blanc);
+}
+.jf-page .jf-bouton[data-ton='terre']:hover:not(:disabled),
+.jf-page .jf-bouton[data-ton='indigo']:hover:not(:disabled) {
+  color: var(--charte-blanc);
+}
+.jf-page .jf-bouton[data-ton='indigo'],
+.jf-page.jf-clair .jf-bouton[data-ton='indigo'] {
+  color: var(--charte-blanc);
+}
+/*  …et l'indigo du thème sombre reste lisible : le texte y était encre. */
+.jf-page:not(.jf-clair) .jf-bouton[data-ton='indigo'] {
+  color: var(--charte-blanc);
+}
+
+/*  Les onglets : sélectionné, on lit du blanc sur l'encre. */
+.jf-onglet[aria-selected='true'],
+.jf-page.jf-clair .jf-onglet[aria-selected='true'] {
+  color: var(--charte-blanc);
+}
+.jf-onglet[aria-selected='true'] svg { color: var(--charte-blanc); }
+.jf-onglet[aria-selected='true']:hover { color: var(--charte-blanc); }
+
+/*  Les pastilles de pays : sélectionnée, la puce est encre pleine, le texte
+     en blanc — y compris au survol, qui remettait la couleur « craie ». */
+.jf-pays-puce[aria-pressed='true'],
+.jf-pays-puce[aria-pressed='true']:hover,
+.jf-pays-puce[aria-pressed='true']:focus-visible {
+  background: var(--charte-encre);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+.jf-pays-puce[aria-pressed='true'] .jf-pays-modele {
+  border-color: color-mix(in srgb, var(--charte-blanc) 55%, transparent);
+  color: var(--charte-blanc);
+}
+.jf-pays-puce[aria-pressed='true'] .jf-onglet-compte {
+  background: color-mix(in srgb, var(--charte-blanc) 22%, transparent);
+  color: var(--charte-blanc);
+}
+
+/*  Les options de la modale : cochées, la marque est encre et le texte reste
+     celui de la carte — jamais de crème sur crème. */
+.jf-option[aria-pressed='true'] {
+  border-color: var(--charte-encre);
+  background: color-mix(in srgb, var(--charte-encre) 6%, var(--charte-surface));
+  color: var(--charte-encre);
+}
+.jf-option[aria-pressed='true'] .jf-option-marque {
+  background: var(--charte-encre);
+  border-color: var(--charte-encre);
+}
+.jf-option[aria-pressed='true'] .jf-option-marque::after {
+  border-left-color: var(--charte-blanc);
+  border-bottom-color: var(--charte-blanc);
+}
+.jf-option[aria-pressed='true'] .jf-option-titre { color: var(--charte-encre); }
+.jf-option[aria-pressed='true'] .jf-option-aide { color: var(--charte-encre-douce); }
+
+/*  Les taux de majoration : sélectionné, encre pleine / blanc, et le survol
+     ne repeint plus le texte. */
+.jf-taux-puce[aria-pressed='true'],
+.jf-taux-puce[aria-pressed='true']:hover,
+.jf-taux-puce[aria-pressed='true']:focus-visible {
+  background: var(--charte-encre);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+.jf-taux-libre:focus { color: var(--charte-encre); }
+
+/*  Les petits boutons ronds de la pièce : le survol ne prend plus la couleur
+     d'alerte pour du texte, il ne fait que pousser le feutre. */
+.jf-registre .jf-icone-bouton:hover { color: var(--charte-encre); }
+.jf-registre .jf-icone-bouton[data-ton='danger']:hover { color: var(--charte-alerte); }
+
+/*  L'état pressé : le feutre se rase, la couleur ne bouge pas. */
+.jf-page button:active:not(:disabled) { transform: translateY(1px); }
+.jf-page button.jf-retour:active:not(:disabled),
+.jf-page button.jf-icone-bouton:active:not(:disabled) { transform: translate(1px, 1px); }
+
+/* ═══ LES MODALES, RETRAVAILLÉES (image 1, 26/11) ══════════════════════════
+
+     Ce qui n'allait pas, une fois la page passée au crème : la modale gardait
+     le costume d'avant — un panneau sombre aux champs natifs, des étiquettes
+     flottantes, un pied qui débordait sous les petits écrans. Elle devient un
+     PANNEAU COUSU : une feuille claire, un galet d'en-tête, des champs en
+     capsules, une grille de deux colonnes qui se replie, et un pied collant
+     qui garde toujours ses deux boutons visibles.
+
+       « Retravaille les modales » (image 1) — c'est ce dessin-là. */
+
+/*  LE VOILE : plus dense, et il floute le fond plutôt que de l'assombrir
+     seul — la page reste lisible, la modale se détache. */
+.jf-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--charte-encre) 46%, transparent);
+  backdrop-filter: blur(3px);
+  animation: jf-voile-entre 160ms ease-out;
+}
+@keyframes jf-voile-entre {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/*  LE PANNEAU. */
+.jf-modale {
+  position: relative;
+  width: min(680px, 100%);
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--charte-surface);
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-piece);
+  box-shadow: var(--jf-feutre-1), var(--jf-feutre-2);
+  color: var(--charte-encre);
+  animation: jf-modale-entre 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes jf-modale-entre {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+/*  LA TÊTE : un galet qui porte le sceau, les deux titres et la croix. */
+.jf-modale-tete {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px 16px;
+  border-bottom: var(--jf-trait);
+  background: color-mix(in srgb, var(--charte-sable) 55%, var(--charte-surface));
+}
+.jf-modale-tete > svg {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  padding: 6px;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.jf-modale-titres { flex: 1 1 auto; min-width: 0; }
+.jf-modale-titre {
+  margin: 0;
+  font-size: clamp(17px, 2.4vw, 20px);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: var(--charte-encre);
+}
+.jf-modale-sous {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--charte-encre-douce);
+}
+.jf-modale-tete .jf-icone-bouton {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  box-shadow: 1.5px 1.5px 0 0 var(--charte-encre);
+}
+.jf-modale-tete .jf-icone-bouton:hover {
+  background: color-mix(in srgb, var(--charte-encre) 8%, var(--charte-surface));
+  color: var(--charte-encre);
+}
+
+/*  LE CORPS : deux colonnes quand il y a la place, une seule sinon. Les
+     champs s'alignent sur la même trame, et chaque libellé est une pastille
+     au-dessus de son champ — plus d'étiquette flottante. */
+.jf-modale-corps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+  padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.jf-modale-corps > .jf-champ:first-child,
+.jf-modale-corps > .jf-champ-ligne,
+.jf-modale-corps > div:has(> .jf-etiquette) {
+  grid-column: 1 / -1;
+}
+/*  La date et le pays vont côte à côte, mais chacun sa colonne. */
+.jf-champ-ligne {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+  grid-column: 1 / -1;
+}
+
+.jf-champ { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.jf-etiquette {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 2px 9px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--charte-encre);
+}
+.jf-champ input[type='text'],
+.jf-champ input[type='date'],
+.jf-champ input[type='number'],
+.jf-champ select {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-blanc);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: 13.5px;
+  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--charte-encre) 18%, transparent);
+}
+.jf-champ input:focus,
+.jf-champ select:focus {
+  outline: 2px solid var(--charte-encre);
+  outline-offset: 1px;
+  box-shadow: var(--jf-feutre-1);
+}
+.jf-champ input::placeholder { color: var(--charte-encre-douce); opacity: 0.75; }
+.jf-champ select option { background: var(--charte-surface); color: var(--charte-encre); }
+.jf-champ input:disabled,
+.jf-champ select:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/*  LES DEUX OPTIONS : des pièces à cocher, pleine largeur chacune. */
+.jf-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.jf-option {
+  padding: 12px 14px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-piece);
+  background: var(--charte-blanc);
+  color: var(--charte-encre);
+  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--charte-encre) 16%, transparent);
+}
+.jf-option:hover {
+  background: color-mix(in srgb, var(--charte-encre) 5%, var(--charte-blanc));
+  border-color: var(--charte-encre);
+}
+.jf-option-marque {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+}
+.jf-option-titre { display: block; font-size: 12.5px; font-weight: 800; color: var(--charte-encre); }
+.jf-option-aide { display: block; margin-top: 2px; font-size: 10.5px; line-height: 1.35; color: var(--charte-encre-douce); }
+
+/*  LES TAUX : des pastilles rondes, et le champ libre à côté. */
+.jf-taux { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.jf-taux-puce {
+  padding: 8px 14px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-blanc);
+  color: var(--charte-encre);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--charte-encre) 16%, transparent);
+}
+.jf-taux-puce:hover { background: color-mix(in srgb, var(--charte-encre) 6%, var(--charte-blanc)); }
+.jf-taux-libre {
+  width: 88px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-blanc);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.jf-taux-note { margin: 8px 0 0; font-size: 11px; color: var(--charte-encre-douce); }
+
+/*  LE PIED : collant, cerclé, et toujours ses deux boutons au complet. */
+.jf-modale-pied {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: var(--jf-trait);
+  background: color-mix(in srgb, var(--charte-sable) 55%, var(--charte-surface));
+}
+.jf-modale-pied .jf-bouton {
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  padding: 10px 18px;
+  font-size: 12.5px;
+  font-weight: 750;
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.jf-modale-pied .jf-bouton:hover:not(:disabled) {
+  background: var(--charte-surface-2);
+  color: var(--charte-encre);
+}
+.jf-modale-pied .jf-bouton[data-ton='terre'] {
+  background: var(--charte-encre);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+
+/*  LA SUPPRESSION : un panneau plus étroit, centré sur sa question. */
+.jf-modale-suppression {
+  width: min(460px, 100%);
+  padding: 26px 24px 20px;
+  text-align: center;
+  align-items: center;
+}
+.jf-modale-suppression h2 {
+  margin: 14px 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--charte-encre);
+}
+.jf-modale-suppression p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--charte-encre-douce);
+}
+.jf-suppression-icone {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  background: color-mix(in srgb, var(--charte-alerte) 14%, var(--charte-surface));
+  color: var(--charte-alerte);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.jf-modale-suppression .jf-modale-pied {
+  justify-content: center;
+  width: 100%;
+  margin-top: 20px;
+  padding: 16px 0 0;
+  border-top: 1px dashed color-mix(in srgb, var(--charte-encre) 35%, transparent);
+  background: none;
+}
+.jf-supprimer {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border: 1.5px solid var(--charte-alerte);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-alerte);
+  color: var(--charte-blanc);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 750;
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  cursor: pointer;
+}
+.jf-supprimer:hover:not(:disabled) { filter: brightness(1.06); color: var(--charte-blanc); }
+.jf-supprimer:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/*  LE MODÈLE : sa liste de fêtes, en pièces de tissu. */
+.jf-modele-liste {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.jf-modele-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 13px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-blanc);
+  font-size: 12px;
+  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--charte-encre) 14%, transparent);
+}
+.jf-modele-date { font-weight: 800; color: var(--charte-encre); white-space: nowrap; }
+.jf-modele-nom { flex: 1 1 auto; min-width: 0; color: var(--charte-encre); }
+.jf-modele-nature {
+  padding: 2px 9px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--charte-encre);
+}
+.jf-modele-note { grid-column: 1 / -1; margin: 0; font-size: 11.5px; color: var(--charte-encre-douce); }
+
+@media (max-width: 620px) {
+  .jf-voile { padding: 12px; align-items: end; }
+  .jf-modale {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: var(--jf-radius-piece) var(--jf-radius-piece) 0 0;
+  }
+  .jf-modale-corps { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 14px; }
+  .jf-champ-ligne { grid-template-columns: minmax(0, 1fr); }
+  .jf-options { grid-template-columns: minmax(0, 1fr); }
+  .jf-modale-tete { padding: 14px 16px; }
+  .jf-modale-pied { padding: 12px 16px; }
+  .jf-modale-pied .jf-bouton { flex: 1 1 auto; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jf-voile, .jf-modale { animation: none; }
+}
+
+/* ═══ LE CHAMP DE CRÈME EST CELUI DE LA PAGE, PAS CELUI DU SITE ═════════════
+
+     La page ne suit plus le thème (sa demande : « enlève le bouton
+     sombre/clair ») : elle EST claire. Mais un fond clair ne suffit pas —
+     tant que les jetons de la coque claire vivaient sous `.jf-page.jf-clair`,
+     tout ce qui héritait de la coque sombre retombait sur du texte crème.
+     On tient donc le champ ici, sur la page elle-même, en une fois. */
+.jf-page {
+  /*  Les jetons du champ clair vivent déjà plus haut (`.jf-page.jf-clair`,
+     ligne ~67). On ne les réécrit pas : on dit seulement que LA PAGE est
+     claire, y compris quand le site est sombre. */
+  color: var(--jf-craie);
+  background-color: var(--jf-nuit);
+  background-image:
+    repeating-linear-gradient(0deg, rgba(20, 38, 60, 0.02) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(20, 38, 60, 0.014) 0 1px, transparent 1px 4px),
+    radial-gradient(120% 70% at 50% -8%, rgba(214, 190, 148, 0.5), transparent 66%);
+}
+
+/*  La gouttière de la coque : la page se pose à droite du rail, sans marge
+     morte, et la bande culturelle traverse toute la largeur restante. */
+.coque-admin .jf-page {
+  min-height: 100vh;
+  width: 100%;
+  min-width: 0;
+}
+
+/* ═══ LA LISIÈRE EST VIVANTE (image 2, 26/11) ══════════════════════════════
+
+     « Rends cette lisière cliquable dynamique et cliquable ». Trois choses :
+
+     1. Chaque épingle est un BOUTON — pas un point décoratif. Elle a donc une
+        cible confortable (24 px de côté, le point visible reste à 11), un
+        curseur, un anneau de focus et un état pressé.
+     2. Le point qu'on vient d'ouvrir reste ALLUMÉ : anneau plein autour de
+        l'épingle, tant qu'on n'en choisit pas une autre. On sait d'où l'on
+        vient dans la pièce qu'on lit.
+     3. La lisière elle-même réagit : au survol d'une épingle, le point
+        grossit ; le mois de la fête s'assombrit. Le mois reste un repère, la
+        fête est une action — la hiérarchie est lisible sans un mot. */
+.jf-frise .jf-repere {
+  /*  la cible : 24 px, le point reste au centre */
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--jf-radius-capsule);
+  background: transparent;
+  box-shadow: none;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  transition: transform 140ms ease;
+}
+/*  le point lui-même, dessiné par le pseudo-élément : il garde sa taille
+     quelle que soit la cible */
+.jf-frise .jf-repere::before {
+  content: '';
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-aplat);
+  box-shadow: 1.5px 1.5px 0 0 var(--charte-encre);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.jf-frise .jf-repere[data-origine='pays']::before { background: var(--charte-indigo); }
+.jf-frise .jf-repere[data-origine='entreprise']::before { background: var(--charte-aplat); }
+.jf-frise .jf-repere[data-actif='non']::before { background: var(--charte-surface2); }
+.jf-frise .jf-repere[data-prochain='oui']::before {
+  width: 14px;
+  height: 14px;
+  box-shadow: 2px 2px 0 0 var(--charte-encre), 0 0 0 3px var(--charte-surface);
+}
+
+/*  survol et focus : le point grossit, l'anneau se pose */
+.jf-frise .jf-repere:hover::before,
+.jf-frise .jf-repere:focus-visible::before {
+  transform: scale(1.28);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.jf-frise .jf-repere:focus-visible {
+  outline: 2px solid var(--charte-encre);
+  outline-offset: 3px;
+}
+.jf-frise .jf-repere:active::before { transform: scale(0.94); }
+
+/*  le repère ouvert : un anneau qui reste, et le point plein */
+.jf-frise .jf-repere[data-actif-choix='oui']::before {
+  box-shadow: 2px 2px 0 0 var(--charte-encre), 0 0 0 4px color-mix(in srgb, var(--charte-encre) 18%, transparent);
+  transform: scale(1.18);
+}
+.jf-frise .jf-repere[data-actif-choix='oui'] {
+  outline: 1.5px dashed color-mix(in srgb, var(--charte-encre) 45%, transparent);
+  outline-offset: 2px;
+}
+
+/*  le mois d'une épingle survolée se souligne — le regard suit la ligne */
+.jf-frise .jf-annee-mois:has(.jf-repere:hover) .jf-annee-mois-nom,
+.jf-frise .jf-annee-mois:has(.jf-repere:focus-visible) .jf-annee-mois-nom {
+  color: var(--charte-encre);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/*  la pièce appelée depuis la lisière : elle clignote une fois, sans flou */
+.jf-jour.jf-piece-appelee {
+  animation: jf-piece-appel 1.5s ease-out;
+}
+@keyframes jf-piece-appel {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--charte-encre) 55%, transparent), var(--jf-feutre-1), var(--jf-feutre-2); }
+  60% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--charte-encre) 0%, transparent), var(--jf-feutre-1), var(--jf-feutre-2); }
+  100% { box-shadow: var(--jf-feutre-1), var(--jf-feutre-2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jf-frise .jf-repere,
+  .jf-frise .jf-repere::before { transition: none; }
+  .jf-jour.jf-piece-appelee { animation: none; }
+}
+
+/*  Au doigt, la cible des épingles passe à 30 px — recommandation tactile. */
+@media (max-width: 900px) {
+  .jf-frise .jf-repere { width: 30px; height: 30px; }
+  .jf-frise .jf-repere::before { width: 12px; height: 12px; }
+}
+
+/* ═══ L'ENTÊTE SANS LA BASCULE NI LES RACCOURCIS ═══════════════════════════
+
+     Deux retraits du 26/11 — « enlève les raccourcis », « enlève le bouton
+     sombre/clair ». La géométrie de l'en-tête avait cinq colonnes pour le
+     sélecteur ET la bascule ; il n'en faut plus que quatre : le retour, le
+     sceau, le titre qui prend la place, le sélecteur, puis les sceaux. La
+     capsule du seuil, elle, ne porte plus que ses trois faits. */
+.jf-entete {
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 22px;
+}
+.jf-entete .jf-titre-bloc { grid-column: 3; }
+.jf-entete .jf-entete-droite { grid-column: 4; justify-content: flex-end; }
+.jf-entete .jf-sceaux { grid-column: 5; }
+.jf-entete .jf-seuil { grid-column: 1 / -1; }
+
+/*  La capsule du seuil : trois faits, largement espacés, et rien au bout. */
+.jf-seuil {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 11px 18px;
+}
+.jf-seuil-gauche {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.jf-seuil-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 22px;
+  min-width: 0;
+}
+.jf-seuil-item:first-child { padding-left: 0; }
+.jf-seuil-item + .jf-seuil-item { border-left: 1px solid var(--charte-bordure); }
+
+@media (max-width: 900px) {
+  .jf-entete .jf-entete-droite { grid-column: 1 / -1; grid-row: 3; justify-content: flex-start; }
+  .jf-seuil-item { padding: 0 12px; }
+}

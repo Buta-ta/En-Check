@@ -166,6 +166,32 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(html).toContain('jf-annee-suite')
   })
 
+  it('les repères deviennent des boutons quand la page sait les ouvrir', () => {
+    //  « Rends cette lisière cliquable » (26/11, image 2) : chaque repère
+    //  appelle la page avec sa fête, son origine et son pays.
+    const cliquable = renderToStaticMarkup(
+      <JoursFeriesAnnee
+        annee={2026}
+        globalHolidays={globalHolidays}
+        ownHolidays={ownHolidays}
+        isGlobalEnabled={() => true}
+        onChoisirRepere={() => {}}
+        repereActif="g-g1"
+      />
+    )
+    expect(cliquable).toContain('<button')
+    expect(cliquable).toContain('type="button"')
+    expect(cliquable).toContain('data-actif-choix="oui"')
+    expect(cliquable).toContain('voir la fiche')
+  })
+
+  it('sans gestionnaire, le repère reste un point nommé', () => {
+    //  La lisière s'affiche ailleurs (aperçus, tests) sans devenir un bouton
+    //  mort : c'est la page qui décide.
+    expect(html).not.toContain('<button')
+    expect(html).toContain('role="img"')
+  })
+
   it('une fête désactivée est marquée comme telle', () => {
     const desactive = renderToStaticMarkup(
       <JoursFeriesAnnee annee={2026} globalHolidays={globalHolidays} ownHolidays={[]} isGlobalEnabled={id => id !== 'g2'} />
@@ -219,9 +245,14 @@ describe('4. le vieux décor ne revient pas', () => {
 
   it('la page a bien deux thèmes, et pas un seul fond sombre', () => {
     expect(CSS).toContain('.jf-page.jf-clair {')
-    expect(PAGE).toContain("className={`jf-page${darkMode ? '' : ' jf-clair'}`}")
-    expect(PAGE).toContain("aria-checked={darkMode}")
-    expect(PAGE).toContain("role=\"switch\"")
+    //  « Enlève le bouton sombre/clair » (26/11) : la page ne suit plus le
+    //  thème, elle tient LE sien — le champ de crème de la maquette.
+    expect(PAGE).toContain('<div className="jf-page jf-clair">')
+    expect(CSS).toContain('.jf-page:not(.jf-clair)')
+    //  « Enlève le bouton sombre/clair » (26/11) : la bascule ne vit plus
+    //  dans l'en-tête de la page, c'est le rail de la sidebar qui la porte.
+    expect(PAGE).not.toContain('jf-bascule')
+    expect(PAGE).toContain('surTheme={toggleTheme}')
   })
 
   it('les contrôles sont dessinés, pas des cases à cocher', () => {
@@ -235,10 +266,15 @@ describe('4. le vieux décor ne revient pas', () => {
 })
 
 describe('5. les autres écrans restent à portée', () => {
-  it('les raccourcis de page sont dans la coque', () => {
-    expect(PAGE).toContain("import RaccourcisPages from '../components/RaccourcisPages'")
-    expect(PAGE).toContain('<RaccourcisPages compact excludePaths={[\'/jours-feries\']} />')
-    expect(CSS).toContain('.jf-raccourcis .abs-raccourci')
+  it('les raccourcis ont quitté la coque, la sidebar y est entrée', () => {
+    //  « Enlève les raccourcis » (26/11) : plus de barre de raccourcis ici.
+    expect(PAGE).not.toContain('RaccourcisPages')
+    expect(PAGE).not.toContain('jf-raccourcis')
+    //  « Ramène la sidebar et son rail dans cette page » (26/11).
+    expect(PAGE).toContain("import SidebarUnique from '../components/SidebarUnique'")
+    expect(PAGE).toContain('import CoqueAdmin from')
+    expect(PAGE).toContain('<CoqueAdmin')
+    expect(PAGE).toContain('<SidebarUnique')
   })
 
   it('l’explication est repliée, pas imposée', () => {
@@ -358,7 +394,10 @@ describe('8. la page se monte et répond', () => {
     expect(hote.querySelector('h1').textContent).toContain('Jours fériés')
     expect(hote.querySelectorAll('.jf-mesure')).toHaveLength(4)
     expect(hote.querySelector('.jf-annee')).not.toBeNull()
-    expect(hote.querySelector('[data-testid="raccourcis-pages"]')).not.toBeNull()
+    //  « Enlève les raccourcis » (26/11) : la capsule du seuil n'en porte plus.
+    expect(hote.querySelector('[data-testid="raccourcis-pages"]')).toBeNull()
+    //  « Ramène la sidebar et son rail dans cette page » (26/11).
+    expect(hote.querySelector('.sb')).not.toBeNull()
   })
 
   it('le registre du pays liste les fêtes, avec un interrupteur dessiné', () => {

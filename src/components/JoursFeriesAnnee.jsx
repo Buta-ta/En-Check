@@ -34,6 +34,8 @@ export default function JoursFeriesAnnee({
   isGlobalEnabled = () => true,
   prochain = null,
   noteSuivante = '',
+  onChoisirRepere = null,
+  repereActif = null,
 }) {
   const reperes = []
 
@@ -42,6 +44,8 @@ export default function JoursFeriesAnnee({
     if (!d) continue
     reperes.push({
       cle: `g-${h.id}`,
+      id: h.id,
+      pays: h.country_code || 'ALL',
       jour: d.getDate(),
       mois: d.getMonth(),
       nom: h.name,
@@ -56,6 +60,8 @@ export default function JoursFeriesAnnee({
     if (!d) continue
     reperes.push({
       cle: `p-${h.id}`,
+      id: h.id,
+      pays: 'ALL',
       jour: d.getDate(),
       mois: d.getMonth(),
       nom: h.name,
@@ -96,18 +102,32 @@ export default function JoursFeriesAnnee({
             <div className="jf-annee-piste">
               {liste.map(r => {
                 const estProchain = prochain && prochain.mois === r.mois && prochain.jour === r.jour
+                const etat = `${r.jour} ${MOIS_LONGS[m]} — ${r.nom}, ${r.origine === 'pays' ? 'fête du pays' : 'fête de l’entreprise'}${r.actif ? '' : ', désactivée'}${r.travaille ? ', travaillée' : ''}`
+                const commun = {
+                  key: r.cle,
+                  className: 'jf-repere',
+                  'data-origine': r.origine,
+                  'data-actif': r.actif ? 'oui' : 'non',
+                  'data-travaille': r.travaille ? 'oui' : 'non',
+                  'data-prochain': estProchain ? 'oui' : 'non',
+                  'data-actif-choix': repereActif === r.cle ? 'oui' : 'non',
+                  style: { left: `${Math.min(94, (r.jour / 31) * 100)}%` },
+                  title: `${r.jour} ${MOIS_LONGS[m]} — ${r.nom}`,
+                }
+
+                /*  CLIQUABLE — sa demande du 26/11 sur la lisière : « rends
+                    cette lisière dynamique et cliquable ». Un repère ouvre sa
+                    pièce dans le registre. Sans gestionnaire, il reste ce
+                    qu'il était : un point nommé pour les lecteurs d'écran. */
+                if (!onChoisirRepere) {
+                  return <span {...commun} role="img" aria-label={etat} />
+                }
                 return (
-                  <span
-                    key={r.cle}
-                    className="jf-repere"
-                    data-origine={r.origine}
-                    data-actif={r.actif ? 'oui' : 'non'}
-                    data-travaille={r.travaille ? 'oui' : 'non'}
-                    data-prochain={estProchain ? 'oui' : 'non'}
-                    style={{ left: `${Math.min(94, (r.jour / 31) * 100)}%` }}
-                    role="img"
-                    aria-label={`${r.jour} ${MOIS_LONGS[m]} — ${r.nom}, ${r.origine === 'pays' ? 'fête du pays' : 'fête de l’entreprise'}${r.actif ? '' : ', désactivée'}${r.travaille ? ', travaillée' : ''}`}
-                    title={`${r.jour} ${MOIS_LONGS[m]} — ${r.nom}`}
+                  <button
+                    {...commun}
+                    type="button"
+                    aria-label={`${etat} — voir la fiche`}
+                    onClick={() => onChoisirRepere(r)}
                   />
                 )
               })}
