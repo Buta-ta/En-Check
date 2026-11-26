@@ -1,36 +1,24 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// AFFICHER UNE PHOTO D'UN BUCKET PRIVÉ
-//   Chemin : src/components/PhotoSignee.jsx   (fichier NOUVEAU)
+//  LA PHOTO SIGNÉE — une image de stockage privé, affichée sans trou
 //
-//   AVANT : l'adresse d'une photo de pointage était publique — qui avait
-//   l'adresse voyait la photo, sans compte, sans mot de passe, et pour toujours.
-//   Elle est enregistrée en base sous forme d'adresse publique, et il y en a
-//   dans le code, du tableau de bord aux recherches.
+//  Le principe n'a pas changé : l'adresse enregistrée en base est un chemin de
+//  bucket privé, il faut la signer avant de l'afficher.
 //
-//   MAINTENANT : le bucket `attendance-photos` est privé. Une adresse publique
-//   n'y mène plus nulle part. Il faut une adresse SIGNÉE : l'adresse + une
-//   signature à durée limitée (1 heure), délivrée par Supabase à un compte
-//   connecté. C'est ce que fait cette petite pièce : elle lit l'adresse
-//   enregistrée, garde le chemin, demande la signature, et affiche l'image.
+//  Ce qui a changé le 26/11 (« fais apparaître le profil image de la personne
+//  qui est en pause réelle ») : le composant disait `src` avec un pixel
+//  transparent en attendant la signature, et RIEN ne prenait le relais quand
+//  la signature échouait — photo absente, bucket supprimé, réseau coupé. On
+//  voyait donc un cercle vide, exactement comme s'il n'y avait pas de photo.
 //
-//   ELLE NE CHANGE RIEN AU RESTE. Les lignes de la base gardent leur
-//   `photo_url` d'origine — c'est important : la suppression d'une photo
-//   (Pointages.jsx) lit cette colonne pour retrouver le fichier. On ajoute,
-//   on ne remplace pas.
-//
-//   ELLE SERT AUSSI POUR LES AUTRES BUCKETS : `<PhotoSignee url={...} />`
-//   reproduit exactement une balise <img>, il suffit de remplacer le nom.
-//   Tant qu'un bucket est encore public, rien ne casse ; le jour où il passe
-//   en privé, la photo continue de s'afficher. C'est ce qui permettra de
-//   fermer les autres plus tard, un par un.
+//  Désormais :
+//   · `fallback` s'affiche tant que l'image n'est pas réellement peinte ;
+//   · `onError` bascule aussi sur le repli — une image cassée n'est jamais
+//     laissée à l'écran.
+//  Le repli est rendu dans le même cadre, donc l'assiette garde sa taille.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-
-// Un pixel transparent : évite l'icône d'image cassée pendant la signature.
-const TRANSPARENT =
-  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 
 // Adresses déjà signées : on ne re-signe pas la même photo dix fois.
 // (clé = bucket + chemin, valeur = { adresse, expire })
@@ -76,19 +64,52 @@ export async function adresseSignee(url, bucketParDefaut = null, secondes = 3600
 }
 
 /**
- * La balise <img>, en mieux : elle signe son adresse avant de l'afficher.
+ * La balise <img>, en mieux : elle signe son adresse avant de l'afficher, et
+ * elle laisse le repli à l'écran jusqu'à ce que l'image soit VRAIMENT peinte.
  * Toutes les autres propriétés (style, className, alt, onClick…) passent
  * directement à l'image.
  */
-export default function PhotoSignee({ url, bucket = null, secondes = 3600, ...props }) {
+//  Une adresse déjà utilisable telle quelle : rien à signer, donc rien à
+//  attendre. Un `data:` (aperçu, photo locale) ou un `blob:` s'affiche
+//  immédiatement — inutile de faire patienter l'image derrière un aller-retour
+//  de signature qui n'a pas lieu d'être.
+export function adresseDirecte(url) {
+  return typeof url === 'string' && /^(data:|blob:)/.test(url)
+}
+
+export default function PhotoSignee({ url, bucket = null, secondes = 3600, fallback = null, style, ...props }) {
   const [adresse, setAdresse] = useState(null)
+  const [ratee, setRatee] = useState(false)
+  const [peinte, setPeinte] = useState(false)
 
   useEffect(() => {
     let vivant = true
-    if (!url) { setAdresse(null); return }
-    adresseSignee(url, bucket, secondes).then(a => { if (vivant) setAdresse(a) })
+    setRatee(false)
+    setPeinte(false)
+    if (!url) { setAdresse(null); return undefined }
+    if (adresseDirecte(url)) { setAdresse(url); return undefined }
+    adresseSignee(url, bucket, secondes).then((a) => { if (vivant) setAdresse(a) })
     return () => { vivant = false }
   }, [url, bucket, secondes])
 
-  return <img src={adresse || TRANSPARENT} {...props} />
+  //  Pas d'adresse, adresse refusée, ou signature pas encore revenue : c'est
+  //  le repli qui occupe le cadre. Il ne clignote pas, il attend.
+  if (!adresse || ratee) {
+    return fallback ? <span style={style} className={props.className}>{fallback}</span> : null
+  }
+
+  return (
+    <>
+      <img
+        src={adresse}
+        style={{ ...style, display: peinte ? undefined : 'none' }}
+        onLoad={() => setPeinte(true)}
+        onError={() => setRatee(true)}
+        {...props}
+      />
+      {!peinte && fallback ? (
+        <span style={style} className={props.className}>{fallback}</span>
+      ) : null}
+    </>
+  )
 }

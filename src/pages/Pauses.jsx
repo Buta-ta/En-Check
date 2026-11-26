@@ -21,6 +21,13 @@ import {
   exportCsvPauses,
 } from '../services/pausesService'
 import PausesLoadingScreen from '../components/PausesLoadingScreen'
+/*  LA SIDEBAR ET SON RAIL — « Ramène la sidebar et son rail dans cette page
+    comme ça en existe dans la page employés » (26/11). On ne recopie pas le
+    patron : on rend `CoqueAdmin` et `SidebarUnique`, avec la fabrique de
+    sections que Planning, Employés, Annonces et Retards lisent déjà. */
+import CoqueAdmin from '../components/coque/CoqueAdmin'
+import SidebarUnique from '../components/SidebarUnique'
+import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import useLoadingMinimum from '../hooks/useLoadingMinimum'
 import {
   PausesAnalyticsCharts,
@@ -491,6 +498,23 @@ export default function Pauses () {
     setSelectedDate(jourLocal(d) || d.toISOString().split('T')[0])
   }
 
+  /*  Les sections du rail : la même fabrique que les autres pages, avec la
+      même règle `super_admin` qui passe toujours. La rubrique de cette page
+      est « Temps de travail », où Pauses figure déjà. */
+  const sectionsNav = sectionsNavAdmin({
+    admin,
+    moduleActif: (champ) => {
+      if (admin?.role === 'super_admin') return true
+      const ligne = (entreprises || []).find(
+        (e) => e.id === (selectedEntrepriseId === 'all' ? null : selectedEntrepriseId),
+      )
+      return Boolean(ligne?.[champ])
+    },
+  })
+  const nomAdmin =
+    `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() ||
+    admin?.name || admin?.email || 'Administrateur'
+
   //  Même plancher que le Planning : la scène a le temps d'être vue, même
   //  quand la lecture est instantanée. La carte est celle de la page
   //  Employés, et elle annonce « prêt » sur la donnée réelle — pas sur le
@@ -510,6 +534,29 @@ export default function Pauses () {
   }
 
   return (
+    <CoqueAdmin
+      sidebar={
+        <SidebarUnique
+          sections={sectionsNav}
+          nomAdmin={nomAdmin}
+          initialeAdmin={(admin?.first_name || nomAdmin || 'A').charAt(0).toUpperCase()}
+          darkMode={darkMode}
+          surTheme={toggleTheme}
+          surDeconnexion={() => {
+            localStorage.removeItem('admin')
+            localStorage.removeItem('last_enterprise_id')
+            navigate('/login')
+          }}
+          entreprises={entreprises}
+          entrepriseActive={
+            entreprises.find((e) => e.id === selectedEntrepriseId) || null
+          }
+          surEntreprise={(e) =>
+            setSelectedEntrepriseId(typeof e === 'string' ? e : e?.id || 'all')
+          }
+        />
+      }
+    >
     <div
       className="pauses-v2-shell"
       data-theme={darkMode ? 'dark' : 'light'}
@@ -702,6 +749,7 @@ export default function Pauses () {
           onStatuer={statuer}
           onAnnulerDecision={annulerDecision}
           onSupprimer={supprimerPause}
+          admin={admin}
           onOpenEmployeeFiche={(emp) => setFicheEmployee(emp)}
           onOpenPointages={(p) => {
             const q = p.matricule || p.employe || ''
@@ -729,5 +777,6 @@ export default function Pauses () {
       )}
       <PageCulturalBand pathname="/pauses" placement="bottom"/>
     </div>
+    </CoqueAdmin>
   )
 }
