@@ -764,12 +764,36 @@ Ce qui **ne bouge pas**, parce que le dessin le tient : le pas de ligne de 78 (2
 pour tenir plus d'employés à l'écran aurait été trahir la maquette qu'on me reproche
 justement de ne pas respecter.
 
+## Et le cadre qui avait disparu tout seul
+
+En reprenant le bandeau, une troisième cause est apparue, la plus vicieuse parce
+qu'elle ne se lit pas dans le code : `image-123.png` montre des boîtes **sans encre**.
+La barre d'outils emprunte deux cotes à la rubrique du pli, `--abs-pli-rule` (3) et
+`--abs-pli-case` (30) — et la rubrique ne vivait que sur `.abs-cal`. Le bandeau, lui,
+est le **frère** du calendrier dans la page, pas son enfant : une propriété
+personnalisée qui ne résout pas n'annule pas la valeur, elle annule **la propriété
+entière**, donc `border` retombe à son `initial`, `border-style: none`, et le trait de
+trois disparaît sans un mot. Les boîtes perdaient aussi leur `min-height` (30), d'où le
+bandeau bas et nu.
+
+La correction n'est pas de recopier `3px` dans la rubrique du bandeau — ce serait une
+seconde naissance du nombre — mais d'**élargir l'hôte** de la rubrique :
+
+    .abs-page,
+    .abs-cal { --abs-pli-pas: 78px; … }
+
+Le bloc ne contient que des jetons (contrôlé : aucune déclaration hors `--abs-pli-*`),
+donc rien ne déborde sur la page ; et le nombre reste écrit une fois, c'est sa
+**portée** qui est déclarée deux fois — seule duplication que la cascade autorise. Le
+verrou 36 lit précisément cet en-tête, parce qu'un `var()` non résolu n'est pas une
+erreur d'exécution : sans aiguille, il ne se voit que sur l'image.
+
 ## Les chiffres du contrôle (13/12)
 
 | mesure | valeur |
 |---|---|
 | `npx vitest run` | **199 fichiers ✓ · 2 847 tests ✓** — pli **36** verrous (34, 35, 36 sont neufs), tringle 24, modes 21, rendu 10, section haute / étagère / charte 46 |
 | échec préexistant, étranger à la page | `alerteHebdoSansPaie.test.js` : 5 tests en timeout de 5 s **aussi sur `8ac940c` sans mes changements** (vérifié en remisant) ; rien à voir avec les absences, rien n'y a été touché |
-| verrous réécrits à la mesure, pas relâchés | 3 (l'ombre se relit sur le pas ; le champ ne s'étale plus), 16 (la pince de ligne se déduit de la case), 22 (mort de `--abs-pli-ombre`, `évasement` 22 → 19, `deuil`/`pile`/`pince` écrits en calculs), 28 (la feuille est une règle, pas une boîte : `not.toContain('inset:0')`), 30 (le plateau ne se garde plus d'air en padding interne) |
+| verrous réécrits à la mesure, pas relâchés | 3 (l'ombre se relit sur le pas ; le champ ne s'étale plus), 16 (la pince de ligne se déduit de la case), 22 (mort de `--abs-pli-ombre`, `évasement` 22 → 19, `deuil`/`pile`/`pince` écrits en calculs), 28 (la feuille est une règle, pas une boîte : `not.toContain('inset:0')`), 30 (le plateau ne se garde plus d'air en padding interne) ; 36 porte la loi de portée du bandeau |
 | `npm run charte` | **inchangé** : 64 tailles · 43 marges · 27 rayons, recompté sur `git archive HEAD src` (8ac940c) **et** sur l'arbre d'aujourd'hui — aucune valeur neuve |
-| `npm run build` · `npx eslint` | ✓ (22,1 s) · 3 erreurs et 3 warnings **préexistants** dans `Absences.jsx`, aucun neuf |
+| `npm run build` · `npx eslint` | ✓ (20,1 s) · 3 erreurs et 3 warnings **préexistants** dans `Absences.jsx`, aucun neuf |

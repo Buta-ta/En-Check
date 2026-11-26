@@ -2233,6 +2233,16 @@ button.abs-planche-corps:focus-visible {
    trois par jour, et c'est ce que rend `--abs-pli-tiers`.
    ═══════════════════════════════════════════════════════════ */
 
+/* LES COTES DU PLI, ET DONC CELLES DU BANDEAU. Le host n'est pas `.abs-cal` seul :
+   la barre d'outils est la SŒUR du calendrier dans la page, pas son enfant, et une
+   propriété personnalisée ne se lit que si elle hérite jusqu'à vous. Or le bandeau
+   emprunte `--abs-pli-rule` (3) et `--abs-pli-case` (30) — non résolus, un `var()` ne
+   tombe pas en 3 pixels, il ANNULE la propriété entière : `border` retombe à son
+   `initial`, `border-style: none`, et le cadre disparaît. C'est exactement la barre
+   nue de l'image du fondateur (13/12, `image-123.png`). Déclarer les cotes sur les
+   deux host garde UN seul écritage des nombres — le nombre n'est pas dupliqué, sa
+   portée oui, et c'est la cascade qui l'exige. */
+.abs-page,
 .abs-cal {
   --abs-pli-pas: 78px;                  /* le pas de ligne (200 → 278 → 356) */
   --abs-pli-rule: 3px;                  /* l'épaisseur des règles du plateau */

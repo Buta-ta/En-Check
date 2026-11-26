@@ -1171,6 +1171,16 @@ describe('📐 le pli par employé', () => {
     expect(outils).not.toContain('!important')
     expect(nud(corpsFeuille('.abs-outils-compte'))).not.toContain('!important')
     expect(PAGE).toMatch(/<div className="toolbar-top abs-outils">/)
+    // LA PORTÉE, pas seulement la valeur. Le bandeau lit `--abs-pli-rule` (3) et
+    // `--abs-pli-case` (30), deux jetons de la rubrique du pli — et la rubrique ne
+    // vivait que sur `.abs-cal`. Or le bandeau est le FRÈRE du calendrier, pas son
+    // enfant : une propriété personnalisée non résolue n'annule pas la valeur, elle
+    // annule la PROPRIÉTÉ toute entière (`border` retombe à `initial`,
+    // `border-style: none`) — c'est la barre d'outils NUE de l'image du fondateur.
+    // La rubrique est donc déclarée sur les deux hôte, et les nombres restent écrits
+    // une fois (c'est la portée qui est dupliquée, pas la cote).
+    const hôte = CSS.search(/\.abs-cal \{\s*--abs-pli-pas/)
+    expect(CSS.slice(hôte - '.abs-page,\n'.length, hôte)).toBe('.abs-page,\n')
     // le compte ne prend plus de rangée pour lui : il est dans la rive droite du
     // bandeau, et son style objet a disparu de la page avec sa ligne.
     expect(PAGE).toContain('className="abs-outils-compte"')
