@@ -44,7 +44,11 @@ function PastilleInterne({ entreprise }) {
       <PhotoSignee
         url={photo}
         alt=""
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        /* ni la taille ni le cadrage ne s'écrivent ici : un `objectFit` posé en
+           inline ne se laisse commander par AUCUNE classe, et `cover` dans un rond
+           de 30 px ne laissait d'une bannière 236 × 43 que cinq pixels de signe —
+           « affiche l'image de l'entreprise ICI » (fondateur, 26/12). C'est
+           `se-rond--logo`, dans la feuille de la barre, qui cadre : entier. */
         fallback={<span className="se-rond-initiale" aria-hidden="true">{initiale(entreprise?.name)}</span>}
       />
     )
@@ -54,7 +58,7 @@ function PastilleInterne({ entreprise }) {
 
 function PastilleEntreprise({ entreprise }) {
   return (
-    <span className="se-rond se-rond--photo">
+    <span className="se-rond se-rond--photo se-rond--logo">
       <PastilleInterne entreprise={entreprise} />
     </span>
   )
@@ -256,7 +260,7 @@ export default function SelecteurEntreprise({
         disabled={!peutChoisir}
       >
         {active && (
-          <span className="se-rond se-rond--bande">
+          <span className="se-rond se-rond--bande se-rond--logo">
             <PastilleInterne entreprise={active} />
           </span>
         )}

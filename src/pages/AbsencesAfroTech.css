@@ -1631,7 +1631,12 @@ button.abs-planche-corps:focus-visible {
   .abs-request-identity { flex-basis: 170px !important; }
 }
 .abs-page [data-testid='abs-soldes-liste'] { overflow-x: auto; max-width: 100%; padding-bottom: 8px; }
-.abs-page [data-testid='abs-soldes-liste'] > div { min-width: 580px; box-sizing: border-box; }
+/* la largeur du rail se paye UNE fois, dans le jeton, et se pose sur les lignes :
+   c'est le contenant qui défile, les rangées qui gardent leurs colonnes d'aplomb */
+.abs-page [data-testid='abs-soldes-liste'] > div {
+  min-width: var(--abs-soldes-largeur);
+  box-sizing: border-box;
+}
 
 /* ═══════════════════════════════════════════════════════════
    🪝 LA TRINGLE du calendrier des absences — maquette
@@ -2309,8 +2314,24 @@ button.abs-planche-corps:focus-visible {
   --abs-pli-solde-mois: 0px;
 
   /* les colonnes du tableau des soldes de l'onglet Configuration : la largeur du
-     champ se lit ICI, pas dans un plancher JavaScript (la loi du champ, encore). */
-  --abs-soldes-grille: minmax(180px, 2fr) repeat(4, minmax(80px, 1fr));
+     champ se lit ICI, pas dans un plancher JavaScript (la loi du champ, encore).
+     COLONNES D'APLOMB, 26/11. La capture du fondateur montrait quatre chiffres
+     serrés dans les 60 % droits de la table, leur note collée dessous, et le nom
+     de l'employé collé à son matricule : chaque cellule demandait son compte de
+     pixels, et le rail n'était écrit nulle part. Une colonne numérique porte
+     DÉSORMAIS sa note — « 2 j/mois × 12 mois » en 11 px ≈ 104 px — donc le
+     plancher passe de 80 à 104, et la table entière se donne un largeur minimale
+     (`--abs-soldes-largeur`, 180 + 4 × 104 + 4 × 12 + une marge d'air) qu'elle
+     achète en défilement plutôt qu'en écrasement : un tableau défile, il ne se
+     plie pas. */
+  --abs-soldes-nombre: 104px;
+  --abs-soldes-largeur: calc(180px + 4 * var(--abs-soldes-nombre) + 4 * var(--charte-espace-3) + 12px);
+  --abs-soldes-grille: minmax(180px, 2fr) repeat(4, minmax(var(--abs-soldes-nombre), 1fr));
+  /* LA RANGÉE DE MOTIFS : le rail des planches du pli, en plus court. Sous la
+     largeur du jeton, la tuile prend 100 % (le `min()` de `auto-fill`) au lieu
+     de déborder — c'est ce qui rend la rangée fluide sans `@media`. */
+  --abs-motifs-planche: 224px;
+  --abs-motifs-glyphe: 34px;
   --abs-pli-jauge-mois: none;
   /* le cran entre deux planches qui se chevauchent : une planche + un souffle.
      Le MÊME nombre sert à la montée de la planche et à la hauteur que la ligne
@@ -3558,7 +3579,13 @@ img.abs-pli-figure { border: 0 }
   color: var(--charte-douce);
 }
 
-/* ── la table des soldes : une règle par rangée, pas un cadre par ligne ── */
+/* ── LA TABLE DES SOLDES : UN RAIL, QUATRE NOMBRES, UNE NOTE PAR NOMBRE ──
+   Reprend les cotes du pli (trait de 3 pour la règle du bandeau, 2 px pour la
+   cloison de ligne, micro 11 px pour la note, monospace pour tout ce qui se
+   compare). Ce qu'elle remplace, 26/11 : une rangée où le nom, le matricule et
+   le service se marchaient dessus, quatre chiffres cerclés chacun de leur
+   cerclage, et une note qui n'était écrite que sous l'« Acquis » — les trois
+   autres nombres restaient muets, d'où le « on ne comprend pas » du fondateur. */
 .abs-soldes-table {
   display: flex;
   flex-direction: column;
@@ -3575,9 +3602,11 @@ img.abs-pli-figure { border: 0 }
   border-top: var(--charte-trait) solid var(--charte-bordure);
 }
 
+/* le bandeau d'entêtes : la règle forte du plateau, pas un trait de plus */
 .abs-soldes-tete {
   padding-top: 0;
   border-top: 0;
+  border-bottom: var(--abs-pli-rule) solid var(--charte-encre);
   font-size: var(--charte-taille-micro);
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -3585,30 +3614,74 @@ img.abs-pli-figure { border: 0 }
   color: var(--charte-douce);
 }
 
+/* l'étiquette d'une colonne numérique : le rail entier, aligné à droite */
+.abs-soldes-col { text-align: right }
+
+/* le repère de la carte : compte d'employés à gauche, dates de recalcul à droite,
+   une seule ligne, et le souffle du rail — deux lignes would mean the header
+   grows with its text, which the plis of the fold refused on 25/11 */
+.abs-soldes-repere {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--charte-espace-3);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* LA COLONNE DE NOMBRE. Deux lignes, toujours : le nombre, puis sa fabrication.
+   `justify-items: end` — jamais `justify-self` ligne à ligne : c'est la colonne
+   qui décide, et les quatre colonnes gardent leurs nombres sur le même rail. */
 .abs-soldes-nombre {
+  display: grid;
+  justify-items: end;
+  align-items: baseline;
+  gap: var(--charte-espace-1);
+  min-width: 0;
+}
+
+.abs-soldes-chiffre {
   font-family: var(--charte-mono);
   font-size: var(--charte-taille-corps);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--charte-encre);
-  text-align: right;
   white-space: nowrap;
 }
 
 .abs-soldes-fabrication {
-  display: block;
-  margin-top: var(--charte-espace-1);
+  max-width: 100%;
   font-size: var(--charte-taille-micro);
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
   text-align: right;
   color: var(--charte-douce);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* l'identité : sceau, puis le bloc nom/matricule en grille — posés en flex en
+   ligne, les deux textes se touchaient dès que le prénom était long (c'était
+   l'anomalie de la capture : « BIYOKILAENN-0002 ») */
 .abs-soldes-identité {
   display: flex;
   align-items: center;
   gap: var(--charte-espace-3);
+  min-width: 0;
+  /* la colonne défile vers la droite : le nom reste sous l'œil, comme la
+     première colonne collante du plateau */
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--charte-surface);
+  padding-right: var(--charte-espace-2);
+}
+
+.abs-soldes-identité-nom {
+  display: grid;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -3643,6 +3716,9 @@ img.abs-pli-figure { border: 0 }
   font-size: var(--charte-taille-micro);
   color: var(--charte-douce);
   font-family: var(--charte-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* le solde est le SEUL nombre de la rangée qu'on souligne : c'est lui qu'on
@@ -3651,6 +3727,7 @@ img.abs-pli-figure { border: 0 }
   font-family: var(--charte-mono);
   font-size: var(--charte-taille-titre);
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   color: var(--charte-encre);
   text-align: right;
 }
@@ -3658,10 +3735,11 @@ img.abs-pli-figure { border: 0 }
 .abs-soldes-solde[data-negatif='vrai'] { color: var(--abs-coral) }
 
 /* la jauge du pris : le même trait de 3 que la règle du plateau, peint du
-   rouge de l'alerte une fois la pleine mesure dépassée */
+   rouge de l'alerte une fois la pleine mesure dépassée. Elle se lit SUR la
+   largeur du rail, sinon le pourcentage n'est plus comparable d'une ligne à l'autre */
 .abs-soldes-jauge {
+  width: var(--abs-soldes-nombre);
   height: var(--abs-pli-trait);
-  margin-top: var(--charte-espace-1);
   background: var(--charte-bordure);
   border-radius: var(--charte-rayon-champ);
   overflow: hidden;
@@ -3673,3 +3751,310 @@ img.abs-pli-figure { border: 0 }
 }
 
 .abs-soldes-jauge-plein[data-plein='vrai'] { background: var(--abs-coral) }
+
+/* ═══════════════════════════════════════════════════════════
+   🎨 LES MOTIFS, SUR LE MÊME RAIL QUE LE PLI — 26/11/2026
+
+   LA CAPTURE DU FONDATEUR (« retravaille ça ») montrait huit tuiles en 4 × 2,
+   chacune cerclée DE SA COULEUR, fond teinté, glyphe dans un carré teinté,
+   trois rayons différents (16, 13, 11) et un liseré en `#RRGGBB55` : la carte
+   du gestionnaire, elle, était cerclée pour son compte — deux cerclages l'un
+   dans l'autre, et une couleur par bordure. Le composant était ENTIÈREMENT
+   peint en styles inline, avec des hex bruts et six rayons : aucune de ces
+   cotes ne se retrouvait ailleurs, et le thème sombre ne pouvait pas les
+   rattraper. La rangée est donc redessinée avec les JETONS de la page :
+   trait de 2, rayon de champ, monospace pour le compte, un seul cerclage par
+   tuile, et LA teinte seulement là où elle est une donnée — la pastille du
+   glyphe, le nuancier, l'aperçu. Aucune `@media` ici non plus (la loi du bloc
+   de configuration) : le rail est en `auto-fill` avec `min()`, il se replie
+   tout seul.
+   ═══════════════════════════════════════════════════════════ */
+.abs-motifs-manager { gap: var(--charte-espace-4) }
+
+.abs-motifs-tete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--charte-espace-4);
+  flex-wrap: wrap;
+}
+
+.abs-motifs-tete h3 {
+  margin: 0;
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+.abs-motifs-tete-texte { min-width: 0 }
+
+/* l'avis « toutes entreprises » : un BANDEAU de texte, pas une carte de plus.
+   Un `rgba(59,130,246,.07)` + cerclage bleu était un troisième statut couleur
+   dans la pile ; le bleu de l'info n'existe pas dans la charte. */
+.abs-motifs-avis {
+  display: flex;
+  align-items: baseline;
+  gap: var(--charte-espace-2);
+  margin: 0;
+  padding: var(--charte-espace-3) 0 0;
+  border-top: var(--abs-pli-rule) solid var(--charte-encre);
+  background: transparent;
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+
+.abs-motifs-avis svg { flex-shrink: 0; transform: translateY(2px) }
+
+.abs-motifs-pile {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--abs-motifs-planche)), 1fr));
+  gap: var(--charte-espace-3);
+  min-width: 0;
+}
+
+/* LA TUILE : trois rails — le glyphe, le texte qui peut se réduire, les pinces
+   qui ne se réduisent jamais. `auto minmax(0, 1fr) auto` est le seul truc qui
+   empêche le libellé long de pousser la tuile hors du rail ; en flex à trois
+   `div` dont un seul avait un `min-width: 0`, c'est la DEUXIÈME ligne qui
+   débordait sous les boutons. */
+.abs-motifs-carte {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  min-width: 0;
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+}
+
+.abs-motifs-glyphe {
+  width: var(--abs-motifs-glyphe);
+  height: var(--abs-motifs-glyphe);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  font-size: var(--charte-taille-corps);
+}
+
+.abs-motifs-texte {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.abs-motifs-nom {
+  margin: 0;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  color: var(--charte-encre);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abs-motifs-detail {
+  display: flex;
+  align-items: baseline;
+  gap: var(--charte-espace-2);
+  margin: 0;
+  min-width: 0;
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+
+.abs-motifs-nuancier {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: var(--charte-rayon-champ);
+  border: var(--charte-trait) solid var(--charte-encre);
+  box-sizing: border-box;
+}
+
+.abs-motifs-teinte {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* le compte d'absences du motif : le nombre se lit en monospace, à droite du
+   rail, et se tait (« — » reste la loi du champ) quand il n'y a rien à compter */
+.abs-motifs-usage {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+
+.abs-motifs-usage[data-vide='vrai'] { color: var(--charte-douce) }
+
+.abs-motifs-actions { display: flex; gap: var(--charte-espace-1); flex-shrink: 0 }
+
+/* les pinces sont LES MÊMES que celles du pli : carré de 22 (la case moins un
+   pas de pile), règle de 3, aucun fond — le survol remplit, il ne fait pas
+   sauter une ombre de 25 px de flou */
+.abs-motifs-pince {
+  width: var(--abs-pli-case);
+  height: var(--abs-pli-case);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: var(--abs-pli-rule) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+
+.abs-motifs-pince:hover:not(:disabled) { background: var(--charte-bordure) }
+.abs-motifs-pince:disabled { opacity: 0.4; cursor: not-allowed }
+
+/* ── le formulaire, dans la même pâte ── */
+.abs-motifs-form,
+.abs-motifs-danger {
+  display: grid;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-sable);
+}
+
+.abs-motifs-danger { border-color: var(--abs-coral) }
+
+.abs-motifs-form-titre,
+.abs-motifs-danger-titre {
+  margin: 0;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+.abs-motifs-danger-titre { color: var(--abs-coral) }
+
+.abs-motifs-form-rang {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: var(--charte-espace-3);
+  align-items: end;
+}
+
+.abs-motifs-champ { display: grid; gap: var(--charte-espace-1); min-width: 0 }
+
+.abs-motifs-etiquette {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.abs-motifs-emoji {
+  font-size: var(--charte-taille-titre);
+  text-align: center;
+}
+
+.abs-motifs-groupe { display: grid; gap: var(--charte-espace-2); min-width: 0 }
+
+.abs-motifs-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-1);
+  align-items: center;
+}
+
+.abs-motifs-suggestion {
+  width: var(--abs-pli-case);
+  height: var(--abs-pli-case);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--charte-taille-corps);
+  border: var(--charte-trait) solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  cursor: pointer;
+}
+
+.abs-motifs-suggestion[data-choisi='vrai'] {
+  border-color: var(--charte-encre);
+  background: var(--charte-bordure);
+}
+
+.abs-motifs-couleur {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  cursor: pointer;
+}
+
+.abs-motifs-couleur[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--charte-sable) }
+
+.abs-motifs-couleur-libre {
+  width: 34px;
+  height: 22px;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* l'aperçu est la SEULE ligne du formulaire où la couleur peinte a sa raison :
+   c'est elle qu'on est en train de régler */
+.abs-motifs-apercu {
+  display: flex;
+  align-items: baseline;
+  gap: var(--charte-espace-3);
+  margin: 0;
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+
+.abs-motifs-apercu-puce {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-1) var(--charte-espace-3);
+  border: var(--charte-trait) solid currentColor;
+  border-radius: var(--charte-rayon-pilule);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+}
+
+.abs-motifs-pied {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--charte-espace-2);
+  flex-wrap: wrap;
+}
+
+.abs-motifs-danger-cible { gap: var(--charte-espace-2) }
+
+/* LE PLANCHER TACTILE, sans `!important` sur tous les boutons de l'application.
+   Le bloc mort de la page grossissait chaque bouton de 44 px à chaque écran
+   étroit — y compris les pinces de 30 px du pli, dont l'aplomb se règle au
+   pixel. Ici, seuls les gestes de la tuile et du pied se donnent la taille du
+   doigt, et les pinces du reste de la page gardent leur cote. */
+@media (max-width: 650px) {
+  .abs-motifs-carte { grid-template-columns: auto minmax(0, 1fr); row-gap: var(--charte-espace-2) }
+  .abs-motifs-actions { grid-column: 1 / -1; justify-content: flex-end }
+  .abs-motifs-pince,
+  .abs-motifs-suggestion { min-height: 44px; min-width: 44px }
+  .abs-motifs-form-rang { grid-template-columns: minmax(0, 1fr) }
+}
