@@ -603,8 +603,9 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
 
   it('26. illustre le chargement Pauses par le dépointage de pause', () => {
     const pausesLoading = lire('src/components/PausesLoadingScreen.jsx')
+    //  La carte est celle d'Employés ; la SCÈNE reste celle du dépointage.
     expect(pausesLoading).toContain('/images/pauses-loading-depointage.jpg')
-    expect(pausesLoading).toContain('/images/pauses-loading-start.jpg')
+    expect(pausesLoading).toContain("import EmployesLoadingScreen from './EmployesLoadingScreen'")
     // Plus d'images empruntées aux autres pages
     expect(pausesLoading).not.toContain('pointage-loading-qr.jpg')
     expect(pausesLoading).not.toContain('employes-loading-team.jpg')

@@ -1,129 +1,87 @@
-import PageCulturalBand from './PageCulturalBand'
+// ═══════════════════════════════════════════════════════════════════════════
+// ⏸ ÉCRAN DE CHARGEMENT PAUSES — la carte de la page Employés
+// « Remplacer le loading actuel de cette page par le loading de la page
+// employés », 26/11. Comme le Planning, on EMPRUNTE la carte au lieu de la
+// copier : même en-tête (marque, entreprise, compteur), même scène 16:9,
+// mêmes étapes numérotées, même « Passer l'animation ».
+//
+// Ce qui reste propre à Pauses, c'est le récit du chargement : les quatre
+// étapes que la page traverse vraiment, et la scène du dépointage sur la
+// borne. La page porte déjà sa toile culturelle dans son bandeau : l'écran
+// de chargement, lui, reste un compte rendu.
+// ═══════════════════════════════════════════════════════════════════════════
+
 import { useEffect, useState } from 'react'
-import { ArrowRight, CheckCircle2, Coffee, Timer } from 'lucide-react'
-import EnCheckBrandMark from './EnCheckBrandMark'
-import { CulturalCornerMotifSvg } from './AfroCulturalSvg'
-import '../pages/PointagesAfroTech.css'
+import EmployesLoadingScreen from './EmployesLoadingScreen'
+import { DUREE_MIN_CHARGEMENT_MS } from '../hooks/useLoadingMinimum'
 
-export default function PausesLoadingScreen({ darkMode = true, onSkip }) {
-  const [activeStep, setActiveStep] = useState(0)
-  const [progress, setProgress] = useState(14)
+//  Les quatre étapes suivent l'ordre réel de `loadData` sur la page Pauses :
+//  les collaborateurs d'abord (ce sont eux qu'on nomme dans la table), puis
+//  les pauses réellement pointées, puis les présumées qu'il faudra statuer,
+//  enfin les décisions déjà prises.
+export const ETAPES_CHARGEMENT_PAUSES = [
+  {
+    id: 1,
+    court: 'Collaborateurs',
+    detail: 'Lecture des collaborateurs et de leurs services…',
+    pct: 25,
+  },
+  {
+    id: 2,
+    court: 'Pauses pointées',
+    detail: 'Relevé des pauses réellement dépointées sur la borne…',
+    pct: 52,
+  },
+  {
+    id: 3,
+    court: 'Présumées',
+    detail: 'Séparation des pauses présumées et calcul des durées…',
+    pct: 78,
+  },
+  {
+    id: 4,
+    court: 'Décisions',
+    detail: 'Reprise du journal des décisions et de la corbeille…',
+    pct: 95,
+  },
+]
 
+export default function PausesLoadingScreen({
+  darkMode = false,
+  onSkip,
+  nomEntreprise = '',
+  dataReady = false,
+}) {
+  const [etape, setEtape] = useState(1)
+
+  //  Le rythme est décoratif : le plancher de `useLoadingMinimum` tient
+  //  l'écran ouvert, et la page s'affiche dès que les données sont là. Le
+  //  compteur, lui, ne promet jamais un pourcentage mesuré.
   useEffect(() => {
-    const stepTimer = window.setInterval(() => {
-      setActiveStep((prev) => (prev === 0 ? 1 : 0))
-    }, 2250)
-    const progressTimer = window.setInterval(() => {
-      setProgress((prev) => (prev >= 96 ? 24 : prev + 6))
-    }, 240)
-    return () => {
-      window.clearInterval(stepTimer)
-      window.clearInterval(progressTimer)
-    }
+    const total = ETAPES_CHARGEMENT_PAUSES.length
+    const pas = Math.max(DUREE_MIN_CHARGEMENT_MS, 1200) / total
+    const minuterie = window.setInterval(() => {
+      setEtape((prev) => (prev >= total ? prev : prev + 1))
+    }, pas)
+    return () => window.clearInterval(minuterie)
   }, [])
 
   return (
-    <div
-      className="pointages-afrotech-shell pointages-loading-screen"
-      data-theme={darkMode ? 'dark' : 'light'}
-      role="status"
-      aria-live="polite"
-    >
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-right" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-right" />
-
-      <div className="pointages-loading-inner">
-        <div className="pointages-loading-brand">
-          <EnCheckBrandMark className="pointages-loading-mark" size={58} loading />
-          <div className="pointages-loading-brand-copy">
-            <strong>En-Check</strong>
-            <span>On gère !</span>
-          </div>
-        </div>
-
-        <PageCulturalBand pathname="/pauses" placement="loading"/>
-
-        <h1 className="pointages-loading-title">Chargement de l’espace Pauses…</h1>
-
-        <div className="pointages-loading-stage">
-          <div
-            className={`pointages-loading-scene${activeStep === 0 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(0)}
-          >
-            <img
-              src="/images/pauses-loading-depointage.jpg"
-              alt="Un collaborateur dépointe sur la borne En-Check pour partir en pause"
-              loading="eager"
-              decoding="async"
-            />
-            <div className="pointages-loading-scene-caption">
-              <span>
-                <Coffee size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Étape 1 · Dépointage de la pause sur la borne
-              </span>
-              <CheckCircle2 size={15} color="#4ADE80" />
-            </div>
-          </div>
-
-          <div
-            className={`pointages-loading-scene${activeStep === 1 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(1)}
-          >
-            <img
-              src="/images/pauses-loading-start.jpg"
-              alt="Contrôle des pauses en direct et séparation des pauses présumées"
-              loading="eager"
-              decoding="async"
-            />
-            <div className="pointages-loading-scene-caption">
-              <span>
-                <Timer size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Étape 2 · Chronomètre en direct & Pauses présumées séparées
-              </span>
-              <CheckCircle2 size={15} color="#4ADE80" />
-            </div>
-          </div>
-        </div>
-
-        <div className="pointages-loading-steps">
-          <button
-            type="button"
-            className={`pointages-loading-step${activeStep === 0 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(0)}
-          >
-            <span>1. Pauses réellement pointées</span>
-            <CheckCircle2 size={15} />
-          </button>
-          <button
-            type="button"
-            className={`pointages-loading-step${activeStep === 1 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(1)}
-          >
-            <span>2. Pauses en direct & Présumées à statuer</span>
-            <CheckCircle2 size={15} />
-          </button>
-        </div>
-
-        <div className="pointages-loading-bar-track" aria-hidden="true">
-          <div className="pointages-loading-bar-fill" style={{ width: `${progress}%` }} />
-        </div>
-
-        <div className="pointages-loading-footer">
-          <p className="pointages-loading-subtitle">
-            {activeStep === 0
-              ? 'Étape 1/2 · Lecture des dépointages de pause réellement effectués…'
-              : 'Étape 2/2 · Séparation des pauses présumées de la grille et calcul du chronomètre en direct…'}
-          </p>
-          {onSkip && (
-            <button type="button" className="pointages-loading-skip" onClick={onSkip}>
-              <span>Passer l’animation</span>
-              <ArrowRight size={13} />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    <EmployesLoadingScreen
+      darkMode={darkMode}
+      onSkip={onSkip}
+      dataReady={dataReady}
+      etape={etape}
+      nomEntreprise={nomEntreprise}
+      etapes={ETAPES_CHARGEMENT_PAUSES}
+      marque="EN-CHECK · PAUSES DE LA PÉRIODE"
+      titre="Chargement de l’espace Pauses…"
+      titrePret="L’espace Pauses est prêt"
+      statutPret="Pauses pointées, présumées et décisions sont à jour."
+      legende="Chargement des pauses"
+      dossierImages="/images/pauses-loading-"
+      imageScene="/images/pauses-loading-depointage.jpg"
+      calques={[]}
+    />
   )
 }

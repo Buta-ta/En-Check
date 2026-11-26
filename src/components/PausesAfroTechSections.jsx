@@ -1265,7 +1265,10 @@ export function PausesJournalDecisions ({ paies = [], onVoir, onAnnuler }) {
   )
 
   return (
-    <section className="pauses-v2-panel pauses-v2-journal-panel" aria-label="Journal des décisions sur les pauses">
+    <section
+      className={`pauses-v2-panel pauses-v2-journal-panel${decisions.length === 0 ? ' is-vide' : ''}`}
+      aria-label="Journal des décisions sur les pauses"
+    >
       <div className="pauses-v2-panel-head">
         <div className="pauses-v2-panel-title-wrap">
           <div className="pauses-v2-panel-icon">

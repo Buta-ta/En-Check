@@ -12,6 +12,7 @@ import PageCulturalBand from '../components/PageCulturalBand'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
+import { Coffee, Check, X } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 import {
   construirePauses,
@@ -33,6 +34,29 @@ import FicheEmployeModal from '../components/FicheEmployeModal'
 import { formaterHeureLocale, jourLocal } from '../utils/timezoneUtils'
 import toast from 'react-hot-toast'
 import './PointagesAfroTech.css'
+
+
+//  Les champs date et heure natifs s'affichent dans la langue du NAVIGATEUR :
+//  sur une machine réglée en anglais, le 26/11/2026 devient « 11/26/2026 » et
+//  midi devient « 12:00 PM ». On garde donc des champs texte, écrits au format
+//  français, et on convertit pour le formulaire.
+const isoVersFr = (iso) => {
+  const [a, m, j] = String(iso || '').split('-')
+  return a && m && j ? `${j}/${m}/${a}` : ''
+}
+const frVersIso = (fr) => {
+  const [j, m, a] = String(fr || '').split('/')
+  return j?.length === 2 && m?.length === 2 && a?.length === 4 ? `${a}-${m}-${j}` : ''
+}
+//  Saisie souple : « 9:5 », « 9h05 », « 0905 » deviennent tous « 09:05 ».
+const normaliserHeure = (valeur) => {
+  const brut = String(valeur || '').trim().toLowerCase().replace('h', ':')
+  const compact = brut.replace(/[^0-9]/g, '')
+  if (!compact) return ''
+  const h = compact.length <= 2 ? compact : compact.slice(0, compact.length - 2)
+  const mn = compact.length <= 2 ? '00' : compact.slice(-2)
+  return `${String(Number(h)).padStart(2, '0')}:${mn}`
+}
 
 export default function Pauses () {
   const navigate = useNavigate()
@@ -419,14 +443,19 @@ export default function Pauses () {
   )
 
   const creerPause = async () => {
-    if (!form.employee_id || !form.jour || !form.debut || !form.fin) {
+    //  Le champ date est en cours de frappe : on convertit avant d'envoyer,
+    //  pour ne pas dépendre de la perte de focus.
+    const jour = form.jourTexte !== undefined ? frVersIso(form.jourTexte) : form.jour
+    const debut = normaliserHeure(form.debut).length === 5 ? normaliserHeure(form.debut) : form.debut
+    const fin = normaliserHeure(form.fin).length === 5 ? normaliserHeure(form.fin) : form.fin
+    if (!form.employee_id || !jour || !debut || !fin) {
       toast.error('Employé, jour et horaires sont obligatoires')
       return
     }
     const { data, error } = await supabase.rpc('encheck_pause_creer', {
       p_employee: form.employee_id,
-      p_debut: `${form.jour}T${form.debut}:00`,
-      p_fin: `${form.jour}T${form.fin}:00`,
+      p_debut: `${jour}T${debut}:00`,
+      p_fin: `${jour}T${fin}:00`,
       p_motif: form.motif || null,
     })
     if (error || (data && data.ok === false)) {
@@ -462,12 +491,16 @@ export default function Pauses () {
     setSelectedDate(jourLocal(d) || d.toISOString().split('T')[0])
   }
 
-  //  Même plancher que le Planning : les deux scènes de pause ont le temps
-  //  d'être vues, même quand la lecture est instantanée.
+  //  Même plancher que le Planning : la scène a le temps d'être vue, même
+  //  quand la lecture est instantanée. La carte est celle de la page
+  //  Employés, et elle annonce « prêt » sur la donnée réelle — pas sur le
+  //  minuteur.
   if ((loading && paies.length === 0) || !minLoadingDone) {
     return (
       <PausesLoadingScreen
         darkMode={darkMode}
+        dataReady={!loading && paies.length > 0}
+        nomEntreprise={admin?.selectedEnterprise?.name || ''}
         onSkip={() => {
           skipLoading()
           setLoading(false)
@@ -504,74 +537,126 @@ export default function Pauses () {
           onExportCsv={exporterCsv}
         />
 
-        {/* Formulaire de saisie manuelle d'une pause réelle par l'admin */}
+        {/*  Saisie manuelle d'une pause réelle — la « correction » de l'admin.
+
+             « On doit retravailler ça » (image 2, 26/11). Le formulaire était
+             une grille de champs natifs posée à même le panneau : le select et
+             les champs date/heure gardaient le dessin du navigateur, l'intitulé
+             flottait, et rien ne disait quel champ attendait quoi. Il devient
+             une section à part entière : un en-tête qui explique, des champs
+             étiquetés, et l'action principale de la page — le même bouton
+             d'argile que « Ajouter une pause ». */}
         {showForm && (
           <section
-            className="pauses-v2-panel"
+            className="pauses-v2-saisie"
             aria-label="Nouvelle pause réelle"
-            style={{
-              marginBottom: 18,
-              borderColor: 'var(--pv-border-strong)',
-            }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: '0.94rem', color: 'var(--pv-gold)', fontWeight: 800 }}>
-                Saisir une pause réelle (correction / saisie manuelle par l’administrateur)
-              </h3>
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))',
-                gap: 10,
-              }}
-            >
-              <select
-                className="pauses-v2-select"
-                value={form.employee_id}
-                onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
-              >
-                <option value="">— Collaborateur —</option>
-                {employesForForm.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.first_name} {emp.last_name} ({emp.matricule})
-                  </option>
-                ))}
-              </select>
-              <input
-                type="date"
-                className="pauses-v2-select"
-                value={form.jour}
-                onChange={(e) => setForm({ ...form, jour: e.target.value })}
-              />
-              <input
-                type="time"
-                className="pauses-v2-select"
-                value={form.debut}
-                onChange={(e) => setForm({ ...form, debut: e.target.value })}
-              />
-              <input
-                type="time"
-                className="pauses-v2-select"
-                value={form.fin}
-                onChange={(e) => setForm({ ...form, fin: e.target.value })}
-              />
-              <input
-                type="text"
-                className="pauses-v2-select"
-                placeholder="Motif (facultatif)"
-                value={form.motif}
-                onChange={(e) => setForm({ ...form, motif: e.target.value })}
-              />
+            <header className="pauses-v2-saisie-head">
+              <span className="pauses-v2-saisie-icon" aria-hidden="true">
+                <Coffee size={18} />
+              </span>
+              <div className="pauses-v2-saisie-copy">
+                <h3 className="pauses-v2-saisie-title">Saisir une pause réelle</h3>
+                <p className="pauses-v2-saisie-subtitle">
+                  Correction ou saisie manuelle par l’administrateur — la pause
+                  apparaît immédiatement dans la table, en « Pause réelle ».
+                </p>
+              </div>
               <button
                 type="button"
-                className="pauses-v2-add-btn"
-                onClick={creerPause}
-                style={{ justifyContent: 'center' }}
+                className="pauses-v2-saisie-close"
+                onClick={() => setShowForm(false)}
+                aria-label="Refermer la saisie"
               >
-                Enregistrer la pause
+                <X size={16} />
               </button>
+            </header>
+
+            <div className="pauses-v2-saisie-grid">
+              <label className="pauses-v2-field pauses-v2-field--large">
+                <span className="pauses-v2-field-label">Collaborateur</span>
+                <select
+                  className="pauses-v2-field-input"
+                  value={form.employee_id}
+                  onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
+                >
+                  <option value="">— Choisir un collaborateur —</option>
+                  {employesForForm.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.first_name} {emp.last_name} ({emp.matricule})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="pauses-v2-field">
+                <span className="pauses-v2-field-label">Jour</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="pauses-v2-field-input"
+                  placeholder="JJ/MM/AAAA"
+                  value={form.jourTexte ?? isoVersFr(form.jour)}
+                  onChange={(e) => setForm({ ...form, jourTexte: e.target.value })}
+                  onBlur={(e) => {
+                    const iso = frVersIso(e.target.value)
+                    setForm({ ...form, jour: iso || form.jour, jourTexte: undefined })
+                  }}
+                />
+              </label>
+
+              <label className="pauses-v2-field">
+                <span className="pauses-v2-field-label">Début</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="pauses-v2-field-input"
+                  placeholder="HH:MM"
+                  value={form.debut}
+                  onChange={(e) => setForm({ ...form, debut: e.target.value })}
+                  onBlur={(e) => setForm({ ...form, debut: normaliserHeure(e.target.value) || form.debut })}
+                />
+              </label>
+
+              <label className="pauses-v2-field">
+                <span className="pauses-v2-field-label">Fin</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="pauses-v2-field-input"
+                  placeholder="HH:MM"
+                  value={form.fin}
+                  onChange={(e) => setForm({ ...form, fin: e.target.value })}
+                  onBlur={(e) => setForm({ ...form, fin: normaliserHeure(e.target.value) || form.fin })}
+                />
+              </label>
+
+              <label className="pauses-v2-field pauses-v2-field--motif">
+                <span className="pauses-v2-field-label">Motif (facultatif)</span>
+                <input
+                  type="text"
+                  className="pauses-v2-field-input"
+                  placeholder="Pause prise hors borne, oubli de pointage…"
+                  value={form.motif}
+                  onChange={(e) => setForm({ ...form, motif: e.target.value })}
+                />
+              </label>
             </div>
+
+            <footer className="pauses-v2-saisie-foot">
+              <p className="pauses-v2-saisie-note">
+                La ligne n’est jamais supprimée : elle rejoint le journal des
+                décisions et reste retrouvable.
+              </p>
+              <button
+                type="button"
+                className="pauses-v2-saisie-submit"
+                onClick={creerPause}
+              >
+                <Check size={17} strokeWidth={3} />
+                <span>Enregistrer la pause</span>
+              </button>
+            </footer>
           </section>
         )}
 

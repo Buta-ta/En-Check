@@ -5,9 +5,16 @@ import AbsencesLoadingScreen from '../../components/AbsencesLoadingScreen'
 import PausesLoadingScreen from '../../components/PausesLoadingScreen'
 import EmployesLoadingScreen from '../../components/EmployesLoadingScreen'
 
-it('Pauses utilise son motif validé et Employés sa scène illustrée devant la borne sans bandeau culturel', () => {
+it('Pauses emprunte la carte Employés, et Employés garde sa scène illustrée devant la borne', () => {
+  //  « Remplacer le loading actuel de cette page par le loading de la page
+  //  employés », 26/11. La carte est empruntée, comme pour le Planning : la
+  //  même structure, le même compteur, le même bouton de sortie. Ce qui est
+  //  propre à Pauses, c'est la scène (le dépointage) et les quatre étapes.
   const htmlPauses=renderToStaticMarkup(<PausesLoadingScreen onSkip={()=>{}}/>)
-  expect(htmlPauses).toContain('data-cultural-motif="lesotho"')
+  expect(htmlPauses).not.toContain('data-cultural-motif')
+  expect(htmlPauses).toContain('emp-loading-card')
+  expect(htmlPauses).toContain('/images/pauses-loading-depointage.jpg')
+  expect(htmlPauses).toContain('Étape 1/4')
   expect(htmlPauses).toContain('Passer l’animation')
   expect(htmlPauses).toContain('pointages-loading-bar-fill')
 
