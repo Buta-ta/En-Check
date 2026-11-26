@@ -110,9 +110,16 @@ export default function Pauses () {
     }
     setAdmin(parsed)
     if (parsed.role === 'super_admin') {
+      /*  `*` ET PAS `id,name` — « dans la sidebar tu as oublié d'afficher
+          l'image de profil de l'entreprise », 26/11. Le rond du sélecteur lit
+          `logo_url` ; une requête qui ne la ramène pas laisse la lettre du
+          nom, et on croit le logo perdu alors qu'il n'a jamais été demandé.
+          C'est le même défaut que Retards et Annonces accueil, déjà corrigé
+          là-bas. `*` ramène aussi les `module_*`, dont `sectionsNavAdmin` a
+          besoin pour le rail. */
       supabase
         .from('enterprises')
-        .select('id, name')
+        .select('*')
         .eq('is_active', true)
         .order('name')
         .then(({ data }) => setEntreprises(data || []))
@@ -776,7 +783,9 @@ export default function Pauses () {
           }}
         />
       )}
-      <PageCulturalBand pathname="/pauses" placement="bottom"/>
+      {/*  « Enlève le bandeau motif en bas de l'écran » — 26/11. La bande
+          du haut reste (c'est l'identité de la page) ; celle du bas fermait
+          la page sur un motif qui n'annonçait plus rien. */}
     </div>
     </CoqueAdmin>
   )

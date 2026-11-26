@@ -19,19 +19,35 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Globe } from 'lucide-react'
+import PhotoSignee from './PhotoSignee'
 
 const initiale = (nom) => (nom || '?').trim().charAt(0).toUpperCase()
 
 /** Le contenu seul : la photo, ou la lettre. On l'utilise dans le rond de
  * la liste ET dans celui de la bande, pour qu'ils se comportent pareil.
+ *
  * ⚠️ Si l'image ne charge pas (lien mort), on retombe sur l'initiale :
  * une pastille vide serait pire qu'une lettre. Sa demande du 24/11 :
- * « affiche la photo de profil des entreprises dans le selecteur ». */
+ * « affiche la photo de profil des entreprises dans le selecteur ».
+ *
+ * 26/11 — « dans la sidebar tu as oublié d'afficher l'image de profil de
+ * l'entreprise ». Deux causes, et il fallait les deux :
+ *   · la page ne DEMANDAIT PAS `logo_url` (voir Pauses.jsx) ;
+ *   · la pastille lisait l'adresse brute, sans signature. Le logo est
+ *     hébergé dans le bucket `photos` ; une adresse non signée n'y mène pas.
+ * Elle passe donc par `PhotoSignee`, comme les avatars de personnes — même
+ * découpe, même repli, même reprise si la photo rate. */
 function PastilleInterne({ entreprise }) {
-  const [cassee, setCassee] = useState(false)
   const photo = entreprise?.logo_url
-  if (photo && !cassee) {
-    return <img src={photo} alt="" loading="lazy" onError={() => setCassee(true)} />
+  if (photo) {
+    return (
+      <PhotoSignee
+        url={photo}
+        alt=""
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        fallback={<span className="se-rond-initiale" aria-hidden="true">{initiale(entreprise?.name)}</span>}
+      />
+    )
   }
   return <>{initiale(entreprise?.name)}</>
 }

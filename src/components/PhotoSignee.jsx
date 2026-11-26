@@ -88,6 +88,11 @@ export default function PhotoSignee({ url, bucket = null, secondes = 3600, fallb
     setPeinte(false)
     if (!url) { setAdresse(null); return undefined }
     if (adresseDirecte(url)) { setAdresse(url); return undefined }
+    /*  Une adresse PUBLIQUE de Supabase : son propriétaire a choisi qu'elle
+         se lise sans signature. On la laisse telle quelle — sans cette
+         sortie, le logo d'entreprise (bucket `photos`, public) passait par
+         `createSignedUrl` pour rien et pouvait n'en rien rapporter. */
+    if (/\/storage\/v1\/object\/public\//.test(url)) { setAdresse(url); return undefined }
     adresseSignee(url, bucket, secondes).then((a) => { if (vivant) setAdresse(a) })
     return () => { vivant = false }
   }, [url, bucket, secondes])

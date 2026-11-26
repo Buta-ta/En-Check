@@ -151,7 +151,12 @@ describe('les autres entreprises, et la photo (sa demande du 24/11)', () => {
   it('affiche la photo de l’entreprise, avec l’initiale en repli', () => {
     expect(SELECTEUR).toContain('function PastilleEntreprise')
     expect(SELECTEUR).toContain('entreprise?.logo_url')
-    expect(SELECTEUR).toContain('onError={() => setCassee(true)}')
+    /*  Depuis le 26/11, la pastille passe par `PhotoSignee` : elle signe
+        l'adresse du bucket, découpe la photo dans le rond et retombe sur
+        l'initiale si l'image rate. C'est ce composant qui porte désormais
+        la gestion d'erreur — plus la balise `<img>` nue d'avant. */
+    expect(SELECTEUR).toContain('PhotoSignee')
+    expect(SELECTEUR).toContain('fallback={<span className="se-rond-initiale"')
     expect(SELECTEUR).toContain('<PastilleEntreprise entreprise={active} />')
   })
 })

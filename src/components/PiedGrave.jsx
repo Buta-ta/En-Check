@@ -1,5 +1,12 @@
 /*  LE PIED GRAVÉ — l'illustration du bandeau Pauses (maquette B, 26/11).
 
+    ⚠️ 26/11 — « Colore ce logo (couleur sable) pour ce qui entoure le pied,
+    et le pied aux couleurs du logo En-Check, c'est pour penser à un pied sur
+    du sable. » Le dessin ne bouge pas d'un trait : c'est la COULEUR qui
+    raconte le sable. Le disque du sceau prend le sable, la sole et les
+    orteils prennent l'encre et l'argile d'En-Check, et le talon garde un
+    lavis de sable mouillé — le creux de l'empreinte.
+
     Ce n'est PAS la petite marque de l'application : la maquette montre une
     **empreinte de pied vue de dessus**, haute et étroite — le talon en bas
     à gauche, la voûte qui rentre au milieu, le gros orteil en haut et les
@@ -51,22 +58,36 @@ export default function PiedGrave({ className = '' }) {
       aria-hidden="true"
       focusable="false"
     >
-      {/* le double trait : la même sole, deux fois, à 1,8 px d'écart */}
+      {/*  LE LAVIS DE SABLE, DANS LE CREUX — le pied s'enfonce d'un doigt
+          dans le sable : le talon et la plante se teintent, les bords
+          restent nets. Posé SOUS les traits, il ne les mange pas. */}
+      <path d={sole} fill="var(--charte-sable)" opacity="0.75" />
+
+      {/* le double trait : la même sole, deux fois, à 1,8 px d'écart.
+          L'encre d'En-Check pour la sole, l'argile pour le second trait :
+          c'est la palette de la marque, pas un gris. */}
       <g
-        stroke="currentColor"
+        stroke="var(--charte-encre)"
         strokeWidth="1.8"
         strokeLinejoin="round"
         strokeLinecap="round"
       >
         <path d={sole} />
-        <path d={sole} transform="translate(1.8 1.4) scale(0.972)" transform-origin="30 66" />
+        <path
+          d={sole}
+          transform="translate(1.8 1.4) scale(0.972)"
+          transform-origin="30 66"
+          stroke="var(--charte-aplat)"
+        />
       </g>
 
       {/*  Les cinq orteils — mesurés sur la maquette : le gros à gauche
           (le plus gros, incliné), puis quatre pastilles de plus en plus
-          petites, qui descendent vers la droite. */}
-      <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-        <ellipse cx="15" cy="13" rx="10" ry="8" transform="rotate(-12 15 13)" />
+          petites, qui descendent vers la droite. Le gros orteil est plein
+          (argile), les quatre autres se posent en encre : les cinq doigts
+          marqués dans le sable, comme une empreinte qui sèche. */}
+      <g stroke="var(--charte-encre)" strokeWidth="1.8" strokeLinecap="round">
+        <ellipse cx="15" cy="13" rx="10" ry="8" transform="rotate(-12 15 13)" fill="var(--charte-aplat)" />
         <ellipse cx="33" cy="6" rx="6.8" ry="5.8" transform="rotate(-8 33 6)" />
         <ellipse cx="45" cy="5.5" rx="5.6" ry="5.2" transform="rotate(2 45 5.5)" />
         <ellipse cx="54.5" cy="9.5" rx="4.8" ry="4.6" transform="rotate(12 54.5 9.5)" />
