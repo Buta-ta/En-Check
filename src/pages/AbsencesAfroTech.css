@@ -1435,8 +1435,35 @@ button.abs-planche-corps:focus-visible {
    retravailler cette section »). Elle prend donc les trois règles du reste de la
    page : règle de trois en encre, coin de plaque, aucun relief, aucun aplat de plus.
    Les boîtes ne sont pas des cartes : ce sont des CHAMPS, et un champ se cerne. */
-.abs-outils { padding-top: var(--charte-espace-4); }
-.abs-outils-gauche, .abs-outils-droite { display: flex; align-items: center; gap: var(--charte-espace-3); flex-wrap: wrap; }
+.abs-outils {
+  padding-top: var(--charte-espace-4);
+  /* LE BANDEAU EST UN RANG, PAS UNE PIQUE. Le 12/12, la barre d'outils est sortie
+     des `style` inline de la page pour ses classes — et la loi du rang, que
+     l'attribut `style` portait (`display:flex`, `justify-content:space-between`),
+     n'a jamais été écrite ici. Deux `div` block l'un sous l'autre : la recherche
+     seule sur son rang, les trois modes sur le second, « 4 absences » en troisieme.
+     C'est exactement ce que le fondateur a encadré le 13/12 (« retravaille cette
+     section », « optimise l'espace pour moins scroller ») : trois bandeaux avant la
+     grille, soit ~90 pixels perdus, là où le dessin ne pose qu'un rang.
+     Le rang se fait donc ICI, à la feuille, et plus du tout dans un attribut. */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+}
+.abs-outils-gauche,
+.abs-outils-droite {
+  display: flex;
+  align-items: center;
+  /* `nowrap` AU-DESSUS de 650 : le `wrap` est ce qui faisait retomber la pince et
+     les trois vues sur un second rang dès que la recherche réclamait ses 220. Une
+     barre d'outils qui se replie toute seule sur un écran d'ordinateur, c'est de la
+     hauteur payée pour rien. Le repli reste la loi du petit écran — un rang de
+     moins sur mobile ne sert à rien si les contrôles se chevauchent. */
+  flex-wrap: nowrap;
+  gap: var(--charte-espace-3);
+  min-width: 0;
+}
 .abs-outils-boite {
   display: flex;
   align-items: center;
@@ -1449,7 +1476,15 @@ button.abs-planche-corps:focus-visible {
   background: transparent;
   color: var(--charte-encre);
 }
-.abs-outils-champ { flex: 1 1 220px; min-width: 0 }
+.abs-outils-champ {
+  /* 220 de désir, 150 de plancher, 320 de plafond : sans le plafond, `flex-grow`
+     étale le champ sur tout le vide laissé par la rive droite, et une recherche de
+     900 pixels ne se lit pas mieux qu'une de 320 — elle vole juste l'air aux
+     modes. Un rang d'outils est une ligne de cotes, pas un élastique. */
+  flex: 1 1 220px;
+  min-width: 150px;
+  max-width: 320px;
+}
 .abs-outils-entreprise { flex: 0 1 240px; min-width: 0 }
 .abs-outils-boite input,
 .abs-outils-boite select {
@@ -1513,7 +1548,32 @@ button.abs-planche-corps:focus-visible {
 @media (max-width: 650px) {
   .abs-outils-vue span { display: none }        /* sur un écran d'enfant, l'icône suffit */
   .abs-outils-entreprise { flex-basis: 100% }
+  /* le rang unique est la loi de l'écran d'ordinateur ; sur un téléphone, trois
+     contrôles de 30 ne tiennent pas en un rang sans se chevaucher. Le `nowrap` est
+     donc LEVÉ ici, jamais ailleurs — c'est le seul endroit où le bandeau a le droit
+     de se replier, et le champ de recherche y reprend toute la place. */
+  .abs-outils,
+  .abs-outils-gauche,
+  .abs-outils-droite { flex-wrap: wrap }
+  .abs-outils-champ { flex-basis: 100%; max-width: none }
 }
+
+/* Le compte « N absences / M » ne prend plus une ligne pour lui : la grille écrit
+   déjà le bilan de la période et un nombre écrit deux fois se contredit à la
+   première retouche. Il se range en tête de la rive droite du bandeau, à la taille
+   micro, et n'existe que là où il est la SEULE mesure — la liste et le mois. */
+.abs-outils-compte {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  font-size: var(--charte-taille-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--charte-pas-lettrage);
+  font-weight: 700;
+  color: var(--abs-text);
+  white-space: nowrap;
+}
+.abs-outils-compte-total { color: var(--abs-text-faint); font-weight: 500 }
 
 /* L'alerte de conflit n'est plus un bandeau plein : une couture. Un filet
    oblique en haut, un filet oblique en bas, le mot entre les deux. */
@@ -2134,13 +2194,21 @@ button.abs-planche-corps:focus-visible {
      avant la rive du champ (1320 − 1307). Ce n'est pas une colonne de 147 — lire
      la pilule à 43 et le repli à 27, c'était compter sur les bords d'une boîte que
      le dessin n'a jamais tracée (réglé le 11/12).
-   · la pile : le plateau n'est pas un trait unique. Derrière lui, DEUX FEUILLES
-     REPLIÉES dépassent sur sa gauche, à hUIT puis à SEIZE du montant (arêtes à
-     x 42..45 et x 34..37 pour une règle à 50..52, venues courber au coin à partir
-     de y 209 et y 219), et une arête à x 1334..1337 rend la pareille sur la rive
-     droite, de y 209 à 401. Le décalage est un pas de 8, la descente le même pas
-     plus la règle : c'est `--abs-pli-pli`, et `--abs-pli-évasement` (22) paie le
-     souffle que `overflow-x` couperait sinon.
+   · la pile : le plateau n'est pas un trait unique mais TROIS PARALLÈLES sur son
+     flanc gauche — montant à x 50..52, première feuille à x 42..45, seconde à
+     x 34..37 — qui naissent AU NIVEAU du trait du haut (y 200), courbent au coin et
+     descendent d'un pas puis de deux (queues à y 692 et 703 pour un trait bas à 680)
+     (x 126..144). À droite, il n'y a PAS de feuille : x 1328..1333 est une seconde
+     règle d'OMBRE (encre (34,10,1), verticale de y 681 à 766) et x 1334..1337 sa
+     teinte grise (222,201,174) — la chute du plateau, pas un cadre de plus. Écrire
+     « une arête rend la pareille à droite », comme je l'avais fait, m'a fait dessinér
+     DEUX CADRES DÉCALÉS : le rendu montrait un double montant à droite et un double
+     trait en haut, et zéro pile (fondateur, 13/12 : « c'est ça que tu appelles
+     feuilles pliées »). Le décalage est un pas de 8 (`--abs-pli-pli`), la descente
+     le même pas plus la règle (`--abs-pli-deuil`, 11) ; la queue des deux,
+     `--abs-pli-pile` (22), ne paie QUE l'air du conteneur — jamais un padding
+     interne du plateau, qui décalerait les lignes hors de leur montant. Le souffle
+     s'écrit `--abs-pli-évasement` (19 : seize de reculs, trois d'air).
    · repli : double règle (y 594-596 et 601-603, quatre pixels d'air entre les
      deux) puis un registre de 76 (604..680) : pastilles de 45 à x 74, 190, 306,
      429, 557, 683, 811, 943 — écartées de ~125, pas serrées les unes contre les
@@ -2192,17 +2260,32 @@ button.abs-planche-corps:focus-visible {
      gauche, à huit et à seize du montant (relevées à x 42..45 et x 34..37 pour un
      montant à 50..52). Le décalage se lit HUIT, la descente est le décalage plus la
      règle — un seul nombre à écrire, deux usages. `--abs-pli-évasement` est l'air
-     que prend l'éventail : c'est lui qui décide des paddings du champ, jamais un
-     chiffre recopié à la main. */
+     que l'éventail prend HORS du cadre : il décide des paddings du conteneur, jamais
+     de ceux du plateau (poser la gouttière DEDANS poussait chaque ligne de vingt-cinq
+     pixels hors de son montant — le dessin, lui, fait naître les lignes au bord
+     intérieur du trait, x 53 pour une règle à 50..52). */
   --abs-pli-pli: 8px;
-  --abs-pli-évasement: calc(2 * (var(--abs-pli-pli) + var(--abs-pli-rule)));  /* 22 */
+  /* la descente d'une feuille = son pas + la règle ; la queue des deux = deux fois
+     ça. Un seul jeton pour la hauteur que le conteneur doit leur laisser. */
+  --abs-pli-deuil: calc(var(--abs-pli-pli) + var(--abs-pli-rule));           /* 11 */
+  --abs-pli-pile: calc(2 * var(--abs-pli-deuil));                             /* 22 */
+  /* l'air que la pile réclame AU DEHORS du plateau : les feuilles reculent de
+     dix-neuf, l'ombre tombe de onze, le plus grand des deux paie le souffle du
+     conteneur. Un seul nombre pour les deux rives, jamais un chiffre recopié. */
+  --abs-pli-évasement: calc(var(--abs-pli-pile) - var(--abs-pli-rule));      /* 19 */
   --abs-pli-registre: 76px;             /* la hauteur du registre du pli */
   --abs-pli-ciel-repli: 4px;            /* l'air entre les deux règles du pli */
   --abs-pli-coin: 18px;                 /* le coin replié de chaque pastille */
   --abs-pli-écart: 74px;                /* 125 de pas − 51 de pastille */
   --abs-pli-noeud: 13px;                /* le carré de corail d'un conflit */
   --abs-pli-case: 30px;                 /* la case « déplier tout » : x 1143..1173, y 102..132 */
-  --abs-pli-ombre: 6px;                 /* l'ombre dure du plateau */
+  /* la pince de LIGNE n'est pas la case d'entête : le dessin ne dessine aucune
+     pince de ligne, c'est le geste du pli qui en réclame une — et la payer au
+     gabarit du bandeau (30) rendait le prénom en trois points sur un écran
+     d'ordinateur. Elle est donc la case d'entête MOINS UN PAS de pile : 22, et la
+     colonne d'identité reprend les huit pixels rendus. Un jeton déduit, jamais un
+     nombre recopié (« optimise l'espace », fondateur, 13/12). */
+  --abs-pli-pince: calc(var(--abs-pli-case) - var(--abs-pli-pli));  /* 22 */
   /* LE MOIS NE PLIE PAS, ET NE GARDE PAS LA PLAQUETTE. Trente et une cellules de 36
      n'offrent ni la place d'un pli (le dessin du 10/12 est UNE SEMAINE), ni celle
      d'une jauge de cinquante pixels + son nombre de soixante-dix : à 36 px par jour,
@@ -2233,19 +2316,22 @@ button.abs-planche-corps:focus-visible {
    souffle à droite et en bas n'est pas un ornement : c'est la place de l'ombre
    dure, que `overflow-x: auto` couperait net. */
 .abs-cal-champ {
-  /* LE PLATEAU PREND LA LARGEUR DE SES JOURS, pas celle de l'écran. C'est la loi du
-     dessin — 1273 pour une semaine à 145 — et c'est ce qui rend la rive droite
-     lisible : à un jour de 108, une planche d'une journée cherchait dix pixels de
-     plus et finissait sous la plaquette du solde. `max-content` donne au plateau
-     exactement la somme de ses cellules ; `min-width: 100%` garde le champ plein
-     quand l'écran est plus large que la semaine. Un plancher écrit en JavaScript
-     était une seconde naissance du même nombre, dans un autre fichier. */
-  width: max-content;
-  min-width: 100%;
-  /* l'air de l'éventail à gauche et en bas, celui de l'ombre à droite : le
-     conteneur coupe, et une feuille rognée ne se voit plus pliée. */
+  /* LE CHAMP FIT, IL NE DÉBORDE PAS. La semaine du dessin fait 1 207 pixels
+     (252 d'identité + 7 × 145) : à `width: max-content` plus un padding de souffle
+     à droite, le champ en faisait 1 230 et la page défilait de vingt-trois pixels
+     pour aller chercher la seule jauge du solde — « optimise l'espace pour moins
+     scroller » (fondateur, 13/12). `min-width: max-content` garde la borne basse
+     (un écran étroit défile, c'est voulu) sans jamais imposer la largeur d'un
+     contenu qui tient déjà. Et le souffle de la pile n'est plus payé en padding du
+     conteneur : les feuilles sont RAYÉES À DEDANS du plateau, elles n'ont plus
+     besoin d'air. */
+  min-width: max-content;
+  /* L'AIR DE LA PILE. Les feuilles sont peintes HORS du plateau (elles naissent à
+     son arête extérieure et reculent de dix-neuf) : sans ce souffle, la
+     `overflow-x` du conteneur les rognerait, et une feuille coupée ne se voit plus
+     pliée. À droite, c'est la chute de l'ombre qui paie, un deuil. */
   padding-left: var(--abs-pli-évasement);
-  padding-right: calc(var(--abs-pli-pli) + var(--abs-pli-ombre));
+  padding-right: var(--abs-pli-deuil);
   padding-bottom: var(--abs-pli-évasement);
 }
 
@@ -2256,56 +2342,62 @@ button.abs-planche-corps:focus-visible {
 
 .abs-pli-plateau {
   position: relative;
-  /* ISOLER LE PLATEAU. Les deux feuilles repliées sont des pseudo-éléments en
-     `z-index: -1` : sans contexte d'empilement ICI, ce -1 remonte au contexte de la
-     page, et elles se peignent DERRIÈRE le fond sable de `.abs-cal` — donc sous le
-     fond de la page, donc invisibles. C'est exactement ce que le fondateur a
-     re-signalé le 12/12 : « il était convenu la forme feuilles pliées pour la grille
-     mais jusque là tu n'as rien fait ». La pile se dessinait ; elle ne se voyait pas.
-     `isolation: isolate` borne le -1 au plateau : les feuilles passent derrière son
-     fond, devant celui de la page, et il ne reste à voir que ce qui dépasse. */
+  /* ISOLER LE PLATEAU : les feuilles sont en `z-index: -1`, et sans contexte
+     d'empilement ici ce -1 remonterait à la page — les lignes passeraient sous le
+     fond sable de `.abs-cal`, donc invisibles (`isolation`, pas un caprice). */
   isolation: isolate;
   border: var(--abs-pli-rule) solid var(--charte-encre);
   border-radius: var(--charte-rayon-champ);
   background: var(--charte-sable);
   /* ombre DURE, jamais floue (C9), et dans la palette : le dessin grise le sable
-     à (222, 200, 176), soit `--charte-bordure` (216, 198, 172) à un cheveu. */
-  box-shadow: var(--abs-pli-ombre) var(--abs-pli-ombre) 0 0 var(--charte-bordure);
+     à (222, 200, 176), soit `--charte-bordure` (216, 198, 172) à un cheveu. Sa
+     chute est LE MÊME pas que la pile — une seule loi pour les deux rives. */
+  box-shadow: var(--abs-pli-pli) var(--abs-pli-pli) 0 0 var(--charte-bordure);
 }
 
-/* LES FEUILLES PLIÉES — ce que le fondateur demande à voir. Le dessin n'encadre pas
-   le champ d'un seul trait : derrière le plateau, deux feuilles repliées dépassent
-   sur sa gauche, à huit puis à seize du montant, chacune descendue d'un deuil de
-   plus que son décalage (x 42..45 et x 34..37 pour une règle à 50..52 ; leurs
-   arêtes courbent au coin et se perdent dans le montant en descendant). Deux
-   pseudo-éléments suffisent : `z-index: -1` les pose DERRIÈRE le fond de sable du
-   plateau, donc seul ce qui dépasse s'encre — exactement le geste du dessinateur,
-   et rien à soustraire quand la grille défile. */
+/* LES FEUILLES PLIÉES — LE DESSIN, À LA RÈGLE PRÈS (13/12). Ce que j'avais posé
+   était GEOMETRIQUEMENT mesuré et picturalement faux : deux pseudo-éléments `inset:
+   0` cerclés sur leurs QUATRE côtés, translatés de -8/-16. Résultat, sur mon rendu :
+   un double cadre qui remontait au-dessus du trait du haut et courait sur la rive
+   DROITE — deux montants et deux ombres de plus, et zéro pile. « c'est ça que tu
+   appelles feuilles pliées » (fondateur, image du plateau).
+
+   Le dessin, lui, ne décale AUCUN CADRE : il raye le flanc gauche de trois parallèles
+   qui naissent AU NIVEAU du trait du haut et finissent AU NIVEAU du trait du bas —
+   x 34..37 et x 42..45 pour un montant à 50..52, chacune courbant au coin et
+   descendant de son pas (11 pour la première, 22 pour la seconde, y 681 à 692 à
+   703). C'est donc une RÈGLE DE TROIS PIXELS, pas une boîte :
+
+     ::before → la feuille de dessous, à deux pas, descendue de deux deils
+     ::after  → la feuille du milieu, à un pas, descendue d'un deil
+
+   et les deux se peignent derrièrE le fond du plateau (`z-index: -1`, isolé plus
+   haut), donc leur encre ne se voit que là où le sable ne la recouvre pas. */
 .abs-pli-plateau::before,
 .abs-pli-plateau::after {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: calc(-1 * var(--abs-pli-rule));   /* à l'arête extérieure du montant */
+  bottom: 0;
   z-index: -1;
   box-sizing: border-box;
-  border: var(--abs-pli-rule) solid var(--charte-encre);
-  border-radius: var(--charte-rayon-champ);
-  background: var(--charte-sable);
+  width: var(--abs-pli-rule);
+  border-left: var(--abs-pli-rule) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ) 0 0 var(--charte-rayon-champ);
   pointer-events: none;
 }
 
 .abs-pli-plateau::before {
-  transform: translate(
-    calc(-1 * var(--abs-pli-pli)),
-    calc(var(--abs-pli-pli) + var(--abs-pli-rule))
-  );
+  width: calc(2 * (var(--abs-pli-pli) + var(--abs-pli-rule)));
+  bottom: calc(-2 * (var(--abs-pli-pli) + var(--abs-pli-rule)));
+  transform: translateX(calc(-2 * var(--abs-pli-pli)));
 }
 
 .abs-pli-plateau::after {
-  transform: translate(
-    calc(-2 * var(--abs-pli-pli)),
-    calc(2 * (var(--abs-pli-pli) + var(--abs-pli-rule)))
-  );
+  width: calc(var(--abs-pli-pli) + var(--abs-pli-rule));
+  bottom: calc(-1 * (var(--abs-pli-pli) + var(--abs-pli-rule)));
+  transform: translateX(calc(-1 * var(--abs-pli-pli)));
 }
 
 /* LA LIGNE DE COMPTE — « 5 À SIGNALER · 9 RIEN CETTE SEMAINE », centrée sur le
@@ -2387,7 +2479,7 @@ button.abs-planche-corps:focus-visible {
   display: flex;
   align-items: stretch;
   min-height: var(--abs-pli-entête);
-  /* l'entête est posé AU-DESSUS du plateau, mais les cellules qu'il nomment sont
+  /* l'entête est posé AU-DESSUS du plateau, mais les cellules qu'il nomme sont
      CONTENUES par son cadre : sans les trois pixels de règle à chaque bout, les
      sept étiquettes se répartiraient 1 021 et non 1 015 — un jour de 145,86, et
      six pixels de dérive à la dernière cellule. C'est exactement la dérive que le
@@ -2554,18 +2646,24 @@ img.abs-pli-figure { border: 0 }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--abs-pli-case);
-  height: var(--abs-pli-case);
+  /* VINGT-DEUX, PAS TRENTE (13/12) : la pince de ligne se relit sur
+     `--abs-pli-pince`, la case d'entête moins un pas de pile. Elle garde la famille
+     (carré, coin de plaque, encre au survol) mais ne paie pas la place d'un control
+     de bandeau — le prénom respirait de nouveau à cette condition. */
+  width: var(--abs-pli-pince);
+  height: var(--abs-pli-pince);
   padding: 0;
   box-sizing: border-box;
-  border: var(--abs-pli-encre) solid var(--charte-encre);
+  border: var(--charte-trait) solid var(--charte-bordure);
   border-radius: var(--charte-rayon-champ);
   background: transparent;
   color: var(--charte-encre);
   cursor: pointer;
+  font-size: var(--charte-taille-micro);
+  line-height: 1;
 }
 
-.abs-pli-plier:hover { background: var(--charte-bordure) }
+.abs-pli-plier:hover { background: var(--charte-bordure); border-color: var(--charte-encre) }
 
 /* l'état se LIT (C7 : jamais la couleur seule) : ouverte, la pince est pleine */
 .abs-pli-plier[aria-pressed='true'] { background: var(--charte-aplat); color: var(--charte-blanc) }

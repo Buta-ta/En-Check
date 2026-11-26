@@ -704,3 +704,72 @@ positionné, donc `calc((100% - 2 × trait) × plein / 100%)`) et le sens.
 | verrous réécrits, pas relâchés | 5 (le plancher du mot devient celui du jour), 14 (plaquette sans fond, jauge intérieure, 4/30 = 13 %), 16 (la pastille muette devient le contrôle), 17 (le mois ne plie pas, la partition se relit), 18 (la case n'est plus un `useState`) |
 | `npm run charte` | **inchangé** : 64 · 43 · 27, recompté sur `git archive HEAD src` et sur l'arbre d'aujourd'hui — aucune valeur neuve |
 | `npm run build` · `npx eslint` | ✓ (17,7 s) · 0 problème neuf sur les trois fichiers (trois erreurs de variables mortes préexistantes dans `Absences.jsx`, laissées telles quelles) |
+
+# La pile, refaite aux pixels du dessin (13/12)
+
+Deux mots du fondateur sur la même semaine, et ils tombent sur les deux seuls endroits
+où je dessinais au lieu de mesurer : *« c'est ça que tu appelles feuilles pliées,
+désolé mais là tu ne respectes absolument pas la maquette choisie »*, et
+*« optimise l'espace pour moins scroller. Retravaille cette section »* (la barre
+d'outils, `image-123.png`).
+
+## Ce que le dessin rend, et ce que je rendais
+
+| | `maquettes/absences-grille-2-pli.png`, à la règle | ce que mon cycle précédent posait |
+|---|---|---|
+| la pile | **trois parallèles** sur le seul flanc gauche : montant à x 50..52, première feuille à x 42..45, seconde à x 34..37. Elles **naissent au niveau du trait du haut** (y 200) et **finissent au niveau du trait du bas** (y 680), en descendant d'un pas (queue à y 692) puis de deux (y 703) | deux pseudo-éléments `inset: 0` **cerclés sur quatre côtés**, translatés de −8 et −16 — un cadre complet de plus, pas une feuille |
+| la rive droite | rien : x 1328..1333 est une règle d'ombre (encre (34,10,1), verticale de 681 à 766), x 1334..1337 sa teinte grise (222,201,174) | la même boîte cerclée, donc **un double montant** à droite et un double trait en haut |
+| la chute | **un pas** de pile | `--abs-pli-ombre: 6` — une cote à part, que rien dans le dessin ne séparait du pas |
+
+L'erreur n'était pas une erreur de dessin mais de **forme de donnée** : je cerclais des
+boîtes (un pseudo-élément = une boîte, ça vient tel quel) là où le dessin raye des
+lignes. La feuille s'écrit donc maintenant `border-left` de 3 sur une largeur gérée par
+jeton, `left: -règle`, `translateX(-pas)`, `bottom: -(pas + règle)` — et rien à droite.
+
+    --abs-pli-pli: 8px                                   le pas des feuilles (x 42..45 ← x 50)
+    --abs-pli-deuil: calc(pli + rule)         →  11px    la descente d'une feuille
+    --abs-pli-pile: calc(2 * deuil)           →  22px    la queue des deux
+    --abs-pli-évasement: calc(pile − rule)     →  19px    l'air HORS du cadre, à gauche et en bas
+    box-shadow: var(--abs-pli-pli) var(--abs-pli-pli) 0 0 var(--charte-bordure)
+
+Deux nombres disparaissent du dépôt avec cette correction : `--abs-pli-ombre` (la chute
+se relit sur le pas de la pile) et le `padding-left` que j'avais posé sur le plateau en
+croyant devoir y loger la gouttière — le dessin fait naître les lignes **au bord
+intérieur du montant** (x 53 pour une règle à 50..52), donc la pile se paye devant le
+cadre, jamais dedans. Un verrou le dit (35 : la somme des reculs, 8·5 et 16·13, et des
+descendues de 11 et 22, retombent aux cotes relevées) et un autre interdit le padding
+interne (28).
+
+## Le rang d'outils, qui en faisait trois
+
+`image-123.png` (2346 × 232, soit 1173 CSS px) : le champ de recherche **seul** sur son
+rang, la tringle Planning/Mois/Liste sur le second, « 4 absences » nud sur le troisième.
+La cause n'était pas un excès de zèle responsive mais un **trou** : en sortant la barre
+des `style` inline de la page (cycle précédent), la loi du rang — `display: flex`,
+`justify-content: space-between` — était partie avec l'attribut et n'avait jamais été
+écrite à la feuille. Deux `div` block l'un sous l'autre, voilà trois bandeaux.
+
+| décision | cote |
+|---|---|
+| le rang s'écrit dans `.abs-outils` (feuille), plus dans un attribut | `display:flex · align-items:center · justify-content:space-between`, écart `--charte-espace-3` |
+| le repli n'est plus la loi de l'ordinateur | `flex-wrap: nowrap` sur les deux moitiés, **levé** par la seule `@media (max-width: 650px)` |
+| le champ ne s'étale plus à tout le vide | `flex: 1 1 220px`, plancher 150, **plafond 320** |
+| le compte de la page | il quitte sa rangée pour la tête de la rive droite, à la taille micro, et **ne s'écrit plus en mode Planning** — le plateau dit déjà le bilan de la période ; deux écritures du même nombre, c'est la retouche qui les sépare. `S.resultCount` est supprimé avec sa ligne |
+| la pince de ligne | `--abs-pli-pince: calc(case − pas)` = **22**, et non le gabarit de la case d'entête (30, cote du bandeau du dessin). Le dessin ne dessine aucune pince de ligne : ce sont huit pixels rendus au prénom, à chaque rangée |
+| la largeur du champ | `min-width: max-content` seul. Le `width: max-content; min-width: 100%` d'avant était une double naissance : la largeur du contenu **et** celle de l'écran, la plus grande gagnant — soit, sur un plateau de 1 207, un défilement horizontal permanent pour aller chercher la seule jauge du solde |
+
+Ce qui **ne bouge pas**, parce que le dessin le tient : le pas de ligne de 78 (200 →
+278 → 356), le jour de 145 (x 305..1320 = 7 × 145), l'entête de 76, le registre de 76.
+« Moins scroller » se paie dans le chrome, pas dans l'étage — raccourcir les rangées
+pour tenir plus d'employés à l'écran aurait été trahir la maquette qu'on me reproche
+justement de ne pas respecter.
+
+## Les chiffres du contrôle (13/12)
+
+| mesure | valeur |
+|---|---|
+| `npx vitest run` | **199 fichiers ✓ · 2 847 tests ✓** — pli **36** verrous (34, 35, 36 sont neufs), tringle 24, modes 21, rendu 10, section haute / étagère / charte 46 |
+| échec préexistant, étranger à la page | `alerteHebdoSansPaie.test.js` : 5 tests en timeout de 5 s **aussi sur `8ac940c` sans mes changements** (vérifié en remisant) ; rien à voir avec les absences, rien n'y a été touché |
+| verrous réécrits à la mesure, pas relâchés | 3 (l'ombre se relit sur le pas ; le champ ne s'étale plus), 16 (la pince de ligne se déduit de la case), 22 (mort de `--abs-pli-ombre`, `évasement` 22 → 19, `deuil`/`pile`/`pince` écrits en calculs), 28 (la feuille est une règle, pas une boîte : `not.toContain('inset:0')`), 30 (le plateau ne se garde plus d'air en padding interne) |
+| `npm run charte` | **inchangé** : 64 tailles · 43 marges · 27 rayons, recompté sur `git archive HEAD src` (8ac940c) **et** sur l'arbre d'aujourd'hui — aucune valeur neuve |
+| `npm run build` · `npx eslint` | ✓ (22,1 s) · 3 erreurs et 3 warnings **préexistants** dans `Absences.jsx`, aucun neuf |
