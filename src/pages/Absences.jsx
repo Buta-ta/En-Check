@@ -954,6 +954,20 @@ export default function Absences() {
     setResolvingConflict(false)
   }
 
+  // LE CHERCHER FILTRE AUSSI LA GRILLE. La barre était branchée sur la liste et
+  // les cartes, jamais sur le planning : « quand on cherche un employé, rien ne se
+  // passe dans la grille calendrier, il devrait trier, juste me montrer l'employé
+  // que je recherche » (fondateur, 12/12). Un seul prédicat, écrit ici, lu par les
+  // deux — pas un `filter` recopié dans les deux étages.
+  const employésDuChamp = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return employes
+    return employes.filter((e) =>
+      `${e.first_name ?? ''} ${e.last_name ?? ''}`.toLowerCase().includes(q) ||
+      (e.matricule ?? '').toLowerCase().includes(q)
+    )
+  }, [employes, searchQuery])
+
   const filteredAbsences = useMemo(() => {
     let result = [...absences]
     if (searchQuery.trim()) {
@@ -1897,29 +1911,37 @@ export default function Absences() {
                 </div>
               )}
 
-              <div className="toolbar-top" style={S.toolbar}>
-                <div className="abs-toolbar-left" style={S.toolbarLeft}>
-                  <div style={S.searchBox}>
-                    <Search size={16} color="var(--abs-text-soft)" />
-                    <input type="text" aria-label="Rechercher un employé" placeholder="Rechercher un employé..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={S.searchInput} />
-                    {searchQuery && <button onClick={() => setSearchQuery('')} style={S.clearSearch}><X size={14} /></button>}
+              {/* LA BARRE D'OUTILS, À LA COTE (12/12). Elle était écrite en `style`
+                  inline — coins de douze, fond blanc flottant, ambre d'accent : un
+                  morceau d'une autre page posé au-dessus de la grille, et le
+                  fondateur l'a signalée comme une section à reprendre (« il faut
+                  retravailler cette section »). Les trois boîtes prennent donc les
+                  cotes de la feuille : règle de trois, encre, coin de plaque, aucun
+                  relief. Un seul écritage maintenant : `abs-outils*` dans
+                  `AbsencesAfroTech.css`. */}
+              <div className="toolbar-top abs-outils">
+                <div className="abs-toolbar-left abs-outils-gauche">
+                  <div className="abs-outils-boite abs-outils-champ">
+                    <Search size={16} aria-hidden="true" />
+                    <input type="text" aria-label="Rechercher un employé" placeholder="Rechercher un employé..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                    {searchQuery && <button type="button" className="abs-outils-vider" aria-label="Effacer la recherche" onClick={() => setSearchQuery('')}><X size={14} /></button>}
                   </div>
                   {admin?.role === 'super_admin' && (
-                    <div style={S.filterGroup}>
-                      <Building2 size={16} color="var(--abs-amber)" />
-                      <select aria-label="Entreprise" value={selectedEntrepriseId} onChange={e => setSelectedEntrepriseId(e.target.value)} style={S.filterSelect}>
+                    <div className="abs-outils-boite abs-outils-entreprise">
+                      <Building2 size={16} aria-hidden="true" />
+                      <select aria-label="Entreprise" value={selectedEntrepriseId} onChange={e => setSelectedEntrepriseId(e.target.value)}>
                         <option value="all">Toutes entreprises</option>
                         {entreprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                       </select>
                     </div>
                   )}
                 </div>
-                <div className="abs-toolbar-right" style={S.toolbarRight}>
-                  <button aria-label="Afficher les filtres" aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'var(--abs-line-soft)', color: showFilters ? 'var(--abs-amber)' : 'var(--abs-text-soft)' }}><Filter size={18} /></button>
-                  <div style={S.viewToggle}>
-                    <button aria-pressed={viewMode === 'planning'} onClick={() => setViewMode('planning')} title="Planning — calendrier par employé" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'planning' ? S.viewBtnActive : {}) }}><CalendarDays size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Planning</span></button>
-                    <button aria-pressed={viewMode === 'calendar'} onClick={() => setViewMode('calendar')} title="Mois — grille du mois" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'calendar' ? S.viewBtnActive : {}) }}><Calendar size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Mois</span></button>
-                    <button aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')} title="Liste — cartes détaillées" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'list' ? S.viewBtnActive : {}) }}><List size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Liste</span></button>
+                <div className="abs-toolbar-right abs-outils-droite">
+                  <button type="button" className="abs-outils-pince" aria-label="Afficher les filtres" aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}><Filter size={18} /></button>
+                  <div className="abs-outils-vues" role="group" aria-label="Mode d'affichage">
+                    <button type="button" className="abs-outils-vue" aria-pressed={viewMode === 'planning'} onClick={() => setViewMode('planning')} title="Planning — calendrier par employé"><CalendarDays size={15} /><span>Planning</span></button>
+                    <button type="button" className="abs-outils-vue" aria-pressed={viewMode === 'calendar'} onClick={() => setViewMode('calendar')} title="Mois — grille du mois"><Calendar size={15} /><span>Mois</span></button>
+                    <button type="button" className="abs-outils-vue" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')} title="Liste — cartes détaillées"><List size={15} /><span>Liste</span></button>
                   </div>
                   {/* Export et « + Déclarer » ne sont plus ici : la maquette validée
                       les garde sur la seule ligne d'en-tête (juste au-dessus du
@@ -2011,7 +2033,7 @@ export default function Absences() {
               {viewMode === 'planning' && (
                 <AbsencesCalendrier
                   absences={absences}
-                  employes={employes}
+                  employes={employésDuChamp}
                   darkMode={darkMode}
                   annee={calendarDate.getFullYear()}
                   mois={calendarDate.getMonth()}

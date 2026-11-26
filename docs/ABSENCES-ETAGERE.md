@@ -641,15 +641,12 @@ compter les bords d'une boîte inventée. La plaquette valait 147 en JavaScript 
 
 ## Ce que le dessin ne dit pas, et que je laisse ouvert
 
-* **le mot long au bord droit.** À 145, une planche d'une journée déborde encore de
-  quarante pour cent d'un jour quand le motif s'appelle « Absence injustifiée » ; le
-  dessin, dont le mot fait 125 pour une cellule de 145, ne déborde que de douze
-  pixels. Couper le mot à la rive (l'ellipsis) réglerait la lecture et casserait la
-  copie ; le dessin a choisi le mot, je garde le mot — la durée « · N j » reste
-  entière et le libellé se lit dans le `title`, l'`aria-label` et le tiroir.
-* **la plaquette sur le dernier jour.** Un jour d'absence posé sur le dimanche
-  glisse sous la plaquette, et la plaquette est opaque : le dessin ne montre pas ce
-  cas (sa planche la plus à droite finit à x 1076), je ne l'invente pas.
+* ~~**le mot long au bord droit.**~~ **RÉGLÉ le 12/12** — et contre ma préférence :
+  j'avais écrit que la planche doit pousser au mot, le fondateur a écrit que la
+  planche dit la période. C'est `left`/`right` seuls, `max-width: min(fit-content,
+  …)`, et l'ellipsis sur le nom du motif ; la durée « · N j » et l'emoji restent.
+* ~~**la plaquette sur le dernier jour.**~~ **RÉGLÉ le 12/12** — la plaquette n'a
+  plus de fond : rien ne glisse plus sous un cache, parce qu'il n'y a plus de cache.
 
 ## Ce qui reste ouvert, à dire
 
@@ -666,3 +663,44 @@ compter les bords d'une boîte inventée. La plaquette valait 147 en JavaScript 
   déplace rien, elle borne le prénom (110) et raccourcit la jauge de moitié. Le
   plateau défile. Tenir sept colonnes d'aplomb sans colonne de solde réelle — est-ce
   que ça se lit encore, ou faut-il passer le champ en `min-width: 0` sec ?
+
+# Cinq manquements de la semaine du 12/12 — la pile, le mot, le pli, la barre, le mois
+
+Quatre captures et cinq phrases. Rien ici n'est une opinion : chaque ligne qui suit a
+été mesurée sur `maquettes/absences-grille-2-pli.png` (1376 × 768) ou sur le rendu
+renvoyé (`image-120`, 2752 px de large, facteur 2,032 ; `image-122`, mode mois).
+
+| le manquement | ce que la mesure a dit | ce qui a bougé |
+|---|---|---|
+| **« la flèche remplit deux jours alors que le congé n'est que 1 jour — elle déborde en fonction de la longueur du texte »** | la planche « Absence injustifiée · 1 j » faisait **251 px** pour une cellule de **145**, exactement à cause du `min-width: max-content` que j'avais posé la veille pour défendre le mot | le plancher est mort : `min-width: 0`, `max-width: min(fit-content, 100% − entrée − solde − 2px)`, et l'ellipsis **sur le nom du motif seul** (`.abs-pli-motif`) ; `.abs-pli-durée` et `.abs-pli-séparateur` se retiennent de se serrer, `title` / `aria-label` / tiroir gardent la phrase entière. Pas d'`overflow: hidden` sur la planche : sa pointe de ruban est un enfant posé à `left: -16px`, le cadre la mangerait (verrous 5 et 32) |
+| **« les feuilles pliées, jusque-là tu n'as rien fait »** | elles étaient écrites ET géométriquement justes — arêtes à x 42..45 et x 34..37 pour un montant à 50..52, descentes de 11 et 22 — mais **peintes sous le fond de la page** | `isolation: isolate` sur `.abs-pli-plateau`. Un `z-index: -1` se peint dans le contexte d'empilement du plus proche ancêtre qui en crée un : ici la racine, donc derrière le sable de `.abs-cal`, donc invisible. Le plateau était `position: relative` sans `z-index` — il ne créait rien. C'est le verrou 30, et la leçon : une cote juste dans un empilement faux ne se voit pas |
+| **« impossible de cliquer sur un employé plié, et le déplier ou le plier juste lui »** | le pli n'avait qu'un commutateur global, écrit dans `useState(déplierTout)`, et la pastille du registre était un `<span>` — « muette », comme je l'avais décidé le 10/12 | deux ensembles de **déviation** (`pliOuverts`, `pliFermés`) et un défaut par ligne : ouvert si la ligne a une planche. La pastille devient `<button aria-pressed>`, chaque ligne porte **sa pince** (`.abs-pli-plier`, rangée rive de la colonne d'identité, jamais sur la piste qui dépose), et la case d'entête **n'est plus un état** : son `checked` se relit des ensembles. Verrou 31 : un montage vivant, trois clics, ligne seule |
+| **« rien ne se passe dans la grille quand on cherche un employé — il devrait trier, juste me montrer l'employé que je recherche »** | `searchQuery` filtrait `filteredAbsences` (la liste, les cartes) et n'était jamais passé au calendrier : la grille recevait `employes`, l'effectif entier | `employésDuChamp` à la page, **un seul prédicat** (prénom, nom, matricule), lu par la grille. Le pli suit tout seul : chercher « Boss » laisse une ligne et un registre de deux pastilles, et le compte du haut ne bouge pas — il dit la période, pas le filtre |
+| **« beaucoup d'anomalie quand la grille passe en mode mois »** | à trente et une cellules de 36 : la plaquette du solde (130 px) mangeait trois jours et demi, la jauge de 50 débordait son nombre, le mot de 20 px coupait dans tous les traits, et le pli repliait onze adultes en pastilles pour une ligne vide | le mois **ne plie pas** (`pliActif = mode === 'semaine'`), la plaquette se relit à `--abs-pli-solde-mois: 0`, la pilule ne se rend même pas, l'étiquette de planche passe au corps de 11. Le nombre du solde reste — c'est une donnée, pas un ornement (verrou 17) |
+
+Et la **barre d'outils** (« il faut retravailler cette section ») : elle était écrite
+en `style` inline — coins de 12, fond blanc flottant, ambre en accent, 42 px de haut —
+un morceau d'une autre page cousu au-dessus du plateau. Elle prend les classes
+`abs-outils*` de la feuille : règle de trois en encre, `--charte-rayon-champ`, aucun
+relief, boîtes-cadres (un champ s'entoure, il ne se soulève pas), modes d'affichage en
+une seule tringle cloisonnée, actif rempli d'argile (blanc cassé dessus : 4,64:1). La
+hauteur se relit sur `--abs-pli-case` (30), l'écart sur `espace-3` — pas de cote neuve :
+le comptage de la charte est **inchangé**, 64 tailles · 43 marges · 27 rayons.
+
+## Le solde, rempli de ce qui est pris
+
+Relevé sur le même crop : la pilule du dessin (x 1178..1228) est remplie d'argile
+jusqu'à **x 1218**, sous un nombre qui dit « 26/30 ». 40/50 = 80 % pour un solde de
+26 sur 30 — donc le remplissage dit CE QUI EST PRIS (4), pas ce qui reste (26). Je
+remplissais du restant : un solde épuisé se dessinait vierge. Deux corrections d'un
+coup, l'intérieure (le pourcentage d'un absolu se mesure au Border-Box du conteneur
+positionné, donc `calc((100% - 2 × trait) × plein / 100%)`) et le sens.
+
+## Les chiffres du contrôle (12/12)
+
+| mesure | valeur |
+|---|---|
+| `npx vitest run` | **200 fichiers · 2 849 tests ✓** (0 échec) — pli **33** verrous (30, 31, 32 sont neufs), tringle 24, modes 21, rendu 10, logique 98 |
+| verrous réécrits, pas relâchés | 5 (le plancher du mot devient celui du jour), 14 (plaquette sans fond, jauge intérieure, 4/30 = 13 %), 16 (la pastille muette devient le contrôle), 17 (le mois ne plie pas, la partition se relit), 18 (la case n'est plus un `useState`) |
+| `npm run charte` | **inchangé** : 64 · 43 · 27, recompté sur `git archive HEAD src` et sur l'arbre d'aujourd'hui — aucune valeur neuve |
+| `npm run build` · `npx eslint` | ✓ (17,7 s) · 0 problème neuf sur les trois fichiers (trois erreurs de variables mortes préexistantes dans `Absences.jsx`, laissées telles quelles) |

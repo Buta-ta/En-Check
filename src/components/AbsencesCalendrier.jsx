@@ -99,9 +99,9 @@ export default function AbsencesCalendrier({
   const [motifsMasques, setMotifsMasques] = useState(() => new Set())
   // LE PLI. Le second dessin ferme la grille par défaut : les lignes sans absence
   // ne sont pas masquées, elles se REPLIENT en pastilles sous le plateau, avec le
-  // compte écrit en clair. La case « Déplier tout » de l'entête les rouvre — c'est
-  // l'inverse exact de l'ancien billet « Masquer sans absence », qui effaçait.
-  const [déplierTout, setDéplierTout] = useState(false)
+  // compte écrit en clair. Ses deux ensembles d'état se lisent plus bas, à la
+  // rubrique `pliActif` — un `useState` de plus pour la case d'entête aurait été
+  // le compte écrit deux fois, et c'est exactement ainsi que le pli se perdait.
   const [absenceActive, setAbsenceActive] = useState(null)
   // La pince qu'on est en train de porter : elle se décolle du bois, pas du fil
   const [motifGlissé, setMotifGlissé] = useState(null)
@@ -195,7 +195,7 @@ export default function AbsencesCalendrier({
   }, [employes, absences, jours, motifsMasques])
 
   // Un seul tri, deux lectures : la grille montre ce qui a un trait, le registre
-  // du pli garde le reste. `lignes.length + sansObjet.length + 0 ===
+  // du pli garde le reste. `àSignaler.length + rienÀSignaler.length ===
   // toutesLesLignes.length` est LA loi de l'étage — un nombre écrit deux fois se
   // contredit à la première retouche, donc les deux étages lisent le même tableau.
   //
@@ -203,9 +203,84 @@ export default function AbsencesCalendrier({
   // semaine. En mode jour, la feuille du jour a déjà son second étage — « Présents
   // (n) » — et un registre de pastilles en dessous répéterait la même liste, sous
   // une autre forme. Donc : pas de pli en jour, tous les employés restent en ligne.
-  const pliActif = mode !== 'jour' && !déplierTout
-  const lignes = pliActif ? toutesLesLignes.filter((l) => l.segments.length > 0) : toutesLesLignes
-  const sansObjet = pliActif ? toutesLesLignes.filter((l) => l.segments.length === 0) : []
+  // LE PLI SE PILOTE LIGNE À LIGNE. La case d'entête n'était qu'un commutateur
+  // global : « c\'est impossible de cliquer sur un employé plié, et le déplier ou le
+  // plier juste lui » (fondateur, 12/12). Deux ensembles — ceux qu\'on a tenus
+  // OUVERTS, ceux qu\'on a tenus FERMÉS — et un défaut par ligne : ce qui a une
+  // planche se lit, ce qui n\'en a pas se tait. La case d\'entête n\'est pas un
+  // troisième état : elle remplit les deux ensembles, et son `checked` se RELIT de
+  // là. Écrit deux fois (un `useState` de case + deux ensembles), le pli se
+  // contredit au premier clic — c\'est la loi du champ, encore.
+  const [pliOuverts, setPliOuverts] = useState(() => new Set())
+  const [pliFermés, setPliFermés] = useState(() => new Set())
+  // Le mois ne plie pas : sa vignette de trente et une colonnes de 36 n\'a pas de
+  // place pour une ligne « rien à signaler » vide, ni pour la plaquette du solde.
+  const pliActif = mode === 'semaine'
+
+  // Le défaut du pli, une seule fois : ouvert si la ligne a une planche, fermé si
+  // non. Les deux ensembles ne font que la contredire, pour un employé ou pour
+  // tous.
+  const estOuvert = (ligne) =>
+    pliOuverts.has(ligne.employe.id)
+      ? true
+      : pliFermés.has(ligne.employe.id)
+        ? false
+        : ligne.segments.length > 0
+  const pliÉcrit = (ligne) => {
+    const id = ligne.employe.id
+    if (estOuvert(ligne)) {
+      setPliOuverts((actuel) => {
+        const suite = new Set(actuel)
+        suite.delete(id)
+        return suite
+      })
+      setPliFermés((actuel) => new Set(actuel).add(id))
+    } else {
+      setPliFermés((actuel) => {
+        const suite = new Set(actuel)
+        suite.delete(id)
+        return suite
+      })
+      setPliOuverts((actuel) => new Set(actuel).add(id))
+    }
+  }
+  const sansPlanche = useMemo(
+    () => toutesLesLignes.filter((l) => l.segments.length === 0),
+    [toutesLesLignes]
+  )
+  const déplierTout = sansPlanche.length > 0 && sansPlanche.every((l) => estOuvert(l))
+  const plierTout = () => {
+    if (déplierTout) {
+      setPliFermés(() => new Set(toutesLesLignes.map((l) => l.employe.id)))
+      setPliOuverts(() => new Set())
+    } else {
+      setPliOuverts(() => new Set(toutesLesLignes.map((l) => l.employe.id)))
+      setPliFermés(() => new Set())
+    }
+  }
+  const lignes = pliActif ? toutesLesLignes.filter(estOuvert) : toutesLesLignes
+  // le registre porte TOUS les sans-absence de la période, chacun dans son état
+  // (plié = muet, ouvert = pressé) : un nombre écrit en fonction du pli se
+  // contredit au premier clic. La partition du bas du plateau, elle, se lit sur ce
+  // qui est réellement hors-champ — `pliés` est le complément exact de `lignes`,
+  // même tableau, même calcul, jamais un second filtre inventé à côté.
+  const rienÀSignaler = useMemo(
+    () => (mode === 'jour' ? [] : toutesLesLignes.filter((l) => l.segments.length === 0)),
+    [mode, toutesLesLignes]
+  )
+  const pliés = useMemo(
+    () => (pliActif ? toutesLesLignes.filter((l) => !estOuvert(l)) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pliActif, toutesLesLignes, pliOuverts, pliFermés]
+  )
+  // le compte du haut se lit en ABSENCES, pas en employés, et il ne dépend PAS du
+  // pli : trois lignes ouvertes à la main ne changent pas le bilan de la période.
+  const àSignaler = useMemo(() => {
+    if (mode === 'jour') return 0
+    const vus = new Set()
+    toutesLesLignes.forEach((l) => l.segments.forEach((seg) => vus.add(seg.absence.id)))
+    return vus.size
+  }, [mode, toutesLesLignes])
 
   // ── Récapitulatif de la période affichée ────────────────────────────
   const stats = useMemo(() => {
@@ -532,10 +607,14 @@ export default function AbsencesCalendrier({
               Deux nombres, une seule source : ce que la grille montre et ce
               qu'elle replie, jamais « ce qu'il y a dans la base ». */}
           <div className="abs-pli-comptes" data-testid="abs-cal-comptes">
+            {/* Le bilan de la PÉRIODE, jamais l'état du pli : trois lignes ouvertes
+                à la main ne changent pas le nombre d'absences. En mode jour, le
+                compte retombe sur `stats` — la feuille du jour n'a pas de registre. */}
             <span>
-              <span className="abs-pli-compte-nombre">{stats.total}</span> à signaler
+              <span className="abs-pli-compte-nombre">{mode === 'jour' ? stats.total : àSignaler}</span>{' '}
+              à signaler
               <span aria-hidden="true"> · </span>
-              <span className="abs-pli-compte-nombre">{sansObjet.length}</span> rien{' '}
+              <span className="abs-pli-compte-nombre">{mode === 'jour' ? 0 : rienÀSignaler.length}</span> rien{' '}
               {mode === 'mois' ? 'ce mois-ci' : mode === 'jour' ? 'aujourd’hui' : 'cette semaine'}
             </span>
             {/* LE PLI EST RÉVERSIBLE. Le dessin dessine sa case qu'il y ait ou non
@@ -547,13 +626,13 @@ export default function AbsencesCalendrier({
                 Elle ne s'éteint qu'une fois vidée de son office : rien à ouvrir.
                 En mode jour, pas de case : la feuille du jour a déjà son second
                 étage et le pli n'a pas de sens sur une colonne unique. */}
-            {mode !== 'jour' && (
+            {pliActif && (
               <label className="abs-pli-deplier">
                 <input
                   type="checkbox"
                   checked={déplierTout}
-                  disabled={!déplierTout && sansObjet.length === 0}
-                  onChange={() => setDéplierTout((v) => !v)}
+                  disabled={!déplierTout && sansPlanche.length === 0}
+                  onChange={plierTout}
                   data-testid="abs-cal-deplier-tout"
                 />
                 {déplierTout ? 'Replier tout' : 'Déplier tout'}
@@ -599,7 +678,10 @@ export default function AbsencesCalendrier({
             const feriers = getHolidaySet(ligne.employe.enterprise_id)
             const nbRangees = ligne.segments.reduce((max, s) => Math.max(max, s.rangeesTotal || 1), 1)
             const solde = soldeDe(ligne.employe.id)
-            const plein = solde.plafond > 0 ? Math.round((solde.restant / solde.plafond) * 100) : 0
+            // la jauge se remplit de CE QUI EST PRIS, pas du restant : remplie du
+            // restant, un solde épuisé se dirait vierge (le dessin, lui, remplit
+            // d'argile jusqu'à 82 % sous un « 26/30 » — donc du pris)
+            const plein = solde.plafond > 0 ? Math.round((solde.pris / solde.plafond) * 100) : 0
 
             return (
               <div
@@ -623,6 +705,24 @@ export default function AbsencesCalendrier({
                   <span className="abs-pli-nom">
                     {ligne.employe.first_name} {ligne.employe.last_name}
                   </span>
+                  {/* LA PINCE, PAR LIGNE. Elle est dans la colonne d'identité — la
+                      seule que le dessin ne clique pas pour autre chose — et jamais
+                      sur la piste, qui est la surface des planches et la zone de
+                      dépôt. `aria-pressed` dit l'état, le mot le dit aussi. */}
+                  {pliActif && (
+                    <button
+                      type="button"
+                      className="abs-pli-plier"
+                      data-testid="abs-pli-plier"
+                      data-employe={ligne.employe.id}
+                      aria-pressed={estOuvert(ligne) ? 'true' : 'false'}
+                      aria-label={`${ligne.segments.length > 0 ? 'Replier' : 'Déplier'} la ligne de ${ligne.employe.first_name} ${ligne.employe.last_name}`}
+                      title={`${ligne.segments.length > 0 ? 'Replier' : 'Déplier'} cette ligne`}
+                      onClick={() => pliÉcrit(ligne)}
+                    >
+                      {ligne.segments.length > 0 ? '⌄' : '⌃'}
+                    </button>
+                  )}
                 </div>
 
                 {/* LA PISTE — les traits de jour (un fond, pas trente et un
@@ -792,7 +892,11 @@ export default function AbsencesCalendrier({
                     title={`${solde.pris} jour(s) pris · plafond ${solde.plafond} jours`}
                     style={{ '--abs-pli-plein': `${Math.max(0, Math.min(100, plein))}%` }}
                   >
-                    <span className="abs-pli-jauge" aria-hidden="true"><i /></span>
+                    {/* la pilule ne se rend même pas en mois : sous 36 pixels par
+                        jour, ses cinquante pixels et son cerclage ne sont pas une
+                        mesure, c'est un débordement. `title` et l'étage Soldes de
+                        la page gardent le nombre. */}
+                    {mode !== 'mois' && <span className="abs-pli-jauge" aria-hidden="true"><i /></span>}
                     <span className="abs-pli-nombre">
                       {solde.restant}/{solde.plafond}
                     </span>
@@ -808,40 +912,52 @@ export default function AbsencesCalendrier({
               Un clic ouvre la même fiche que la ligne. En mode jour, le registre
               reste vide : la feuille du jour a déjà son étage « présents », et un
               nombre écrit deux fois se contredit à la première retouche. */}
-          {sansObjet.length > 0 && (
+          {pliés.length > 0 && (
             <div className="abs-pli-registre" data-testid="abs-pli-registre">
-              {sansObjet.map((ligne) => {
-                // la pastille du pli n'est PAS un contrôle : le dessin ne lui
-                // prête aucun geste, et rien n'a de fiche à ouvrir quand la
-                // période est vide. Elle se lit — le nom est dans le titre.
+              {/* LA PASTILLE EST LE CONTRÔLE DU PLI. Elle était écrite muette — « le
+                  dessin ne lui prête aucun geste » — et c'est exactement ce qui
+                  rendait un employé plié inaccessible. Le dessin ne montre pas non
+                  plus de liste de lignes repliées : le geste est donc ICI, sur la
+                  pastille, unique entrée de la grille pour qui n'a rien à signaler.
+                  Un clic soulève la ligne, un second la referme ; l'état se lit
+                  (`aria-pressed`) et se dit (`aria-label`). */}
+              {pliés.map((ligne) => {
                 const nom = `${ligne.employe.first_name} ${ligne.employe.last_name}`
+                const ouvert = false // le registre ne montre QUE le pli : ouvert = hors champ
                 return (
-                  <span
+                  <button
                     key={ligne.employe.id}
+                    type="button"
                     className="abs-pli-chip"
                     data-testid="abs-pli-chip"
                     data-employe={ligne.employe.id}
-                    title={`${nom} · rien à signaler sur la période`}
+                    aria-pressed={ouvert}
+                    aria-label={`${nom} · ${ouvert ? 'déplier' : 'plier'} sa ligne`}
+                    title={`${nom} · rien à signaler sur la période · ${ouvert ? 'ligne dépliée, cliquer pour replier' : 'cliquer pour déplier la ligne'}`}
+                    onClick={() => pliÉcrit(ligne)}
                   >
                     {ligne.employe.photo_url ? (
-                      <img className="abs-pli-chip" src={ligne.employe.photo_url} alt={nom} />
+                      <img className="abs-pli-chip-figure" src={ligne.employe.photo_url} alt="" />
                     ) : (
                       initialesDe(ligne.employe.first_name, ligne.employe.last_name)
                     )}
-                  </span>
+                  </button>
                 )
               })}
               <span className="abs-pli-compte">
-                <span className="abs-pli-compte-nombre">{sansObjet.length}</span> · rien à signaler
+                <span className="abs-pli-compte-nombre">{rienÀSignaler.length}</span> · rien à signaler
               </span>
             </div>
           )}
 
+            {/* L'état vide se lit DANS le plateau, aux cotes de la feuille — pas un
+                pavé `style` posé à l'intérieur du champ, qui héritait du sable et
+                des règles comme d'un cadre de plus. */}
             {toutesLesLignes.length === 0 && (
-              <div style={{ padding: 44, textAlign: 'center', color: theme.texteDoux }}>
-                <CalendarOff size={26} style={{ marginBottom: 10, opacity: 0.6 }} />
-                <p style={{ margin: 0, fontSize: 14 }}>Aucun employé à afficher sur cette période.</p>
-              </div>
+              <p className="abs-pli-vide" data-testid="abs-pli-vide">
+                <CalendarOff size={26} aria-hidden="true" />
+                Aucun employé à afficher sur cette période.
+              </p>
             )}
           </div>
         </div>
