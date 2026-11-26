@@ -1698,25 +1698,37 @@ function evaluerSemainesParPalier(semaines, seuilsParLundi, { enterpriseTimezone
     null,
   )
   const nonResolues = partySemaines.filter((sem) => sem.regle_resolue === false)
-  //  ⚠️ DEUX CAUSES, DEUX PHRASES. « Aucun seuil choisi » et « la règle n'a pas
-  //  pu être résolue » ne s'excusent pas de la même manière : la première est un
-  //  état de configuration, la seconde une lecture qui a échoué. Les confondre
-  //  enverrait chercher un réglage qui existe déjà — ou l'inverse.
+  //  ⚠️ TROIS CAUSES, TROIS PHRASES — et la plus délicate est celle du milieu.
   //
-  //  Le discriminant est le motif de la SEMAINE, pas une liste de libellés :
-  //  seule l'absence de règle résolue parle de « règle qui n'a pu être
-  //  résolue ». Tout le reste décrit un seuil absent, non confirmé ou illisible.
-  const nonResoluesSansSeuil = nonResolues.filter(
-    (sem) => !/r[eè]gle n.a pu être r[eé]solue/i.test(String(sem.motif || '')),
-  ).length
+  //   · « aucune règle résolue »        : la lecture a échoué (migration, RPC) ;
+  //   · « seuil non confirmé »          : la ligne EXISTE, avec une valeur qui
+  //                                       est celle d'un défaut connu — on ne
+  //                                       sait pas si un humain l'a choisie ;
+  //   · « aucun seuil choisi »          : seule la valeur par défaut du produit
+  //                                       existe, rien n'a été enregistré.
+  //
+  //  Les confondre envoie chercher au mauvais endroit : annoncer « aucun seuil
+  //  choisi » à une entreprise dont la ligne existe, avec 40 h enregistrés,
+  //  lui fait croire qu'il n'y a rien à reconfirmer. C'est exactement le cas
+  //  que les lignes héritées à 40 h ont révélé.
+  //
+  //  Le discriminant est le motif de la SEMAINE, pas une liste de valeurs : on
+  //  ne juge jamais sur le nombre, seulement sur ce que la résolution a dit.
+  const motifs = nonResolues.map((sem) => String(sem.motif || ''))
+  const sansRegle = motifs.filter((m) => /r[eè]gle n.a pu être r[eé]solue/i.test(m)).length
+  const nonConfirmees = motifs.filter((m) => /non confirm[ée]/i.test(m)).length
+
+  const motifAgrege = nonResolues.length === 0
+    ? null
+    : (sansRegle === nonResolues.length
+      ? `${nonResolues.length} semaine(s) sans règle résolue : aucun verdict n'est prononcé pour elles`
+      : nonConfirmees > 0
+        ? `${nonResolues.length} semaine(s) au seuil non confirmé : aucun verdict n'est prononcé pour elles`
+        : `${nonResolues.length} semaine(s) sans seuil choisi : aucun verdict n'est prononcé pour elles`)
 
   return {
     disponible: nonResolues.length === 0 && partySemaines.length > 0,
-    motif: nonResolues.length > 0
-      ? (nonResoluesSansSeuil === nonResolues.length
-        ? `${nonResolues.length} semaine(s) sans seuil choisi : aucun verdict n'est prononcé pour elles`
-        : `${nonResolues.length} semaine(s) sans règle résolue : aucun verdict n'est prononcé pour elles`)
-      : null,
+    motif: motifAgrege,
     seuil: porteGlobal?.seuil ?? null,
     seuil_majeur: porteGlobal?.seuilMajeur ?? null,
     source: porteGlobal?.source ?? null,

@@ -36,12 +36,21 @@ const TABLES = {
 //  un faux qui rendrait la même valeur à toutes les dates ne saurait pas dire
 //  « la règle n'existait pas encore » — c'est pourtant le cas décisif ici.
 const REGLES = { seuil: [], niveau2: [] }
+//  Valeurs PERSONNELLES, par employé. La résolution par salarié est une
+//  exigence : un faux qui l'ignorerait ne prouverait rien sur ce point.
+//  Forme : { e1: { seuil: [{ valeur, date_effet }] } }
+const REGLES_PERSO = {}
 //  Ce que la RPC d'activation répond. `null` = aucune ligne (jamais décidée).
 const ACTIVATION = { active: null }
 
 const plusRecent = (liste, date) => (liste || [])
   .filter((v) => v.date_effet <= date)
   .sort((a, b) => (a.date_effet < b.date_effet ? 1 : -1))[0] ?? null
+
+//  Ce que `overtime_settings` contient, et que l'application qualifie ensuite.
+//  C'est la SOURCE DU REPLI quand la table versionnée ne rend rien — et c'est
+//  précisément là que 40 et 48 deviennent « historique_incertain ».
+const LIGNE_OVERTIME = { valeur: null }
 
 function reponse(table, unique) {
   const l = TABLES[table] ?? []
@@ -67,13 +76,23 @@ function rpc(nom, params) {
     //  aux deux clés ferait passer un `niveau2` absent pour un second niveau
     //  configuré.
     const cle = params?.p_cle === 'alerte_hebdo_niveau2_heures' ? 'niveau2' : 'seuil'
-    const v = plusRecent(REGLES[cle], date)
+    const employe = params?.p_employe || null
+
+    //  Résolution par salarié, fidèle à `encheck_regle_resolue` : la valeur
+    //  personnelle applicable à CETTE date passe avant la valeur d'entreprise.
+    const perso = employe ? plusRecent(REGLES_PERSO[employe]?.[cle], date) : null
+    const entreprise = plusRecent(REGLES[cle], date)
+    //  La version d'entreprise ne s'applique que si elle existe à cette date.
+    const choisie = perso
+      ? { ...perso, origine: 'employe' }
+      : (entreprise ? { ...entreprise, origine: 'entreprise' } : null)
+
     return Promise.resolve({
-      data: [v
+      data: [choisie
         ? {
-            valeur: v.valeur,
-            origine: 'entreprise',
-            date_effet: v.date_effet,
+            valeur: choisie.valeur,
+            origine: choisie.origine,
+            date_effet: choisie.date_effet,
             maj_par: null, maj_le: null, verrouille: false, regle_id: null,
           }
         : { valeur: null, origine: 'aucune', date_effet: null }],
@@ -101,6 +120,10 @@ vi.mock('../../lib/supabase', () => ({
   supabase: { from: (t) => chaine(t), rpc: (n, p) => rpc(n, p) },
 }))
 
+//  ⚠️ `featureService` n'est PAS mocké : c'est lui qui produit la provenance
+//  (`qualifierOrigineSeuilHebdo`), et la remplacer par une doublure ferait
+//  tester la doublure. Il lit `overtime_settings` via `chaine`, donc
+//  `TABLES.overtime_settings` pilote directement le repli.
 const { calculateEmployeeHours } = await import('../hoursCalculator')
 
 //  5 jours × 10 h = 50 h dans la semaine du 19 au 23 octobre 2026.
@@ -138,6 +161,8 @@ const plafond = async () => {
 
 beforeEach(() => {
   preparer()
+  for (const k of Object.keys(REGLES_PERSO)) delete REGLES_PERSO[k]
+  LIGNE_OVERTIME.valeur = null
   REGLES.seuil = []
   REGLES.niveau2 = []
   ACTIVATION.active = null
@@ -192,6 +217,183 @@ describe('Aucun seuil choisi — le contrôle est indisponible, pas « tout va b
     for (const s of p.seuils_par_semaine) {
       expect(s.seuil).toBe(null)
       expect(s.resolu).toBe(false)
+    }
+  })
+})
+
+describe('Un seuil EXPLICITEMENT CHOISI à 40 ou 48 — distinct du défaut produit', () => {
+  //  ⚠️ CE QUI SÉPARE CES CAS DU DÉFAUT N'EST PAS LA VALEUR.
+  //
+  //  40 et 48 sont tous deux des défauts connus du produit : une ligne
+  //  `overtime_settings` valant 40 ou 48 est classée `historique_incertain`
+  //  (voir le test plus haut, qui doit rester vrai). Ce qui distingue un CHOIX,
+  //  c'est la TRACE : une version écrite par `encheck_regle_ecrire`, donc
+  //  datée, avec auteur, et portant une valeur numérique sous la clé
+  //  `alerte_hebdo_heures`.
+  //
+  //  C'est exactement ce qu'écrit l'écran MonEntreprise (§ « seuil d'alerte
+  //  hebdomadaire », champ numérique → `Regles.ecrire({ cle:
+  //  'alerte_hebdo_heures', valeur: Number(saisie) })`). Le numérique est donc
+  //  bien enregistré dans la règle versionnée — pas seulement l'activation.
+
+  it('seuil 40 CHOISI (version écrite, auteur connu) : le contrôle est actif', async () => {
+    //  La ligne d'entreprise vaut 40 — donc « incertaine » comme défaut.
+    preparer({ ligneOvertime: { enterprise_id: 'ent', weekly_threshold: 40, alerte_hebdo_activee: true } })
+    //  …mais une version explicite existe : c'est ELLE qui fait foi.
+    REGLES.seuil = [{ valeur: 40, date_effet: '2026-04-10' }]
+    ACTIVATION.active = true
+
+    const p = await plafond()
+
+    expect(p.disponible).toBe(true)
+    expect(p.seuil).toBe(40)
+    expect(p.nb_depassees).toBe(1)   // 50 h > 40 h
+    expect(p.max?.heures).toBe(50)
+  })
+
+  it('seuil 48 CHOISI (version écrite) : le contrôle est actif, sans dépassement à 50 h', async () => {
+    preparer({ ligneOvertime: { enterprise_id: 'ent', weekly_threshold: 48, alerte_hebdo_activee: true } })
+    REGLES.seuil = [{ valeur: 48, date_effet: '2026-04-10' }]
+    ACTIVATION.active = true
+
+    const p = await plafond()
+
+    //  Actif : le contrôle a bien lieu, et 48 est le seuil appliqué.
+    expect(p.disponible).toBe(true)
+    expect(p.seuil).toBe(48)
+    //  50 h ≤ 48 h est faux — 50 dépasse 48. Le verdict doit être prononcé.
+    expect(p.nb_depassees).toBe(1)
+  })
+
+  it('seuil 48 CHOISI et 45 h travaillées : aucun dépassement, mais un verdict rendu', async () => {
+    preparer({ ligneOvertime: { enterprise_id: 'ent', weekly_threshold: 48, alerte_hebdo_activee: true } })
+    TABLES.attendances = ['19', '20', '21', '22', '23'].flatMap((j) => [
+      { id: `in-${j}`, employee_id: 'e1', check_time: `2026-10-${j}T07:00:00.000Z`, check_type: 'in', is_auto_closed: false, method: 'badge' },
+      { id: `out-${j}`, employee_id: 'e1', check_time: `2026-10-${j}T16:00:00.000Z`, check_type: 'out', is_auto_closed: false, method: 'badge' },
+    ])
+    REGLES.seuil = [{ valeur: 48, date_effet: '2026-04-10' }]
+    ACTIVATION.active = true
+
+    const p = await plafond()
+
+    //  ⚠️ La différence avec « aucun seuil choisi » : ici `disponible: true`
+    //  signifie que le contrôle A EU LIEU et n'a rien trouvé. Là-bas, il n'a
+    //  pas eu lieu. Le même « 0 » ne dit pas la même chose.
+    expect(p.disponible).toBe(true)
+    expect(p.seuil).toBe(48)
+    expect(p.nb_depassees).toBe(0)
+  })
+
+  it('seuil 40 choisi mais activé seulement à partir du 19/10 : la semaine du 12 reste non évaluée', async () => {
+    TABLES.attendances = [
+      ...[...['12', '13', '14', '15', '16']].flatMap((j) => [
+        { id: `in-${j}`, employee_id: 'e1', check_time: `2026-10-${j}T07:00:00.000Z`, check_type: 'in', is_auto_closed: false, method: 'badge' },
+        { id: `out-${j}`, employee_id: 'e1', check_time: `2026-10-${j}T17:00:00.000Z`, check_type: 'out', is_auto_closed: false, method: 'badge' },
+      ]),
+      ...SEMAINE_50H,
+    ]
+    //  La résolution est datée : 40 n'existe qu'à partir du 19/10.
+    REGLES.seuil = [{ valeur: 40, date_effet: '2026-10-19' }]
+    ACTIVATION.active = true
+
+    const p = await plafond()
+    const parDebut = Object.fromEntries(p.semaines.map((s) => [s.debut, s]))
+
+    expect(parDebut['2026-10-12'].regle_resolue).toBe(false)
+    expect(parDebut['2026-10-12'].seuil_applique).toBe(null)
+    expect(parDebut['2026-10-19'].regle_resolue).toBe(true)
+    expect(parDebut['2026-10-19'].seuil_applique).toBe(40)
+    expect(parDebut['2026-10-19'].depasse).toBe(true)
+  })
+
+  it('résolution PAR SALARIÉ : la valeur personnelle de e1 prime sur celle de l’entreprise', async () => {
+    //  Entreprise : 52 h (aucun dépassement à 50 h).
+    REGLES.seuil = [{ valeur: 52, date_effet: '2026-01-01' }]
+    //  e1 : 45 h, personnel, décidé plus récemment.
+    REGLES_PERSO.e1 = { seuil: [{ valeur: 45, date_effet: '2026-09-01' }] }
+    ACTIVATION.active = true
+
+    const p = await plafond()
+
+    //  50 h dépasse la règle PERSONNELLE de 45 h, pas celle de l'entreprise.
+    expect(p.disponible).toBe(true)
+    expect(p.seuil).toBe(45)
+    expect(p.nb_depassees).toBe(1)
+  })
+
+  it('résolution PAR SALARIÉ : sans valeur personnelle, la règle d’entreprise s’applique', async () => {
+    REGLES.seuil = [{ valeur: 52, date_effet: '2026-01-01' }]
+    //  Aucune entrée pour e1.
+    ACTIVATION.active = true
+
+    const p = await plafond()
+
+    expect(p.seuil).toBe(52)
+    expect(p.nb_depassees).toBe(0)
+  })
+})
+
+describe('Provenance réellement ambiguë — ni seuil inventé, ni alerte présentée comme un verdict', () => {
+  //  40 et 48 sont des défauts connus : une fois écrits dans la ligne
+  //  d'entreprise, sans version explicite, personne ne peut dire s'ils ont été
+  //  choisis. On ne tranche pas — et surtout on ne les APPLIQUE pas.
+
+  it('40 en ligne d’entreprise, sans version : non évalué, et le motif dit pourquoi', async () => {
+    preparer({ ligneOvertime: { enterprise_id: 'ent', weekly_threshold: 40, alerte_hebdo_activee: true } })
+    ACTIVATION.active = true
+
+    const p = await plafond()
+
+    expect(p.disponible).toBe(false)
+    expect(p.seuil).toBe(null)
+    expect(p.nb_depassees).toBe(0)
+    //  Le motif doit nommer l'ambiguïté, pas accuser une absence de réglage :
+    //  la ligne EXISTE, avec une valeur plausible.
+    expect(p.motif).toMatch(/non confirmé|défaut connu/i)
+    //  Et la valeur reste visible comme suggestion : on ne la cache pas, on
+    //  refuse seulement de l'appliquer.
+    expect(p.seuil_propose).toBe(40)
+  })
+
+  it('48 en ligne d’entreprise, sans version : même traitement, même motif', async () => {
+    preparer({ ligneOvertime: { enterprise_id: 'ent', weekly_threshold: 48, alerte_hebdo_activee: true } })
+    ACTIVATION.active = true
+
+    const p = await plafond()
+
+    expect(p.disponible).toBe(false)
+    expect(p.seuil).toBe(null)
+    expect(p.nb_depassees).toBe(0)
+    expect(p.motif).toMatch(/non confirmé|défaut connu/i)
+    expect(p.seuil_propose).toBe(48)
+  })
+
+  it('une provenance illisible ne devient ni un seuil, ni un « tout va bien »', async () => {
+    preparer({ ligneOvertime: { enterprise_id: 'ent', weekly_threshold: 'abc', alerte_hebdo_activee: true } })
+    ACTIVATION.active = true
+
+    const p = await plafond()
+
+    expect(p.disponible).toBe(false)
+    expect(p.seuil).toBe(null)
+    expect(p.nb_depassees).toBe(0)
+    expect(p.motif).toBeTruthy()
+  })
+
+  it('aucune alerte n’est émise quand la provenance est ambiguë', async () => {
+    preparer({ ligneOvertime: { enterprise_id: 'ent', weekly_threshold: 40, alerte_hebdo_activee: true } })
+    ACTIVATION.active = true
+
+    const r = await calculateEmployeeHours('e1', 'ent', new Date('2026-10-27T12:00:00Z'))
+    const p = r.thisMonth.plafond_hebdo
+
+    //  Aucune alerte hebdomadaire « dépassement » : la liste des semaines en
+    //  dépassement doit être vide, et aucune ne porte de verdict.
+    const enDepassement = (p.semaines || []).filter((s) => s.depasse === true)
+    expect(enDepassement).toHaveLength(0)
+    for (const s of p.semaines || []) {
+      expect(s.seuil_applique).toBe(null)
+      expect(s.regle_resolue).toBe(false)
     }
   })
 })
