@@ -7861,3 +7861,48 @@
     margin: 0;
   }
 }
+
+/* ═══ LA PASTILLE DE LA TASSE PORTE UN VISAGE ═════════════════════════════
+
+     « Dans l'avatar du KPI (image 2), tu n'as pas affiché l'image de celui
+     qui a fait cette pause » — 26/11.
+
+     La pastille ronde posée sur le bord de la tasse portait une icône de
+     série. Elle porte maintenant la photo de la personne concernée ; le
+     pictogramme d'origine reste le repli quand il n'y a pas de photo.
+
+     Elle doit donc découper comme un avatar : sans `overflow: hidden`, une
+     photo carrée déborde du rond. Et sans la taille explicite sur l'image,
+     la photo prend sa taille native. */
+.pauses-v2-tasse-pastille {
+  overflow: hidden;
+}
+.pauses-v2-tasse-pastille > img,
+.pauses-v2-tasse-pastille-vide > img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+/*  Le repli occupe le rond entier : les initiales au centre, comme sur
+    l'avatar de la table. */
+.pauses-v2-tasse-pastille-vide {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.pauses-v2-tasse-pastille-initiales {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--pv-kpi-fond);
+  font-size: 0.8rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  background: var(--charte-surface);
+}

@@ -710,6 +710,7 @@ export default function Pauses () {
         {/* 4 Cartes KPI exécutives + Bandeau Chronomètre Dynamique en direct */}
         <PausesExecutiveKpis
           paies={paies}
+          employesById={employesById}
           activeTab={activeTab}
           subFilter={subFilter}
           onSelectTab={setActiveTab}
