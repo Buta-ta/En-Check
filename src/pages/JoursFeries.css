@@ -2026,3 +2026,1175 @@
     transform: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA FRISE COUSUE — la peau choisie le 26/11 (piste B)
+
+   Sa consigne : « garde cette page telle quelle, change juste la forme des
+   interfaces, utilise moins les figures carrées, applique le style brut
+   adouci et double feutre ». La maquette choisie déplace la composition :
+
+     · l'en-tête porte, sous le titre, une CAPSULE de seuil d'un seul tenant
+       (entreprise · année · prochain · raccourcis) ;
+     · les quatre mesures deviennent des MÉDAILLONS ronds pleins, en bandeau
+       pleine largeur, entre l'en-tête et le corps ;
+     · l'année passe à GAUCHE, en bande de tissu verticale, les douze mois
+       le long du bord et une épingle par jour férié ;
+     · le registre passe à DROITE, en pièces de formes différentes COUSUES
+       sur deux fils de bâti.
+
+   Rien de tout cela ne change le contenu, l'ordre des blocs, ni un geste :
+   c'est une peau, posée par-dessus la page d'avant.
+
+   ⚠️ TOUT EST ÉCRIT AVEC LES JETONS. Aucune couleur en dur, aucun flou :
+   le « brut adouci » est un contour d'encre de 2 px avec un remplissage
+   plein et un rayon généreux ; le « double feutre » est DEUX ombres dures
+   décalées, 3 px puis 8 px — zéro flou, comme du papier sur du papier.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.jf-page {
+  /* les deux ombres du double feutre, écrites une fois */
+  --jf-feutre-1: 3px 3px 0 0 var(--charte-encre);
+  --jf-feutre-2: 8px 9px 0 0 color-mix(in srgb, var(--charte-encre) 20%, transparent);
+  --jf-trait: 2px solid var(--charte-encre);
+  --jf-radius-capsule: 999px;
+  --jf-radius-piece: 999px;
+
+  background: var(--charte-sable);
+  color: var(--charte-encre);
+  min-height: 100vh;
+}
+
+/* ── 1 · L'EN-TÊTE ─────────────────────────────────────────────────────── */
+
+.jf-entete {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: start;
+  gap: 14px 16px;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 26px clamp(16px, 3vw, 34px) 10px;
+  border-bottom: 0;
+  background: transparent;
+  flex-wrap: nowrap;
+}
+
+.jf-retour {
+  width: 42px;
+  height: 42px;
+  margin-top: 34px;
+  color: var(--charte-encre);
+  background: var(--charte-surface);
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  box-shadow: var(--jf-feutre-1);
+}
+.jf-retour:hover {
+  color: var(--charte-encre);
+  background: var(--charte-surface2);
+  border-color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--charte-encre);
+}
+
+/* le sceau du pied : le disque à double trait de la maquette */
+.jf-entete > svg {
+  width: 78px;
+  height: 78px;
+  margin-top: 16px;
+  padding: 4px;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+  box-shadow: var(--jf-feutre-1), var(--jf-feutre-2);
+  box-sizing: border-box;
+}
+
+.jf-titre-bloc {
+  gap: 4px;
+  flex: 1 1 auto;
+  padding-top: 10px;
+}
+.jf-eyebrow {
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  color: var(--charte-texte);
+}
+.jf-titre {
+  font-size: clamp(30px, 3.4vw, 46px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  color: var(--charte-encre);
+}
+.jf-titre span { color: var(--charte-aplat); }
+.jf-sous-titre {
+  margin-top: 6px;
+  max-width: 46ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--charte-douce);
+}
+
+.jf-entete-droite {
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+}
+.jf-entreprise {
+  padding: 7px 16px;
+  color: var(--charte-encre);
+  background: var(--charte-surface);
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  box-shadow: var(--jf-feutre-1);
+}
+.jf-entreprise select {
+  color: var(--charte-encre);
+  background: transparent;
+  border: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.jf-bascule {
+  width: 44px;
+  height: 30px;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  box-shadow: var(--jf-feutre-1);
+}
+
+/* ── 2 · LA CAPSULE DU SEUIL ───────────────────────────────────────────── */
+
+.jf-seuil {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 1360px;
+  margin: 14px auto 0;
+  padding: 10px 12px 10px 22px;
+  background: var(--charte-surface);
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  box-shadow: var(--jf-feutre-1), var(--jf-feutre-2);
+}
+.jf-seuil-gauche {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+/*  Les trois groupes du seuil sont séparés par un filet vertical, comme les
+    colonnes de la maquette — pas par une boîte chacun. */
+.jf-seuil-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 18px;
+  border-left: 1px solid var(--charte-bordure);
+}
+.jf-seuil-item:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.jf-seuil-libelle {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+.jf-seuil-valeur {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--charte-encre);
+  white-space: nowrap;
+}
+.jf-raccourcis { flex: 0 0 auto; }
+/*  les raccourcis de page : des mots, pas des boutons encadrés */
+.jf-raccourcis a,
+.jf-raccourcis button {
+  padding: 5px 9px;
+  color: var(--charte-encre);
+  background: transparent;
+  border: 0;
+  border-radius: var(--jf-radius-capsule);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.jf-raccourcis a:hover,
+.jf-raccourcis button:hover {
+  background: var(--charte-surface2);
+}
+
+/* ── 3 · LES QUATRE MÉDAILLONS ─────────────────────────────────────────── */
+
+.jf-mesures-bande {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 4px clamp(16px, 3vw, 34px) 0;
+}
+.jf-mesures {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(12px, 2vw, 30px);
+  align-items: start;
+}
+
+.jf-mesure {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 100%;
+  max-width: 176px;
+  aspect-ratio: 1;
+  justify-self: center;
+  padding: 14px;
+  text-align: center;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  box-shadow: var(--jf-feutre-1), var(--jf-feutre-2);
+  box-sizing: border-box;
+}
+/*  le second trait, à l'intérieur du disque — c'est lui qui fait « brodé » */
+.jf-mesure::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border: 1.5px solid color-mix(in srgb, var(--charte-encre) 55%, transparent);
+  border-radius: var(--jf-radius-capsule);
+  pointer-events: none;
+}
+
+.jf-mesure-libelle {
+  max-width: 11ch;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+.jf-mesure-valeur {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  font-size: clamp(30px, 3.6vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.jf-mesure-valeur small {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+}
+.jf-mesure-detail {
+  max-width: 15ch;
+  font-size: 9.5px;
+  line-height: 1.3;
+  opacity: 0.82;
+}
+
+/*  Les quatre tons de la maquette : indigo, terre, miel, vert. Le texte est
+    le blanc cassé de la charte — les quatre paires passent le contraste. */
+.jf-mesure[data-ton='indigo'] {
+  color: var(--charte-blanc);
+  background: var(--charte-indigo);
+}
+.jf-mesure[data-ton='terre'] {
+  color: var(--charte-blanc);
+  background: var(--charte-aplat);
+}
+.jf-mesure[data-ton='attente'] {
+  color: var(--charte-encre);
+  background: color-mix(in srgb, var(--charte-alerte) 62%, var(--charte-surface));
+}
+.jf-mesure[data-ton='ok'] {
+  color: var(--charte-blanc);
+  background: var(--charte-succes);
+}
+
+/* ── 4 · LE CORPS : L'ANNÉE À GAUCHE, LE REGISTRE À DROITE ─────────────── */
+
+.jf-coque {
+  width: min(1360px, 100%);
+  margin: 0 auto;
+  padding: clamp(16px, 2.4vw, 30px) clamp(14px, 3vw, 28px) clamp(30px, 4vw, 52px);
+}
+
+.jf-corps {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  gap: clamp(14px, 2.4vw, 34px);
+  align-items: start;
+}
+
+.jf-frise {
+  position: sticky;
+  top: 18px;
+  min-width: 0;
+}
+
+/* ── 5 · L'ANNÉE EN FRISE — une bande de tissu, les mois au bord ───────── */
+
+.jf-frise .jf-annee {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/*  l'en-tête de la frise : le titre seulement — la légende descend sous la
+    bande, en petits mots, comme les repères de la maquette */
+.jf-frise .jf-annee-tete {
+  display: block;
+  padding: 0 0 10px;
+  border-bottom: 0;
+}
+.jf-frise .jf-annee-titre {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  color: var(--charte-encre);
+}
+.jf-frise .jf-annee-note {
+  display: block;
+  margin-top: 3px;
+  font-size: 9.5px;
+  line-height: 1.4;
+  color: var(--charte-douce);
+}
+.jf-frise .jf-annee-suite { font-style: normal; }
+/*  la lisière tissée de l'ancienne version ne sert plus ici */
+.jf-frise .jf-annee-lisiere { display: none; }
+
+/*  LA BANDE : une seule colonne, les douze mois les uns sous les autres,
+    serrés à gauche ; le tissu ondule à droite, derrière les épingles. */
+.jf-frise .jf-annee-bande {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 6px 0 10px 0;
+  border-radius: var(--jf-radius-piece);
+  background:
+    radial-gradient(ellipse 60% 12% at 72% 8%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
+    radial-gradient(ellipse 62% 12% at 66% 22%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
+    radial-gradient(ellipse 64% 12% at 74% 38%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
+    radial-gradient(ellipse 60% 12% at 68% 54%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
+    radial-gradient(ellipse 66% 12% at 76% 70%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
+    radial-gradient(ellipse 60% 12% at 66% 86%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%);
+}
+
+.jf-frise .jf-annee-mois {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-height: 29px;
+  padding: 0;
+  border-right: 0;
+}
+.jf-frise .jf-annee-mois-nom {
+  padding-left: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  color: var(--charte-encre);
+  text-transform: uppercase;
+}
+
+/*  LA PISTE D'UN MOIS — un fil d'épingle : chaque jour férié y pose son
+    point, à sa place dans le mois. */
+.jf-frise .jf-annee-piste {
+  position: relative;
+  height: 22px;
+  margin: 0;
+  border-radius: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 calc(100% - 1px),
+    color-mix(in srgb, var(--charte-bordure) 70%, transparent) calc(100% - 1px) 100%
+  );
+}
+.jf-frise .jf-annee-piste::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: color-mix(in srgb, var(--charte-encre) 22%, transparent);
+}
+.jf-frise .jf-repere {
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-aplat);
+  box-shadow: 1.5px 1.5px 0 0 var(--charte-encre);
+  transform: translate(-50%, -50%);
+}
+.jf-frise .jf-repere[data-origine='pays'] { background: var(--charte-indigo); }
+.jf-frise .jf-repere[data-origine='entreprise'] { background: var(--charte-aplat); }
+.jf-frise .jf-repere[data-actif='non'] { background: var(--charte-surface2); }
+.jf-frise .jf-repere[data-prochain='oui'] {
+  width: 14px;
+  height: 14px;
+  box-shadow: 2px 2px 0 0 var(--charte-encre), 0 0 0 3px var(--charte-surface);
+}
+
+/*  la légende, en mots posés sous la bande */
+.jf-frise .jf-annee-legende {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 12px 0 0;
+}
+.jf-frise .jf-legende {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--charte-douce);
+}
+.jf-frise .jf-legende::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-indigo);
+}
+.jf-frise .jf-legende-entreprise::before { background: var(--charte-aplat); }
+.jf-frise .jf-legende-off::before { background: var(--charte-surface2); }
+
+/* ── 6 · LES PIÈCES COUSUES — le registre, sur deux fils de bâti ────────── */
+
+/*  LE FIL — une ligne de bâti en pointillés, qui ondule très légèrement.
+    Elle est peinte par le registre lui-même, derrière les pièces. */
+.jf-onglets {
+  position: relative;
+  display: inline-flex;
+  gap: 0;
+  margin: 0 0 6px;
+  padding: 4px;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+  box-shadow: var(--jf-feutre-1);
+}
+.jf-onglet {
+  padding: 7px 16px;
+  border: 0;
+  border-radius: var(--jf-radius-capsule);
+  background: transparent;
+  color: var(--charte-encre);
+  font-size: 12px;
+  font-weight: 700;
+}
+.jf-onglet[aria-selected='true'] {
+  color: var(--charte-blanc);
+  background: var(--charte-encre);
+}
+.jf-onglet-compte {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--jf-radius-capsule);
+  background: color-mix(in srgb, var(--charte-blanc) 22%, transparent);
+  font-size: 10px;
+  font-weight: 800;
+}
+.jf-onglet[aria-selected='false'] .jf-onglet-compte {
+  background: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+/*  le registre : une grille de pièces, deux par rangée */
+.jf-registre {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 26px;
+  padding: 26px 4px 8px;
+}
+/*  LES DEUX FILS — ils passent DERRIÈRE les pièces, en pointillés. Le
+    premier à 34 % de la hauteur, le second à 76 %. */
+.jf-registre::before,
+.jf-registre::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  height: 2px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--charte-encre) 0 9px,
+    transparent 9px 17px
+  );
+  opacity: 0.65;
+  pointer-events: none;
+}
+.jf-registre::before {
+  top: 30%;
+  transform: rotate(-0.55deg);
+}
+.jf-registre::after {
+  top: 76%;
+  transform: rotate(0.5deg);
+}
+
+/*  LA PIÈCE — une forme de papier, jamais un rectangle : un rayon très
+    large en fait un galet. Elle est penchée d'un demi-degré, comme posée. */
+.jf-registre .jf-jour {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px 14px 14px;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-piece);
+  background: var(--charte-surface);
+  box-shadow: var(--jf-feutre-1), var(--jf-feutre-2);
+  animation: none;
+}
+.jf-registre .jf-jour:nth-child(odd) { transform: rotate(-0.5deg); }
+.jf-registre .jf-jour:nth-child(even) { transform: rotate(0.45deg) translateY(4px); }
+
+/*  LA BOUCLE — la pièce est cousue au fil : une petite boucle en haut.
+    C'est un pseudo-élément, donc elle ne prend aucun clic. */
+.jf-registre .jf-jour::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  width: 15px;
+  height: 22px;
+  margin-left: -7px;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-sable);
+  box-shadow: 1.5px 1.5px 0 0 color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  pointer-events: none;
+}
+
+/*  le médaillon de date : rond, double trait, jour et mois empilés */
+.jf-registre .jf-medaillon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  flex: none;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-blanc);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+/*  l'ancien losange de la lisière ne sert plus dans le médaillon */
+.jf-registre .jf-medaillon > svg { display: none; }
+.jf-registre .jf-medaillon::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 45%, transparent);
+  border-radius: var(--jf-radius-capsule);
+  pointer-events: none;
+}
+.jf-registre .jf-medaillon-texte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+.jf-registre .jf-medaillon-jour {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--charte-encre);
+}
+.jf-registre .jf-medaillon-mois {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.jf-registre .jf-jour-corps { min-width: 0; }
+.jf-registre .jf-jour-tete {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.jf-registre .jf-jour-nom {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--charte-encre);
+}
+.jf-registre .jf-jour-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+  font-size: 10.5px;
+  color: var(--charte-douce);
+}
+
+/*  les étiquettes : des pastilles, jamais des rectangles */
+.jf-registre .jf-badge {
+  padding: 2px 9px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+.jf-registre .jf-badge[data-ton='indigo'] {
+  background: var(--charte-indigo);
+  color: var(--charte-blanc);
+}
+.jf-registre .jf-badge[data-ton='attente'] {
+  background: color-mix(in srgb, var(--charte-alerte) 45%, var(--charte-surface));
+  color: var(--charte-encre);
+}
+.jf-registre .jf-badge[data-ton='neutre'] {
+  background: var(--charte-surface);
+  color: var(--charte-douce);
+}
+
+/*  les actions de la pièce : une bascule et deux boutons ronds */
+.jf-registre .jf-jour-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+}
+.jf-registre .jf-interrupteur {
+  width: 36px;
+  height: 21px;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface2);
+}
+.jf-registre .jf-interrupteur[aria-checked='true'] {
+  background: var(--charte-succes);
+}
+.jf-registre .jf-icone-bouton {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  box-shadow: 1.5px 1.5px 0 0 var(--charte-encre);
+}
+.jf-registre .jf-icone-bouton:hover {
+  background: var(--charte-surface2);
+  transform: translate(-1px, -1px);
+  box-shadow: 2.5px 2.5px 0 0 var(--charte-encre);
+}
+.jf-registre .jf-icone-bouton[data-ton='danger'] {
+  color: var(--charte-erreur);
+}
+
+/*  le vide : une pièce aussi, mais en pointillés */
+.jf-registre .jf-vide {
+  grid-column: 1 / -1;
+  padding: 26px 20px;
+  border: 2px dashed color-mix(in srgb, var(--charte-encre) 45%, transparent);
+  border-radius: var(--jf-radius-piece);
+  background: color-mix(in srgb, var(--charte-surface) 70%, transparent);
+  text-align: center;
+}
+
+/*  le bas de page : une capsule, comme dans la maquette */
+.jf-explication {
+  margin-top: 22px;
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+  box-shadow: var(--jf-feutre-1);
+  overflow: hidden;
+}
+.jf-explication summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 22px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+.jf-explication-corps {
+  padding: 0 22px 18px;
+  color: var(--charte-douce);
+  font-size: 12px;
+}
+
+/*  Le médaillon est un médaillon : il ne prend pas la piste entière. Sur une
+    page de 1440, quatre colonnes de 300 px donneraient des assiettes. On
+    borne la taille, on centre dans la piste, et on garde les quatre sur une
+    ligne. */
+.jf-mesures {
+  justify-items: center;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.jf-mesure {
+  width: clamp(120px, 13vw, 178px);
+  max-width: 178px;
+  aspect-ratio: 1;
+}
+
+/*  Le registre occupait toute la largeur : dans la colonne de droite, il se
+    range en deux pièces par rangée, sans jamais passer sous 300 px. */
+.jf-registre {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+@media (max-width: 1120px) {
+  .jf-mesures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
+  .jf-mesure { width: clamp(120px, 22vw, 168px); }
+}
+@media (max-width: 900px) {
+  .jf-corps { grid-template-columns: minmax(0, 1fr); }
+  .jf-frise { position: static; }
+}
+@media (max-width: 700px) {
+  .jf-entete { grid-template-columns: auto auto 1fr; }
+  .jf-entete-droite { grid-column: 1 / -1; justify-content: flex-start; }
+  .jf-registre { grid-template-columns: minmax(0, 1fr); }
+  .jf-registre::before, .jf-registre::after { display: none; }
+  .jf-seuil { padding: 12px 14px; border-radius: var(--jf-radius-capsule); }
+  .jf-seuil-item { padding: 0 12px; }
+}
+
+/* ═══ LES MÉDAILLONS : LE TEXTE EST BLANC, ET IL SE VOIT ═══════════════════
+
+     Les anciennes règles de la mesure peignaient le libellé et le détail en
+     `--jf-craie-faible` — une couleur de texte SOMBRE, pensée pour des cartes
+     claires. Sur mes quatre disques pleins (indigo, argile, miel, vert), elle
+     disparaissait : on lisait « FÊTES DU PAYS » en gris sur du bleu nuit.
+
+     Ici, chaque teinte de disque commande SA couleur de texte, et les trois
+     niveaux (libellé, chiffre, détail) gardent le même blanc cassé. Le miel
+     est le seul disque clair : il reçoit l'encre, et c'est la paire que la
+     charte contrôle (encre sur miel > 8:1). */
+.jf-mesure[data-ton='indigo'],
+.jf-mesure[data-ton='terre'],
+.jf-mesure[data-ton='ok'] {
+  color: var(--charte-blanc);
+}
+.jf-mesure[data-ton='attente'] {
+  color: var(--charte-encre);
+}
+.jf-mesure[data-ton='indigo'] .jf-mesure-libelle,
+.jf-mesure[data-ton='indigo'] .jf-mesure-valeur,
+.jf-mesure[data-ton='indigo'] .jf-mesure-valeur small,
+.jf-mesure[data-ton='indigo'] .jf-mesure-detail,
+.jf-mesure[data-ton='terre'] .jf-mesure-libelle,
+.jf-mesure[data-ton='terre'] .jf-mesure-valeur,
+.jf-mesure[data-ton='terre'] .jf-mesure-valeur small,
+.jf-mesure[data-ton='terre'] .jf-mesure-detail,
+.jf-mesure[data-ton='ok'] .jf-mesure-libelle,
+.jf-mesure[data-ton='ok'] .jf-mesure-valeur,
+.jf-mesure[data-ton='ok'] .jf-mesure-valeur small,
+.jf-mesure[data-ton='ok'] .jf-mesure-detail {
+  color: var(--charte-blanc);
+}
+.jf-mesure[data-ton='attente'] .jf-mesure-libelle,
+.jf-mesure[data-ton='attente'] .jf-mesure-valeur,
+.jf-mesure[data-ton='attente'] .jf-mesure-valeur small,
+.jf-mesure[data-ton='attente'] .jf-mesure-detail {
+  color: var(--charte-encre);
+}
+/*  Le détail ne se tronque plus d'un trait : dans un disque, il peut tenir
+    sur deux lignes courtes, et c'est plus lisible qu'un « … ». */
+.jf-mesure .jf-mesure-detail {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: center;
+}
+/*  Le libellé garde son interligne serré, mais respire : deux lignes de
+    8,5 px dans un disque de 170, c'est la mesure de la maquette. */
+.jf-mesure .jf-mesure-libelle {
+  letter-spacing: 0.12em;
+}
+
+/* ═══ LES QUATRE SCEAUX DE L'EN-TÊTE ═══════════════════════════════════════
+
+     Sur la maquette, les quatre mesures ne sont pas une bande sous le titre :
+     ce sont quatre sceaux ronds posés DANS la bande de titre, à droite,
+     accrochés à un fil de bâti qui court d'un sceau au suivant. Chacun porte
+     son libellé, son chiffre, et pour le dernier son unité (« JOURS »).
+
+     Ils sont plus petits que des médaillons de bandeau : 104 px, et le fil
+     passe derrière, à mi-hauteur. */
+.jf-sceaux {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  padding: 10px 16px;
+}
+
+.jf-sceaux-fil {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  top: 50%;
+  height: 0;
+  border-top: 2px dashed color-mix(in srgb, var(--charte-encre) 55%, transparent);
+  z-index: 0;
+}
+
+.jf-sceaux .jf-mesures {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  position: relative;
+  z-index: 1;
+  grid-template-columns: none;
+}
+
+.jf-sceaux .jf-mesure {
+  width: 104px;
+  max-width: 104px;
+  height: 104px;
+  aspect-ratio: 1;
+  padding: 0 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  border-radius: var(--jf-radius-capsule);
+  box-shadow: var(--jf-feutre-1), var(--jf-feutre-2);
+}
+
+.jf-sceaux .jf-mesure::before { display: none; }
+
+/*  Le second trait du sceau, à 6 px du bord. */
+.jf-sceaux .jf-mesure::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: var(--jf-radius-capsule);
+  border: 1.5px solid currentColor;
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.jf-sceaux .jf-mesure-libelle {
+  font-size: 7.5px;
+  line-height: 1.25;
+  letter-spacing: 0.1em;
+}
+
+.jf-sceaux .jf-mesure-valeur {
+  display: block;
+  font-size: 26px;
+  line-height: 0.95;
+}
+
+.jf-sceaux .jf-mesure-valeur small {
+  display: block;
+  margin-top: 2px;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jf-sceaux .jf-mesure-detail { display: none; }
+
+/*  La bande de titre respire : titre à gauche, sceaux au milieu, sélecteurs
+     à droite. Sur une grande page, on garde les quatre sur une ligne. */
+.jf-entete {
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 26px;
+  row-gap: 18px;
+}
+
+@media (max-width: 1280px) {
+  .jf-sceaux { gap: 20px; padding: 10px 8px; }
+  .jf-sceaux .jf-mesures { gap: 20px; }
+  .jf-sceaux .jf-mesure { width: 92px; max-width: 92px; height: 92px; }
+}
+@media (max-width: 1080px) {
+  .jf-entete { grid-template-columns: auto auto minmax(0, 1fr); }
+  .jf-sceaux { grid-column: 1 / -1; order: 5; justify-content: flex-start; }
+  .jf-sceaux-fil { display: none; }
+}
+@media (max-width: 620px) {
+  .jf-sceaux .jf-mesures { gap: 12px; flex-wrap: wrap; }
+  .jf-sceaux .jf-mesure { width: 78px; max-width: 78px; height: 78px; }
+  .jf-sceaux .jf-mesure-valeur { font-size: 21px; }
+}
+
+/*  Le sélecteur d'entreprise reste à droite de la bande ; les sceaux
+     prennent le rang qui reste, et le chevauchement disparaît. */
+.jf-entete {
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 22px;
+}
+.jf-entete .jf-entete-droite { grid-column: 4; }
+.jf-entete .jf-sceaux { grid-column: 5; }
+.jf-entete .jf-seuil { grid-column: 1 / -1; }
+
+/* ═══ LES PIÈCES COUSUES ═══════════════════════════════════════════════════
+
+     Le registre est une courtepointe : chaque fête est un galet de tissu,
+     posé de travers sur deux fils de bâti qui courent d'un bout à l'autre.
+     Le galet porte une boucle de fil en haut, un médaillon de date rond à
+     double trait, le nom, la date, la bascule et deux boutons ronds. */
+.jf-registres { min-width: 0; }
+
+.jf-registre {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 30px 26px;
+  padding: 26px 2px 30px;
+  border: 0;
+  background: none;
+}
+
+/*  Les deux fils de bâti : deux pointillés qui traversent la courtepointe,
+     légèrement inclinés, l'un au tiers, l'autre aux trois quarts. */
+.jf-registre::before,
+.jf-registre::after {
+  content: '';
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  height: 2px;
+  background-image: repeating-linear-gradient(
+    to right,
+    color-mix(in srgb, var(--charte-encre) 58%, transparent) 0 9px,
+    transparent 9px 17px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+.jf-registre::before { top: 30%; transform: rotate(-0.55deg); }
+.jf-registre::after { top: 76%; transform: rotate(0.5deg); }
+
+/*  Le galet. */
+.jf-jour {
+  position: relative;
+  z-index: 1;
+  background: var(--charte-surface);
+  border: var(--jf-trait);
+  border-radius: var(--jf-radius-piece);
+  padding: 18px 20px 14px;
+  box-shadow: var(--jf-feutre-1), var(--jf-feutre-2);
+  transform: rotate(-0.5deg);
+}
+.jf-jour:nth-child(even) { transform: rotate(0.45deg); }
+
+/*  La boucle de couture, en haut du galet. */
+.jf-jour::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  left: 34px;
+  width: 15px;
+  height: 22px;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-sable);
+}
+
+/*  Plus de filet de marge ni de bordure ancienne : la forme est la pièce. */
+.jf-jour::after { content: none; }
+.jf-jour[data-origine='pays'],
+.jf-jour[data-origine='entreprise'] {
+  border-left: var(--jf-trait);
+}
+
+/* ═══ PETITS ÉCRANS : ON EMPILE, ET LE TITRE GARDE SA LARGEUR ══════════════
+
+     En dessous de 900 px, les cinq colonnes de l'en-tête n'ont plus de sens :
+     le titre se retrouve large de 78 px et chaque mot passe à la ligne. On
+     empile proprement — retour + sceau, titre pleine largeur, sélecteurs,
+     puis les quatre sceaux en ligne qui se replie. */
+@media (max-width: 900px) {
+  .jf-entete {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 14px;
+  }
+  .jf-entete .jf-retour { grid-column: 1; grid-row: 1; }
+  .jf-entete > svg { grid-column: 2; grid-row: 1; }
+  .jf-entete .jf-titre-bloc { grid-column: 1 / -1; grid-row: 2; }
+  .jf-entete .jf-entete-droite { grid-column: 1 / -1; grid-row: 3; justify-content: flex-start; flex-wrap: wrap; }
+  .jf-entete .jf-sceaux { grid-column: 1 / -1; grid-row: 4; }
+  .jf-entete .jf-seuil { grid-column: 1 / -1; grid-row: 5; }
+
+  .jf-sceaux { justify-content: flex-start; padding: 6px 0; }
+  .jf-sceaux .jf-mesures { flex-wrap: wrap; gap: 16px; }
+  .jf-sceaux .jf-mesure { width: 96px; max-width: 96px; height: 96px; }
+  .jf-sceaux-fil { display: none; }
+
+  .jf-titre { font-size: clamp(30px, 7vw, 42px); }
+  .jf-sous-titre { font-size: 13.5px; max-width: 46ch; }
+
+  /*  La bande du seuil se replie en trois colonnes, les raccourcis en
+      dessous : sur un téléphone, sept pastilles ne tiennent pas à côté. */
+  .jf-seuil {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    border-radius: var(--jf-radius-capsule);
+    padding: 14px;
+  }
+  .jf-seuil-gauche { display: contents; }
+  .jf-seuil-item { padding: 0; border-right: 0; }
+  .jf-raccourcis { grid-column: 1 / -1; overflow-x: auto; padding-top: 10px; border-top: 1px solid var(--charte-bordure); }
+
+  .jf-corps { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .jf-frise { position: static; }
+  .jf-registres { min-width: 0; }
+  .jf-registre { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  .jf-registre::before, .jf-registre::after { display: none; }
+
+  .jf-explication { border-radius: var(--jf-radius-capsule); }
+}
+
+@media (max-width: 560px) {
+  .jf-sceaux .jf-mesure { width: 80px; max-width: 80px; height: 80px; }
+  .jf-sceaux .jf-mesure-libelle { font-size: 6.5px; letter-spacing: 0.06em; }
+  .jf-sceaux .jf-mesure-valeur { font-size: 20px; }
+  .jf-sceaux .jf-mesure-valeur small { font-size: 6.5px; }
+  .jf-seuil { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jf-onglets { display: flex; width: 100%; }
+}
+
+/*  Deux brindilles de fil entre les sceaux, comme sur la maquette : un petit
+     scion d'encre qui pousse sur le fil de bâti, entre le 1er et le 2e, puis
+     entre le 2e et le 3e. Décoration pure. */
+.jf-sceaux .jf-mesures::before,
+.jf-sceaux .jf-mesures::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background:
+    radial-gradient(circle at 30% 30%, var(--charte-encre) 0 1.6px, transparent 1.7px),
+    radial-gradient(circle at 72% 68%, var(--charte-encre) 0 1.6px, transparent 1.7px);
+  border-left: 1.5px solid color-mix(in srgb, var(--charte-encre) 70%, transparent);
+  top: 50%;
+  transform: rotate(-24deg);
+  pointer-events: none;
+}
+.jf-sceaux .jf-mesures::before { left: calc(104px + 12px); }
+.jf-sceaux .jf-mesures::after { left: calc(2 * (104px + 34px) + 12px); }
+
+@media (max-width: 1280px) {
+  .jf-sceaux .jf-mesures::before { left: calc(92px + 7px); }
+  .jf-sceaux .jf-mesures::after { left: calc(2 * (92px + 20px) + 7px); }
+}
+@media (max-width: 900px) {
+  .jf-sceaux .jf-mesures::before,
+  .jf-sceaux .jf-mesures::after { display: none; }
+}
+
+/* ═══ LES BADGES DES PIÈCES : DES PASTILLES, PAS DES ÉTIQUETTES ════════════
+
+     « Chaque année », « Travaillée », « Désactivée » : sur la maquette ce sont
+     de petites pastilles pleines au contour d'encre, pas des étiquettes
+     carrées. Même famille que les sceaux du titre, en plus petit. */
+.jf-jour .jf-badge {
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  padding: 2px 8px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  box-shadow: 1.5px 1.5px 0 0 var(--charte-encre);
+}
+.jf-jour .jf-badge[data-ton='indigo'] { background: var(--charte-indigo); color: var(--charte-blanc); }
+.jf-jour .jf-badge[data-ton='attente'] { background: var(--charte-aplat); color: var(--charte-blanc); }
+.jf-jour .jf-badge[data-ton='neutre'] { background: var(--charte-surface-2); color: var(--charte-encre); }
+
+/*  Les trois lignes d'une pièce s'alignent : nom et pastille sur la même
+     ligne avec le médaillon à gauche, puis la date, puis le pied. */
+.jf-registre .jf-jour-corps { min-width: 0; }
+.jf-registre .jf-jour-nom { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+.jf-registre .jf-jour-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 10.5px;
+  color: var(--charte-encre-douce);
+}
+
+/*  Les deux boutons de la pièce : deux boutons ronds, au contour d'encre,
+     avec le même feutre que le reste. La suppression garde son ton d'alerte. */
+.jf-registre .jf-icone-bouton {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--jf-radius-capsule);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  box-shadow: 1.5px 1.5px 0 0 var(--charte-encre);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.jf-registre .jf-icone-bouton:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2.5px 2.5px 0 0 var(--charte-encre);
+}
+.jf-registre .jf-icone-bouton:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 0 var(--charte-encre);
+}
+.jf-registre .jf-icone-bouton[data-ton='danger'] {
+  background: color-mix(in srgb, var(--charte-alerte) 16%, var(--charte-surface));
+  color: var(--charte-alerte);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jf-registre .jf-icone-bouton { transition: none; }
+  .jf-registre .jf-icone-bouton:hover,
+  .jf-registre .jf-icone-bouton:active { transform: none; }
+}
