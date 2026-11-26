@@ -399,7 +399,7 @@ Première version de la copie : carte en `--charte-blanc`, texte en `--charte-en
 
 | mesure | base `59a1045` | **la copie** |
 |---|---|---|
-| `npx vitest run` | 199 fichiers · 2 829 ✓ | **200 · 2 837 ✓** (0 échec), dont **22** verrous de corde (+4 : la cote relevée, le modèle de largeur partagé, le champ nu, le lavage borné) et 23 de tringle intacts |
+| `npx vitest run` | 199 fichiers · 2 829 ✓ | **200 · 2 837 ✓** (0 échec), dont **22** verrous de corde (+4 : le modèle de largeur partagé, le champ nu, la vignette teintée, le lavage borné — et le verrou de hauteur est devenu un verrou de **cote relevée**) et 23 de tringle intacts |
 | `npx vite build` | ✓ | ✓ (22 entrées precachees) |
 | `npm run charte` | 4 488 · 126 · 332 · 63/42/27 | **les mêmes, un pour un** |
 | `npx eslint` sur les trois fichiers touchés | silence | **silence** |
