@@ -39,17 +39,18 @@ import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
    jusqu'à x 311 — il ne pousse pas la coupure, il la borde. */
 const LARGEUR_EMPLOYE = 252
 // À droite, le dessin ne réserve rien : la plaquette DU SOLDE est peinte par-dessus
-// la dernière cellule, de x 1179 (le bord gauche de la pilule) à x 1326 (le bord
-// intérieur du plateau), soit 147 px. Ce nombre reste un plancher de défilement
-// — `LARGEUR_EMPLOYE + nbJours × largeurJour + LARGEUR_SOLDE` — parce qu'une jauge
-// écrasée contre le plomb du jour ne se lit plus ; il ne réserve aucune colonne, et
-// l'entête ne le lit pas. Le RETRAIT du nombre, lui (vingt-sept pixels avant le
-// bord), ne se mesure qu'en CSS : l'écrire aussi ici, ce serait un nombre dans
-// deux fichiers dont un seul est lu — la dérive du 25/11 en miniature. Il vit donc
-// sous `--abs-pli-solde-repli`, et le verrou 14 du pli le relit là.
-const LARGEUR_SOLDE = 147
+// la dernière cellule, de x 1178 (le bord gauche de la pilule) à x 1307 (la fin du
+// nombre), soit 130 px, et son nombre s'arrête treize pixels avant la rive du champ
+// (1320 − 1307). Ces deux cotes ne vivent qu'en CSS — `--abs-pli-solde` et
+// `--abs-pli-solde-repli` — parce que le plateau ne prend plus sa largeur d'un
+// plancher écrit en JavaScript : il prend la somme de ses jours (`--abs-pli-champ`).
+// Réserver cent quarante-sept pixels de plus pour la plaquette, c'est ce qui avait
+// fait glisser le jour de 145 à 108, puis 127 selon l'écran — et une planche d'une
+// journée qui cherche cinquante pixels de plus que sa cellule pour loger son mot ne
+// dit plus la période. Le fondateur, 11/12 : « on ne voit pas où s'arrête la
+// planche "Formation · 1 j" ». La cote du dessin, elle, est une.
 const LARGEUR_JOUR_MOIS = 36
-const LARGEUR_JOUR_SEMAINE = 108
+const LARGEUR_JOUR_SEMAINE = 145
 const LARGEUR_JOUR_UNIQUE = 460
 
 const MODES = [
@@ -510,13 +511,15 @@ export default function AbsencesCalendrier({
         <div
           className="abs-cal-champ"
           style={{
-            minWidth: LARGEUR_EMPLOYE + nbJours * largeurJour + LARGEUR_SOLDE,
             '--abs-pli-employe': `${LARGEUR_EMPLOYE}px`,
-            /* le solde n'est plus une colonne : `LARGEUR_SOLDE` ne réserve plus
-               que le plancher de défilement, et le même jeton donne à la plaquette
-               sa largeur. Un seul champ, deux usages — la dérive du 25/11 (−8 px
-               au lundi, −97 px au dimanche) reste impossible à écrire. */
-            '--abs-pli-solde': `${LARGEUR_SOLDE}px`,
+            /* LE JOUR, EN UN SEUL ÉCRITURE. Le dessin en donne 145 (champ x 305 →
+               1320 pour sept cellules) ; le mode jour et le mode mois gardent leur
+               propre pas. Le jeton est lu par l'entête ET par la piste — un champ,
+               deux usages — et le plateau ne connaît plus que le produit des deux.
+               C'est ici, et pas dans un plancher de `minWidth`, que la largeur du
+               champ se décide : écrit deux fois, le nombre se contredit dès que
+               l'écran bouge. */
+            '--abs-pli-jour': `${largeurJour}px`,
             // le lavage et les traits de jour se mesurent en colonnes, pas en
             // pixels : la piste s'étire au-delà de `largeurJour` sur un écran
             // large, et un pas fixé ici serait faux de vingt-quatre pixels.
@@ -535,15 +538,25 @@ export default function AbsencesCalendrier({
               <span className="abs-pli-compte-nombre">{sansObjet.length}</span> rien{' '}
               {mode === 'mois' ? 'ce mois-ci' : mode === 'jour' ? 'aujourd’hui' : 'cette semaine'}
             </span>
-            {sansObjet.length > 0 && (
+            {/* LE PLI EST RÉVERSIBLE. Le dessin dessine sa case qu'il y ait ou non
+                des lignes à replier, et une case qui s'efface après service est un
+                défaut, pas une économie : « le bouton déplier disparait une fois
+                déplier donc on ne peut plus plier après » (fondateur, 11/12). Elle
+                reste donc posée, et c'est son MOT qui bascule — « Déplier tout »
+                ouvre, « Replier tout » ferme, la case cochée disant déjà l'état.
+                Elle ne s'éteint qu'une fois vidée de son office : rien à ouvrir.
+                En mode jour, pas de case : la feuille du jour a déjà son second
+                étage et le pli n'a pas de sens sur une colonne unique. */}
+            {mode !== 'jour' && (
               <label className="abs-pli-deplier">
                 <input
                   type="checkbox"
                   checked={déplierTout}
+                  disabled={!déplierTout && sansObjet.length === 0}
                   onChange={() => setDéplierTout((v) => !v)}
                   data-testid="abs-cal-deplier-tout"
                 />
-                Déplier tout
+                {déplierTout ? 'Replier tout' : 'Déplier tout'}
               </label>
             )}
           </div>

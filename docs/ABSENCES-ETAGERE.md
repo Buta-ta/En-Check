@@ -572,7 +572,7 @@ prises contre une facilité :
 | mesure | la seconde copie | **le pli** |
 |---|---|---|
 | `npx vitest run` | 200 · 2 839 ✓ | **200 · 2 843 ✓** (0 échec) — pli **28** verrous, tringle 23 (dont le 11, qui vérifie maintenant l'ABSENCE du billet), modes 21, rendu 10 |
-| `npm run charte` | à vérifier ci-dessous | **inchangé** : 4 488 couleurs en dur · 126 ombres floues · 332 rayons hors liste, et 64 tailles · 42 marges · 27 rayons — vérifié en relançant le même comptage sur l'arbre de `HEAD` et sur celui d'aujourd'hui : **aucune valeur ajoutée** (le VERDICT reste NON CONFORME, il l'était avant) |
+| `npm run charte` | à vérifier ci-dessous | **inchangé** : 4 488 couleurs en dur · 126 ombres floues · 332 rayons hors liste, et 64 tailles · 42 marges · 27 rayons (relus le 11/12 : le comptage sur `HEAD` donne **43** marges aujourd'hui — le 42 était une figure recopiée de mémoire, et c'est précisément le piège que la relance sur l'arbre de `HEAD` existe pour fermer) — vérifié en relançant le même comptage sur l'arbre de `HEAD` et sur celui d'aujourd'hui : **aucune valeur ajoutée** (le VERDICT reste NON CONFORME, il l'était avant) |
 | fichier de la grille | `absencesCalendrierCorde.test.jsx`, 24 verrous | `absencesCalendrierPli.test.jsx`, 28 verrous — le fichier est **renommé**, pas doublé : la corde n'existe plus dans la feuille |
 | bornage de la tringle | s'arrêtait à `--abs-corde-fil` | s'arrête à `--abs-pli-pas`, avec son `throw` ; les rails `--abs-corde: 30px` et leurs anneaux **restent**, ils ne sont pas de la grille |
 | modes | verrou 18 sur `--abs-corde-aile` | verrou 18 sur `--abs-pli-pointe` / `--abs-pli-rive`, et la branche `nbJours === 1` (les deux rives à 2 px) |
@@ -601,6 +601,56 @@ franchissait la règle du bas). `data-rive`, l'attribut qui retournait le mot qu
 touchait le bord du champ, est mort avec la règle qui s'en servait : un attribut que
 plus personne ne lit est une promesse de plus.
 
+# Quatre manquements, réglés à la cote (11/12)
+
+Le fondateur a renvoyé trois images — son rendu (`image-117`), le dessin (`image-118`)
+et un crop de la tringle (`image-119`) — avec quatre mots : les feuilles pliées ne se
+voient pas, on ne voit pas où s'arrête la planche « Formation · 1 j », le bouton
+« Déplier tout » disparaît une fois déplié, et les fils de la tringle traversent les
+boîtes. Les quatre se sont réglés en mesurant, pas en opinant.
+
+| le manquement | la mesure | ce qui a bougé |
+|---|---|---|
+| **les feuilles pliées ne se voient pas** | derrière le plateau, deux arêtes parallèles courent à x 42..45 et x 34..37 pour un montant à 50..52 : **huit**, puis **seize** pixels de décalage, chacune descendue de huit plus la règle (11), venue courber au coin à y 209 et y 219 ; une arête rend la pareille à droite, x 1334..1337 de y 209 à 401 | deux pseudo-éléments du plateau, `inset: 0`, cerclés de la règle du cadre, remplis du sable de la page, **`z-index: -1`** : seul ce qui dépasse s'encre, et le cadre n'a rien à soustraire quand il défile. Le décalage est `--abs-pli-pli: 8px`, le souffle `--abs-pli-évasement: calc(2 * (8 + 3))` = 22, payé en `padding-left` et `padding-bottom` du champ — `overflow-x: auto` coupe, une feuille rognée ne se lit plus pliée |
+| **on ne voit pas où s'arrête la planche d'une journée** | le jour du dessin mesure **145** (x 305 → 1320 pour sept cellules) ; la maison rendait 108, et sur l'écran du fondateur le champ étiré donnait **127**. Une planche « 📚 Formation · 1 j » demande 251 pixels : à 127 elle déborde de **98 % d'un jour**, à 145 de 40 %, au dessin 8 % (sa planche d'un jour fait 162 pour 145) | la cause n'était pas la planche, c'était **la plaquette du solde, à qui l'on réservait 147 pixels de colonne** depuis l'étagère. Le dessin ne réserve rien : sa plaquette est peinte PAR-DESSUS la dernière cellule. `LARGEUR_SOLDE` sort du composant, la largeur du champ se calcule **une** fois — `--abs-pli-champ: calc(nb-jours × jour)` — lu par l'entête ET par la piste, et le plateau prend `width: max-content` : il mesure ses jours, il ne mesure plus l'écran. Et l'entête écope de `padding: 0 var(--abs-pli-rule)` — il surplombe le cadre, il ne le borde pas : sans les trois pixels de règle à chaque bout, ses sept étiquettes se répartissaient 1 021 au lieu de 1 015, soit un jour de 145,86 et six pixels de dérive à la dernière cellule (la dérive du 25/11 sous une autre forme). Et la planche ne passe plus SOUS la plaquette, où sa rive se perdait dans le sable : `max-width: calc(100% - entree - solde - 2px)` |
+| **« Déplier tout » s'effaçait après service** | rien à mesurer sur le dessin : la case est posée à x 1143..1173, qu'il y ait des lignes à replier ou non. Ce qui se mesure, c'est le geste : ouvrir restait possible, fermer non | la case est **toujours là** en semaine et au mois (le jour ne plie pas, sa feuille a déjà son étage « Présents ») et c'est son MOT qui bascule : « Déplier tout » / « Replier tout », la case cochée disant l'état. Elle s'éteint (`disabled`, encre à 0,4) quand il n'y a rien à ouvrir, au lieu de s'effacer. Le verrou 29 ne lit plus la feuille : il **clique** deux fois dans un `createRoot`, et vérifie que le registre disparaît puis revient |
+| **les fils traversaient les boîtes** | la corde était tendue `top: … ; bottom: 0` de sa pièce — donc du bois jusqu'au PIED de la boîte, en coupant la plaque de la période, les deux clous et le registre des modes | `bottom: auto` et une hauteur qui se DÉDUIT : `descente − ciel − (bois − anneau) / 2` = **36 pixels** (42 de descente, sommet de corde à 6), soit exactement le `padding-top` que la pièce prend pour son bois. Le verrou 19 de la tringle relit les deux du même jeton, et la dérive est impossible à écrire |
+
+## Trois cotes de la plaquette, reprises sur le dessin
+
+La passe du 10/12 avait coté la jauge sur une boîte que le dessin ne trace pas. En
+redécoupant la bande y 225..255, x 1100..1345 :
+
+| ce que je portais | la mesure | le jeton |
+|---|---|---|
+| pilule **43 × 19**, à **27** du bord droit, dans une plaquette de **147** | pilule **50 × 18** à x 1178..1228 (cerclée de 2, argile jusqu'à x 1218 = 82 %) ; « + 26/30 » de x 1237 à x 1307 ; **aucun cadre** autour des deux — la seule encre verticale de la bande est le montant du plateau | `--abs-pli-jauge: 50px`, `--abs-pli-jauge-hauteur: 18px`, `--abs-pli-solde: 130px` (1178..1307), `--abs-pli-solde-repli: 13px` (1320 − 1307) |
+
+C'est un retrait de nombre, pas un redressement de goût : compter 43 et 27, c'était
+compter les bords d'une boîte inventée. La plaquette valait 147 en JavaScript et
+130 en CSS — deux mesures d'un objet qui n'existe qu'une fois.
+
+## Les chiffres du contrôle (11/12)
+
+| mesure | valeur |
+|---|---|
+| `npx vitest run` | **200 fichiers · 2 846 tests ✓** (0 échec) — pli **30** verrous (28 et 29 sont neufs, et le 29 clique), tringle **24** (le 19 est neuf), modes 21, rendu 10 |
+| verrous réécrits, pas relâchés | 3 (le souffle de l'éventail à la place du seul `padding-bottom`), 5 (la borne de planche rend sa plaquette), 12 (le champ s'écrit une fois, `LARGEUR_SOLDE` est mort), 14 et 22 (la jauge à 50 × 18, la plaquette à 130, le repli à 13), 15 (un `\|\| true` qui disait vrai quoi qu'il arrive est remplacé par l'ordre rendu du compte après les pastilles) |
+| `npm run charte` | **inchangé** : 64 tailles · 43 marges · 27 rayons, recompté sur l'arbre de `HEAD` et sur celui d'aujourd'hui — aucune valeur brute ajoutée, tous les nombres du pli passent par les jetons (le VERDICT reste NON CONFORME, il l'était avant) |
+| `npx eslint` sur les deux fichiers touchés | 0 |
+| `npm run build` | ✓ (19,4 s) |
+
+## Ce que le dessin ne dit pas, et que je laisse ouvert
+
+* **le mot long au bord droit.** À 145, une planche d'une journée déborde encore de
+  quarante pour cent d'un jour quand le motif s'appelle « Absence injustifiée » ; le
+  dessin, dont le mot fait 125 pour une cellule de 145, ne déborde que de douze
+  pixels. Couper le mot à la rive (l'ellipsis) réglerait la lecture et casserait la
+  copie ; le dessin a choisi le mot, je garde le mot — la durée « · N j » reste
+  entière et le libellé se lit dans le `title`, l'`aria-label` et le tiroir.
+* **la plaquette sur le dernier jour.** Un jour d'absence posé sur le dimanche
+  glisse sous la plaquette, et la plaquette est opaque : le dessin ne montre pas ce
+  cas (sa planche la plus à droite finit à x 1076), je ne l'invente pas.
+
 ## Ce qui reste ouvert, à dire
 
 * **la nuit.** Les règles du pli sont écrites sur les teintes du jour et ne portent
@@ -608,12 +658,10 @@ plus personne ne lit est une promesse de plus.
   garde le cerclage, mais le **lavage** à 0,26 sur un fond sombre et l'ombre dure en
   `--charte-bordure` demandent un relevé — le dessin n'a qu'un thème, je ne
   l'invente pas.
-* **l'échelle.** Le dessin donne **145 px par jour** sur son canevas de 1 376 ; la
-  maison rend `LARGEUR_JOUR_SEMAINE = 108` (et 36 en mois, 460 en jour). Le pas de
-  ligne, la planche, la pointe, les hachures sont pris au mot ; la largeur du jour,
-  non — c'est le seul endroit où j'ai laissé une proportion de la maison plutôt
-  qu'une mesure du dessin, et le goût est à dire : à 108, une journée de congé fait
-  cent huit pixels, pas cent quarante-cinq.
+* **l'échelle.** LEVÉE le 11/12 : le jour est à **145**, comme au dessin — voir
+  « Quatre manquements » ci-dessous. Restent 36 en mois et 460 en jour, que le
+  dessin ne dessine pas ; ils ne sont plus une proportion de la maison, ils sont
+  un pas de défilement, et le jour du mois se lit toujours à la pointe près.
 * **les trois largeurs de coupure** (1 560 / 900 / 360) : à 360 px, la media ne
   déplace rien, elle borne le prénom (110) et raccourcit la jauge de moitié. Le
   plateau défile. Tenir sept colonnes d'aplomb sans colonne de solde réelle — est-ce

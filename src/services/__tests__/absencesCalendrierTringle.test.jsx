@@ -406,6 +406,35 @@ describe('🪝 la tringle du calendrier', () => {
     expect(rangée).toContain('flex-wrap:wrap')
   })
 
+  it('19. la ficelle s\'arrête au haut de la pièce : elle ne traverse pas les boîtes', () => {
+    // LE MANQUEMENT, 11/12, trois captures à l'appui : « les fils de la tringle
+    // traversent les boîtes ». Un `bottom: 0` tendait la corde du bois jusqu'au PIED
+    // de la pièce, donc en creusant un trait d'encre dans la plaque de la période,
+    // dans les deux clous et dans le registre des modes. La corde mesure ce qui
+    // MANQUE entre le bois et le haut de la pièce — elle ne mesure pas la pièce.
+    const suspentes = nud(declarations('.abs-tringle-suspentes', TRINGLE))
+    expect(suspentes).not.toContain('bottom:0')
+    expect(suspentes).toContain('bottom:auto')
+    expect(suspentes).toContain(
+      'height:calc(var(--abs-tringle-descente)-var(--abs-tringle-ciel)-(var(--abs-tringle-bois)-var(--abs-tringle-anneau))/2)'
+    )
+    // la pièce, elle, se lève de `--abs-tringle-descente` : les deux lisent le MÊME
+    // jeton, donc la corde ne peut pas repartir en profondeur un jour où l'autre
+    expect(nud(declarations('.abs-tringle-piece', TRINGLE))).toContain(
+      'padding-top:var(--abs-tringle-descente)'
+    )
+    // et le compte est juste, fait des quatre cotes de la tringle (8 + 10 + 2 × 2 +
+    // 20 = 42 de descente ; le sommet de la corde à 8 + 7 − 9 = 6) : la ficelle
+    // court de 36 pixels et s'arrête SUR le bord de la boîte, pas dessus-à-travers.
+    const ciel = jeton(TRINGLE, '--abs-tringle-ciel')
+    const bois = jeton(TRINGLE, '--abs-tringle-bois')
+    const anneau = jeton(TRINGLE, '--abs-tringle-anneau')
+    const saut = jeton(TRINGLE, '--abs-tringle-saut')
+    const trait = jeton(lire('src', 'styles', 'tokens.css'), '--charte-trait')
+    const descente = ciel + bois + 2 * trait + saut
+    expect(descente - (ciel + (bois + 2 * trait) / 2 - (anneau + 2 * trait) / 2)).toBe(36)
+  })
+
   it('18. la suspension ne se paie pas un conteneur de plus autour de la grille', () => {
     // `.abs-tringle` est le premier enfant de `.abs-cal`, avant la grille, et
     // il ne borde pas : c'est une tringle, pas un cadre de plus (leçon des
