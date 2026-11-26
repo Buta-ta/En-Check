@@ -1370,6 +1370,10 @@ export function PausesCollaborateursSection({
   onSupprimer,
   onOpenEmployeeFiche,
   onOpenPointages,
+  //  La personne qui met la table, en haut du plateau : sa photo quand elle
+  //  en a une. « Pareil pour le cercle du superadmin, fais apparaître son
+  //  image », 26/11.
+  admin = null,
   nowMs = Date.now(),
 }) {
   const realPauses = useMemo(() => paies.filter((p) => estPauseReelleEffectuee(p)), [paies])
@@ -1466,18 +1470,30 @@ export function PausesCollaborateursSection({
     }
   }
 
+  const adminInitiales = `${admin?.first_name?.[0] || ''}${admin?.last_name?.[0] || ''}`.toUpperCase() || 'AD'
+  const adminNom = `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() || 'Administrateur'
+
   return (
     <section className="pauses-v2-panel pauses-v2-table-section" aria-label="Pauses des employés">
       {/* En-tête de la table — posé sur le papier, pas dans une carte. */}
       <div className="pauses-v2-panel-head pauses-v2-table-head">
         <div className="pauses-v2-panel-title-wrap">
-          <div className="pauses-v2-panel-icon">
-            <Users size={18} />
+          {/*  Le cercle portait l'icône « groupe » : il porte maintenant la
+               personne qui tient la table. C'est un visage, pas un pictogramme. */}
+          <div className="pauses-v2-panel-icon pauses-v2-panel-icon--hote">
+            <PhotoSignee
+              url={admin?.photo_url}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              fallback={<span aria-hidden="true">{adminInitiales}</span>}
+            />
           </div>
           <div>
             <h2 className="pauses-v2-panel-title">Pauses des employés</h2>
             <p className="pauses-v2-panel-subtitle">
-              Détail des pauses sur la période ({filteredList.length} affichée{filteredList.length > 1 ? 's' : ''})
+              <span className="pauses-v2-panel-hote">Suivi par {adminNom}</span>
+              {' · '}
+              {filteredList.length} pause{filteredList.length > 1 ? 's' : ''} affichée{filteredList.length > 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -1593,7 +1609,6 @@ export function PausesCollaborateursSection({
       ) : (
         <div className="pauses-v2-table-scene">
           <span className="pauses-v2-table-service" aria-hidden="true" />
-          <span className="pauses-v2-table-assiette" aria-hidden="true" />
           <span className="pauses-v2-table-serviette" aria-hidden="true" />
           <div className="pauses-v2-table-wrap">
             <table className="pauses-v2-table">

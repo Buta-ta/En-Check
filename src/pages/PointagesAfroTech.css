@@ -6891,8 +6891,15 @@
      `data-col` posé sur le `<th>`).
 
      Le `<table>` reste un tableau pour les lecteurs d'écran : c'est le CSS
-     qui le replie visuellement. */
-@media (max-width: 700px) {
+     qui le replie visuellement.
+
+     ⚠️ LE SEUIL EST À 900, PAS À 700 (26/11, « responsive en tout écran »).
+     À 768 px — une tablette en portrait — la table gardait sa disposition
+     de plateau : sept colonnes dans 700 px de large, et les colonnes
+     Statut et Actions sortaient du cadre. Aucun défilement horizontal ne
+     les rattrapait puisqu'on l'avait coupé. Entre 700 et 900 px, la fiche
+     est la seule disposition honnête. */
+@media (max-width: 900px) {
   .pauses-v2-table-section .pauses-v2-table-wrap {
     padding: 10px 12px 16px;
     overflow-x: visible;
@@ -7589,4 +7596,268 @@
   right: -4px;
   top: 24%;
   z-index: 3;
+}
+
+/* ═══ LE CERCLE DE L'EN-TÊTE PORTE UN VISAGE ══════════════════════════════
+
+     Il portait l'icône « groupe » — un pictogramme, alors que la maquette
+     veut la personne qui tient la table. C'est maintenant sa photo, et ses
+     initiales quand il n'en a pas (ou pendant la signature de l'adresse).
+     Le cercle garde sa taille : c'est l'image qui s'y découpe. */
+.pauses-v2-panel-icon--hote {
+  overflow: hidden;
+  padding: 0;
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+}
+.pauses-v2-panel-icon--hote img,
+.pauses-v2-panel-icon--hote span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+.pauses-v2-panel-hote { font-weight: 800; }
+
+/* ═══ L'ASSIETTE DE SERVICE S'EN VA ═══════════════════════════════════════
+
+     « Enlève cette assiette ça cache le bouton pointage », 26/11 (image 2).
+     Elle débordait du plateau, à hauteur de la deuxième rangée, et passait
+     devant le bouton « Pointages ». On la retire de la scène — et avec elle
+     son triangle de serviette, qui n'était que son ombre portée.
+
+     Le kente et les ronds d'eau restent : eux ne cachent rien. */
+.pauses-v2-table-assiette { display: none; }
+
+/* ═══ LES PHOTOS DE PROFIL DANS LES CERCLES ═══════════════════════════════
+
+     « Fais apparaître le profil image de la personne qui est en pause réelle,
+     pareil pour le cercle du superadmin », 26/11 (image 1).
+
+     Deux causes, et une seule tenait au CSS :
+     · l'assiette de l'avatar n'avait pas d'`overflow: hidden` — une photo
+       carrée y débordait du cercle au lieu d'y être découpée ;
+     · la photo elle-même n'était peinte qu'une fois son adresse SIGNÉE, et
+       rien ne reprenait la main quand la signature échouait : le cercle
+       restait vide (voir `PhotoSignee`).
+
+     Le repli, maintenant : les initiales, en encre, dans le même cercle. */
+.pauses-v2-table-section .pauses-v2-avatar {
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.pauses-v2-table-section .pauses-v2-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+/*  Les initiales du repli : le même encre que l'encre des noms, jamais un
+    cercle vide. */
+.pauses-v2-table-section .pauses-v2-avatar > span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}
+
+/* ═══ LA PAGE TIENT DANS LA MAIN ══════════════════════════════════════════
+
+     « Rends cette page responsive en tout écran, mobile, tablette,
+     desktop » — 26/11.
+
+     Mesures faites au navigateur, page entière, coque comprise :
+
+       360 px → document 399 (39 px de trop)   390 → 399 (9 de trop)
+       560 · 768 · 820 · 1024 · 1420 · 1920 → aucun débordement
+
+     Le coupable n'était pas un texte trop long : la RANGÉE de l'enseigne
+     refusait de se défaire. Ses trois pièces — retour, sceau, marque —
+     gardaient leurs largeurs du grand écran (44 + 92 + 227 + les gouttières
+     = 383 px dans une colonne de 328), et `min-width: auto` d'un élément
+     flex interdisait à la marque de descendre en dessous de son contenu.
+
+     On rend à la marque le droit de rétrécir, et le sceau au format de la
+     main (il était resté à 92 px parce qu'une règle de base, plus bas dans
+     le fichier, passait par-dessus la règle mobile). */
+@media (max-width: 560px) {
+  .pauses-v2-brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+  }
+  .pauses-v2-sceau {
+    width: 56px;
+    height: 56px;
+    flex: 0 0 56px;
+  }
+  .pauses-v2-marque {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-right: 0;
+  }
+  .pauses-v2-titre {
+    font-size: clamp(24px, 7.6vw, 30px);
+  }
+  .pauses-v2-devise {
+    font-size: 8px;
+    letter-spacing: 0.08em;
+  }
+  .pauses-v2-topbar {
+    gap: 10px;
+  }
+}
+/*  Le même défaut, un cran plus haut : le document dépassait de 9 px à
+    390 avant même de descendre à 360. Les gouttières de la coque y
+    suffisaient — la marque peut désormais rétrécir partout. */
+@media (max-width: 700px) {
+  .pauses-v2-marque { min-width: 0; }
+  .pauses-v2-brand { min-width: 0; }
+}
+
+/*  Le graphique des pauses par tranche horaire a un plancher de 520 px :
+    sous cette largeur il défile DANS son panneau (`overflow-x: auto`), ce
+    qui est le bon comportement — mais il restait 1 à 3 px de fuite sur le
+    document, parce que le défilement interne d'un enfant absolu remontait
+    jusqu'à la racine. `clip` coupe net, sans créer de nouveau contexte de
+    défilement ni rogner la bordure du panneau. */
+.pauses-v2-charts-grid {
+  min-width: 0;
+}
+.pauses-v2-charts-grid > .pauses-v2-panel {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+/*  La soucoupe de la carte KPI débordait de sa boîte : c'est VOULU (122 %,
+    centrée par une marge négative), mais la boîte, elle, collait au bord de
+    la carte et le débordement filait jusqu'au document. On garde la
+    soucoupe large, on rogne le dépassement à la carte. */
+@media (max-width: 560px) {
+  .pauses-v2-tasse-dessein { overflow: clip; }
+  .pauses-v2-kpi-card { overflow-x: clip; }
+}
+
+/* ═══ LA FICHE DE PAUSE, SUR TÉLÉPHONE ════════════════════════════════════
+
+     Relevé à 360 px, trois défauts de la fiche repliée :
+
+     · `#ENN-0002` se coupait en `#ENN-` / `0002` — le matricule est une
+       étiquette, pas une phrase : `nowrap` ;
+     · les trois actions (`Supprimer`, `Fiche`, `Pointages`) s'empilaient
+       sur trois rangées, faute de place, alors qu'elles tiennent sur deux
+       en se serrant d'un cran ;
+     · dans le graphique, la cuillère-marqueur grandit avec le dessin :
+       à hauteur de doigt, elle était devenue une louche. Elle garde donc
+       sa taille de dessin — le reste du graphique peut s'étirer. */
+@media (max-width: 700px) {
+  .pauses-v2-table-section .pauses-v2-emp-mat {
+    white-space: nowrap;
+  }
+  .pauses-v2-table-section .pauses-v2-table td:first-child {
+    min-width: 0;
+  }
+  .pauses-v2-row-actions .pauses-v2-icon-btn,
+  .pauses-v2-row-actions .pauses-v2-btn-validate,
+  .pauses-v2-row-actions .pauses-v2-btn-reject {
+    padding: 5px 9px;
+    font-size: 0.68rem;
+    gap: 4px;
+  }
+  /*  La cuillère est un repère : sa taille ne dépend pas de la largeur du
+      dessin, sinon elle devient une louche sur un écran de main. */
+  .pauses-v2-cuillere-corps {
+    vector-effect: none;
+  }
+}
+
+/* ═══ LA FICHE MOBILE : LES CELLULES REPRENNENT LEUR COLONNE ══════════════
+
+     Relevé au navigateur à 360 px : la fiche est bien une grille de deux
+     colonnes, mais chaque cellule restait large de 8 à 56 px dans des
+     colonnes de 141 et 115. La cause : les largeurs en POURCENTAGE du
+     plateau (`width: 7%`, `12%`, `18%`… sur chaque `nth-child`) survivent
+     au passage en grille — une cellule de grille à largeur explicite ne
+     remplit plus sa piste.
+
+     Conséquence visible : la barre d'actions ne faisait que 56 px, ses
+     trois boutons s'empilaient un par un, et toutes les valeurs se
+     tassaient à gauche de leur colonne.
+
+     Dans la fiche, la piste commande : largeur automatique pour toutes. */
+@media (max-width: 700px) {
+  .pauses-v2-table-section .pauses-v2-table tbody td {
+    width: auto;
+    max-width: none;
+  }
+}
+
+/*  Précision sur la règle précédente : les largeurs en pourcentage du
+    plateau sont posées PLUS BAS dans ce fichier, à spécificité égale — elles
+    gagnaient donc. On cible le corps de la table, un cran plus précis. */
+@media (max-width: 700px) {
+  .pauses-v2-table-section .pauses-v2-table tbody td,
+  .pauses-v2-table-section .pauses-v2-table tbody td:nth-child(n) {
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* ═══ LE SEUIL DE LA FICHE, ENTIER ════════════════════════════════════════
+
+     Passer la table en fiches à 900 px ne suffit pas si les correctifs de la
+     fiche, eux, restent à 700 : entre les deux, la fiche existe mais garde
+     les réflexes du plateau — cellules à largeur en pourcentage, barre
+     d'actions tassée en colonne, couverts et kente dessinés pour une table
+     qui n'existe plus. On aligne tout sur le même seuil. */
+@media (max-width: 900px) {
+  /*  Les cellules reprennent leur piste. */
+  .pauses-v2-table-section .pauses-v2-table tbody td,
+  .pauses-v2-table-section .pauses-v2-table tbody td:nth-child(n) {
+    width: auto;
+    max-width: none;
+  }
+  /*  Les actions : une rangée souple, jamais une colonne de boutons. */
+  .pauses-v2-table-section .pauses-v2-table tbody td:nth-child(7) > div,
+  .pauses-v2-table-section .pauses-v2-table td:last-child > div,
+  .pauses-v2-row-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start;
+    align-items: center;
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    gap: 6px;
+  }
+  .pauses-v2-row-actions .pauses-v2-icon-btn,
+  .pauses-v2-row-actions .pauses-v2-btn-validate,
+  .pauses-v2-row-actions .pauses-v2-btn-reject {
+    padding: 5px 10px;
+    font-size: 0.7rem;
+  }
+  /*  Les décors du plateau n'ont plus de plateau. */
+  .pauses-v2-table-service,
+  .pauses-v2-table-assiette,
+  .pauses-v2-table-serviette {
+    display: none;
+  }
+  .pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::before,
+  .pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::after {
+    display: none;
+  }
+  /*  Le filet pointillé entre deux rangées n'a pas de sens d'une fiche à
+      l'autre : c'est la bordure de la fiche qui sépare. */
+  .pauses-v2-table-section .pauses-v2-table tbody tr + tr td {
+    border-top: 0;
+  }
+  .pauses-v2-table-section .pauses-v2-table-scene {
+    margin: 0;
+  }
 }
