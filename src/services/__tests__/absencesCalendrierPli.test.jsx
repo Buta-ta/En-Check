@@ -1,4 +1,7 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
+import React, { act } from 'react'
+import { createRoot } from 'react-dom/client'
 import fs from 'node:fs'
 import path from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -113,22 +116,21 @@ const absences = [
 
 const fériés = new Set(['2026-10-20'])
 
+const PROPS = {
+  absences,
+  employes,
+  annee: 2026,
+  mois: 9,
+  mode: 'semaine',
+  jourInitial: '2026-10-21',
+  darkMode: true,
+  getHolidaySet: (id) => (id === 'ent-2' ? fériés : new Set()),
+  joursPrisParEmploye: { e1: 4 },
+  plafondConges: 30,
+}
+
 function rendre(props = {}) {
-  return renderToStaticMarkup(
-    <AbsencesCalendrier
-      absences={absences}
-      employes={employes}
-      annee={2026}
-      mois={9}
-      mode="semaine"
-      jourInitial="2026-10-21"
-      darkMode
-      getHolidaySet={(id) => (id === 'ent-2' ? fériés : new Set())}
-      joursPrisParEmploye={{ e1: 4 }}
-      plafondConges={30}
-      {...props}
-    />
-  )
+  return renderToStaticMarkup(<AbsencesCalendrier {...PROPS} {...props} />)
 }
 
 // ── les trois rendus, cadrés sur la semaine du 19 au 25 octobre 2026 ──
@@ -229,10 +231,20 @@ describe('📐 le pli par employé', () => {
     // le dessin grise le sable à (222, 200, 176) : c'est `--charte-bordure`, pas
     // un noir à l'aveugle, et le flou est à zéro (contrôle C9 de la charte)
     expect(plateau).not.toMatch(/blur|rgba\(/)
-    // l'ombre doit avoir sa place : le conteneur coupe, sinon elle est rognée
+    // l'ombre doit avoir sa place : le conteneur coupe, sinon elle est rognée. Et
+    // depuis le 11/12, la même loi protège L'ÉVENTAIL DES FEUILLES PLIÉES : le
+    // souffle de gauche et le souffle du bas valent l'évasement des deux feuilles
+    // (2 × 8 de décalage + 3 de règle = 22), relevés à x 42..45 et x 34..37 pour
+    // un montant à 50..52.
     const champ = nud(corps('.abs-cal-champ'))
-    expect(champ).toContain('padding-right:var(--abs-pli-ombre)')
-    expect(champ).toContain('padding-bottom:var(--abs-pli-ombre)')
+    expect(champ).toContain('padding-left:var(--abs-pli-évasement)')
+    expect(champ).toContain('padding-bottom:var(--abs-pli-évasement)')
+    expect(champ).toContain('padding-right:calc(var(--abs-pli-pli)+var(--abs-pli-ombre))')
+    expect(cote('--abs-pli-pli')).toBe(8)
+    // LE PLATEAU PREND LA LARGEUR DE SES JOURS, pas celle de l'écran : un plancher
+    // écrit en JavaScript était une seconde naissance du nombre de jour.
+    expect(champ).toContain('width:max-content')
+    expect(champ).toContain('min-width:100%')
   })
 
   it('4. la ligne fait 78 et se sépare par la règle, pas par le ton', () => {
@@ -272,8 +284,13 @@ describe('📐 le pli par employé', () => {
     const planche = nud(corps('.abs-pli-planche'))
     expect(planche).toContain('min-width:max-content')
     // la borne lit le MÊME nombre que le `left` : une `max-width` écrite d'après un
-    // second calcul de la naissance serait la dérive du 25/11 rejouée
-    expect(planche).toContain('max-width:calc(100%-var(--abs-pli-entree)-2px)')
+    // second calcul de la naissance serait la dérive du 25/11 rejouée. Elle rend
+    // aussi à la plaquette du solde la largeur que le dessin lui donne à la rive du
+    // champ : une planche qui glisse SOUS la plaquette perd sa rive droite dans le
+    // sable, et « on ne voit plus où s'arrête la planche » (fondateur, 11/12).
+    expect(planche).toContain(
+      'max-width:calc(100%-var(--abs-pli-entree)-var(--abs-pli-solde)-2px)'
+    )
     expect(PLI).not.toContain('--abs-pli-aile')
     // en mode jour, la colonne unique EST le champ : les deux rives se collent,
     // et la naissance collée reste LE même nombre pour le `left` et la borne
@@ -449,10 +466,25 @@ describe('📐 le pli par employé', () => {
     // ne la pousse pas.
     expect(COMPOSANT).toContain('const LARGEUR_EMPLOYE = 252')
     expect(cote('--abs-pli-entête')).toBe(76) // l'entête se lit hors du plateau
-    // et la largeur du solde est LE même nombre pour le plancher de défilement et
-    // pour la plaquette : deux mesures d'un seul objet
-    expect(COMPOSANT).toContain("minWidth: LARGEUR_EMPLOYE + nbJours * largeurJour + LARGEUR_SOLDE")
-    expect(COMPOSANT.includes("'--abs-pli-solde': `${LARGEUR_SOLDE}px`")).toBe(true)
+    // LA LARGEUR DU CHAMP S'ÉCRIT UNE FOIS. Le dessin donne 1015 pixels à sept
+    // cellules de 145 : l'entête et la piste lisent le MÊME produit, et la
+    // plaquette du solde ne réserve plus rien dans le JavaScript — réservant cent
+    // quarante-sept pixels de trop, le jour tombait à 108, puis à 127 selon
+    // l'écran, et une planche d'une journée cherchait cinquante pixels de plus que
+    // sa cellule (le fondateur, 11/12 : « on ne voit pas où s'arrête la planche
+    // "Formation · 1 j" »).
+    expect(nud(corps('.abs-cal-entete-jours'))).toContain('min-width:var(--abs-pli-champ)')
+    // et l'entête porte la règle du cadre qu'il surplombe : 1 015 de champ, pas
+    // 1 021 — un jour de 145,86 et six pixels de dérive à la dernière cellule
+    expect(nud(corps('.abs-cal-entete'))).toContain('padding:0var(--abs-pli-rule)')
+    expect(nud(corps('.abs-pli-piste'))).toContain('min-width:var(--abs-pli-champ)')
+    expect(valeur('--abs-pli-champ')).toBe(
+      'calc(var(--abs-pli-nb-jours, 7) * var(--abs-pli-jour, 145px))'
+    )
+    expect(COMPOSANT).toContain('const LARGEUR_JOUR_SEMAINE = 145')
+    expect(COMPOSANT).toContain("'--abs-pli-jour': `${largeurJour}px`")
+    expect(COMPOSANT).not.toContain('LARGEUR_SOLDE')
+    expect(cote('--abs-pli-solde')).toBe(130) // x 1178..1307, la plaquette peinte
     expect(nud(corps('.abs-pli-solde'))).toContain('width:var(--abs-pli-solde)')
     // le plateau ne coupe pas les colonnes par un filet : le dessin n'en a pas
     expect(PLI).not.toMatch(/\.abs-pli-tete\s*\{[^}]*border-right/)
@@ -476,8 +508,8 @@ describe('📐 le pli par employé', () => {
   })
 
   it('14. le solde est peint à la rive droite du champ, le nombre à côté', () => {
-    expect(cote('--abs-pli-jauge')).toBe(43) // x 1179..1222
-    expect(cote('--abs-pli-jauge-hauteur')).toBe(19) // y 231..249
+    expect(cote('--abs-pli-jauge')).toBe(50) // la pilule : x 1178..1228
+    expect(cote('--abs-pli-jauge-hauteur')).toBe(18) // y 231..248
     const solde = nud(corps('.abs-pli-solde'))
     expect(solde).toContain('position:absolute')
     expect(solde).toContain('right:0;top:0;bottom:0')
@@ -486,7 +518,7 @@ describe('📐 le pli par employé', () => {
     // nombre
     expect(solde).toContain('background:var(--charte-sable)')
     expect(solde).toContain('pointer-events:none')
-    expect(cote('--abs-pli-solde-repli')).toBe(27) // le nombre s'arrête là du bord
+    expect(cote('--abs-pli-solde-repli')).toBe(13) // 1320 − 1307 : le nombre s'arrête là
     // la pilule est remplie à gauche et nue à droite, et le nombre est ÉCRIT — une
     // jauge lue seule serait un statut sans mot
     const jauge = nud(corps('.abs-pli-jauge'))
@@ -525,7 +557,13 @@ describe('📐 le pli par employé', () => {
     const compte = nud(corps('.abs-pli-compte'))
     expect(compte).toContain('margin-left:auto')
     expect(compte).toContain('font-size:var(--charte-taille-titre)')
-    expect(registre.indexOf('abs-pli-compte') >= 0 || true).toBe(true)
+    // et le compte est ÉCRIT dans le registre, à sa rive droite — un `|| true`
+    // ne verrouillait rien ici et le disait vrai quoi qu'il arrive.
+    // l'ordre se lit dans le RENDU de l'étage, pas dans la feuille : c'est là que
+    // le compte doit tomber après la dernière pastille
+    const étage = grille.slice(grille.indexOf('abs-pli-registre'))
+    expect(étage.lastIndexOf('abs-pli-compte') > étage.lastIndexOf('abs-pli-chip')).toBe(true)
+    expect(grille).toContain('· rien à signaler')
   })
 
   it('16. le pli ne promet pas un geste qu\'il ne sait pas faire', () => {
@@ -566,8 +604,10 @@ describe('📐 le pli par employé', () => {
   it('18. « Déplier tout » est la case qui rouvre le pli — et rien d\'autre', () => {
     expect(grille).toContain('data-testid="abs-cal-deplier-tout"')
     expect(grille).toContain('<input type="checkbox"')
-    // la case ne s'écrit que si le pli a quelque chose à replier
+    // la case ne s'écrit que là où le pli a un sens : le mode jour ne plie pas
     expect(grilleJour).not.toContain('abs-cal-deplier-tout')
+    // et la semaine la rend TOUJOURS : le mot, pas la case, dit ce qui se passe
+    expect(COMPOSANT).toContain("déplierTout ? 'Replier tout' : 'Déplier tout'")
     // l'ancien billet de la tringle est descendu dans la grille : un seul mot, et
     // ce mot n'est plus jamais PRONONCÉ en haut (la feuille, elle, a le droit
     // d'expliquer qu'il a disparu — c'est un commentaire, pas une étiquette)
@@ -652,8 +692,8 @@ describe('📐 le pli par employé', () => {
     expect(cote('--abs-pli-trait-hauteur')).toBe(22)
     expect(cote('--abs-pli-plomb')).toBe(3)
     expect(cote('--abs-pli-entête')).toBe(76)
-    expect(cote('--abs-pli-jauge')).toBe(43)
-    expect(cote('--abs-pli-jauge-hauteur')).toBe(19)
+    expect(cote('--abs-pli-jauge')).toBe(50)
+    expect(cote('--abs-pli-jauge-hauteur')).toBe(18)
     expect(cote('--abs-pli-registre')).toBe(76)
     expect(cote('--abs-pli-noeud')).toBe(13)
     expect(cote('--abs-pli-ombre')).toBe(6)
@@ -663,6 +703,19 @@ describe('📐 le pli par employé', () => {
     expect(valeur('--abs-pli-planche')).not.toBe('46px')
     // le pas du registre : 125 mesurés entre deux pastilles, moins la pastille
     expect(cote('--abs-pli-écart')).toBe(74)
+    // relevées après coup, le 11/12, sur les trois images que le fondateur a
+    // posées à côté du dessin : le jour (145, non pas le 108 qu'on s'était
+    // fabriqué), la plaquette du solde (130 = x 1178..1307), son repli (13), la
+    // pile de feuilles repliées (8 de décalage, 22 de souffle)
+    expect(COMPOSANT).toContain('const LARGEUR_JOUR_SEMAINE = 145')
+    expect(cote('--abs-pli-solde')).toBe(130)
+    expect(cote('--abs-pli-solde-repli')).toBe(13)
+    expect(cote('--abs-pli-pli')).toBe(8)
+    // l'évasement n'est pas un nombre recopié, c'est le décalage doublé d'une
+    // règle : `calc(2 * (8 + 3))` = 22
+    expect(valeur('--abs-pli-évasement')).toBe(
+      'calc(2 * (var(--abs-pli-pli) + var(--abs-pli-rule)))'
+    )
   })
 
   it('23. tout ce que le pli appelle est déclaré quelque part', () => {
@@ -731,8 +784,89 @@ describe('📐 le pli par employé', () => {
     expect(doc).toContain('absences-grille-2-pli.png')
     // 78 (le pas), 40 (la planche), 16 (la pointe), 0.26 (l'opacité du lavage),
     // 51 (la pastille) : le relevé et le code doivent se resommer
-    for (const coteDuDessin of ['78', '40', '16', '0.26', '51', '18']) {
+    for (const coteDuDessin of ['78', '40', '16', '0.26', '51', '18', '145', '130']) {
       expect(doc, `la cote ${coteDuDessin} a disparu du document`).toContain(coteDuDessin)
     }
+  })
+
+  it('28. les feuilles pliées se voient : le plateau est une pile, pas un cadre', () => {
+    // LE MANQUEMENT, 11/12 : « les feuilles pliées ne se voient pas ». Le dessin
+    // n'entoure pas le champ d'un trait unique : derrière le plateau, deux feuilles
+    // repliées dépassent sur sa gauche, à huit puis à seize du montant (arêtes
+    // relevées à x 42..45 et x 34..37 pour une règle à 50..52), chacune descendue
+    // d'un deuil de plus que son décalage, et leurs coins courbent au rayon du cadre.
+    const feuille = nud(PLI)
+    expect(feuille).toContain('.abs-pli-plateau::before,.abs-pli-plateau::after{')
+    // la feuille est un cadre complet posé DERRIÈRE le fond de sable : seul ce qui
+    // dépasse s'encre, et le plateau n'a rien à soustraire quand il défile
+    expect(feuille).toContain(
+      'content:"";position:absolute;inset:0;z-index:-1;box-sizing:border-box'
+    )
+    expect(feuille).toContain('border:var(--abs-pli-rule)solidvar(--charte-encre)')
+    expect(feuille).toContain('background:var(--charte-sable)')
+    expect(feuille).toContain('pointer-events:none')
+    // les deux décalages se déduisent du MÊME jeton, l'un simple, l'autre doublé —
+    // écrire « -16px » à la main serait une cote orpheline
+    expect(feuille).toContain(
+      '.abs-pli-plateau::before{transform:translate(calc(-1*var(--abs-pli-pli)),calc(var(--abs-pli-pli)+var(--abs-pli-rule)));}'
+    )
+    expect(feuille).toContain(
+      '.abs-pli-plateau::after{transform:translate(calc(-2*var(--abs-pli-pli)),calc(2*(var(--abs-pli-pli)+var(--abs-pli-rule))));}'
+    )
+    // le cadre doit connaître sa pile : `position: relative`, sinon `z-index: -1`
+    // enverrait les feuilles derrière le fond de la PAGE et non du plateau
+    expect(nud(corps('.abs-pli-plateau'))).toContain('position:relative')
+    // et le souffle est payé d'avance : `overflow-x: auto` coupe, une feuille
+    // rognée ne se lit plus pliée
+    const champ = nud(corps('.abs-cal-champ'))
+    expect(champ).toContain('padding-left:var(--abs-pli-évasement)')
+    expect(champ).toContain('padding-bottom:var(--abs-pli-évasement)')
+  })
+
+  it('29. le pli est réversible : la case survit au geste qui la rendait inutile', () => {
+    // LE MANQUEMENT, 11/12 : « le bouton déplier disparait une fois déplier donc on
+    // ne peut plus plier après ». Un réglage qui s'efface après service n'est pas un
+    // réglage. Ce verrou ne lit donc pas la feuille, il CLIQUE : il provoque l'état
+    // dans lequel le pli se perdait.
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const hote = document.createElement('div')
+    document.body.append(hote)
+    const racine = createRoot(hote)
+    try {
+      act(() => racine.render(<AbsencesCalendrier {...PROPS} />))
+      const case_ = hote.querySelector('[data-testid="abs-cal-deplier-tout"]')
+      expect(case_, 'la case de pli manque dès le départ').toBeTruthy()
+      expect(hote.textContent).toContain('Déplier tout')
+      // le pli est fermé : la ligne sans absence est dans le registre
+      expect(hote.querySelector('[data-testid="abs-pli-registre"]')).toBeTruthy()
+      expect(hote.querySelector('[data-testid="abs-pli-ligne"][data-employe="e4"]')).toBe(null)
+
+      act(() => { case_.click() })
+      // TOUT est déplié, et la case est ENCORE LÀ — c'est le mot qui a basculé
+      expect(hote.textContent).toContain('Replier tout')
+      expect(hote.textContent).not.toContain('Déplier tout')
+      expect(case_.checked).toBe(true)
+      expect(hote.querySelector('[data-testid="abs-pli-registre"]')).toBe(null)
+      expect(hote.querySelector('[data-testid="abs-pli-ligne"][data-employe="e4"]')).toBeTruthy()
+
+      // et le geste se referme : la ligne e4 reprend sa pastille
+      act(() => { hote.querySelector('[data-testid="abs-cal-deplier-tout"]').click() })
+      expect(hote.textContent).toContain('Déplier tout')
+      expect(hote.querySelector('[data-testid="abs-pli-registre"]')).toBeTruthy()
+      expect(hote.querySelector('[data-testid="abs-pli-ligne"][data-employe="e4"]')).toBe(null)
+    } finally {
+      act(() => racine.unmount())
+      hote.remove()
+      globalThis.IS_REACT_ACT_ENVIRONMENT = false
+    }
+    // rien à ouvrir : la case reste posée, mais elle ne fait pas semblant
+    const toutVu = rendre({
+      absences: [...absences, absence('a6', 'e4', '2026-10-24', '2026-10-24', 'conge')],
+    })
+    expect(toutVu).toContain('data-testid="abs-cal-deplier-tout"')
+    expect(toutVu).toMatch(/type="checkbox"[^>]*disabled/)
+    expect(toutVu).not.toContain('data-testid="abs-pli-registre"')
+    // et la case éteinte garde sa place dans la ligne de compte : c'est le dessin
+    expect(nud(PLI)).toContain('.abs-pli-deplierinput:disabled')
   })
 })

@@ -1625,7 +1625,20 @@ button.abs-planche-corps:focus-visible {
   );
   left: var(--charte-espace-4);
   right: var(--charte-espace-4);
-  bottom: 0;
+  /* LA CORDE S'ARRÊTE AU HAUT DE LA PIÈCE, elle ne la traverse pas. Posée en
+     `bottom: 0`, la ficelle courait du bois jusqu'au pied de la pièce et coupait
+     donc en deux la plaque de la période, les deux clous et le registre des modes —
+     le fondateur, 11/12 : « les fils de la tringle traversent les boîtes… évite de
+     faire traverser le trait là où ça traverse, tu peux juste les arrêter avant
+     pour ne pas couper ». La hauteur se DÉDUIT de la descente (le saut du bois au
+     haut de la pièce, plus le demi-bois, moins la demi-morsure de l'anneau) : un
+     `bottom: 0` n'était pas une cote, c'était une absence de cote. */
+  bottom: auto;
+  height: calc(
+    var(--abs-tringle-descente)
+    - var(--abs-tringle-ciel)
+    - (var(--abs-tringle-bois) - var(--abs-tringle-anneau)) / 2
+  );
   display: flex;
   align-items: stretch;
   justify-content: space-between;
@@ -2026,10 +2039,22 @@ button.abs-planche-corps:focus-visible {
      leur rive droite, sur 40 × 37, hachures de 3 px au pas de 7, à 45°, teinte
      `--charte-bordure`, mordant de trois pixels sur la règle du plateau. Dans
      les lignes, le dessin ne peint pas le chômé : le trait de jour suffit.
-   · jauge : pilule de 43 × 19 à x 1179..1222, y 231..249, cerclée de 2, remplie
-     d'argile à gauche et nue à droite (229, 194, 159 = `--charte-bordure`), et
-     le nombre est ÉCRIT À CÔTÉ — « + 26/30 », x 1225..1299, corps de titre —
-     jamais dans la pilule : une jauge lue seule serait un statut sans mot.
+   · jauge : pilule de 50 × 18 à x 1178..1228, y 231..248, cerclée de 2, remplie
+     d'argile à gauche (jusqu'à x 1218, soit 82 %) et nue à droite (229, 194, 159 =
+     `--charte-bordure`), et le nombre est ÉCRIT À CÔTÉ — « + 26/30 », de x 1237
+     (le « + » seul, large de 9) à x 1307, corps de titre — jamais dans la pilule :
+     une jauge lue seule serait un statut sans mot. LA PLAQUETTE N'A PAS DE CADRE :
+     portée à x 1178..1307, elle vaut 130 pixels et son nombre finit treize pixels
+     avant la rive du champ (1320 − 1307). Ce n'est pas une colonne de 147 — lire
+     la pilule à 43 et le repli à 27, c'était compter sur les bords d'une boîte que
+     le dessin n'a jamais tracée (réglé le 11/12).
+   · la pile : le plateau n'est pas un trait unique. Derrière lui, DEUX FEUILLES
+     REPLIÉES dépassent sur sa gauche, à hUIT puis à SEIZE du montant (arêtes à
+     x 42..45 et x 34..37 pour une règle à 50..52, venues courber au coin à partir
+     de y 209 et y 219), et une arête à x 1334..1337 rend la pareille sur la rive
+     droite, de y 209 à 401. Le décalage est un pas de 8, la descente le même pas
+     plus la règle : c'est `--abs-pli-pli`, et `--abs-pli-évasement` (22) paie le
+     souffle que `overflow-x` couperait sinon.
    · repli : double règle (y 594-596 et 601-603, quatre pixels d'air entre les
      deux) puis un registre de 76 (604..680) : pastilles de 45 à x 74, 190, 306,
      429, 557, 683, 811, 943 — écartées de ~125, pas serrées les unes contre les
@@ -2072,9 +2097,19 @@ button.abs-planche-corps:focus-visible {
   --abs-pli-ciel: 27px;                 /* l'air au-dessus du lavage dans l'entête */
   --abs-pli-hachure-largeur: 40px;
   --abs-pli-hachure-hauteur: 37px;
-  --abs-pli-solde-repli: 27px;             /* le nombre s'arrête là du bord droit */
-  --abs-pli-jauge: 43px;
-  --abs-pli-jauge-hauteur: 19px;
+  --abs-pli-solde: 130px;                  /* la plaquette du solde : x 1178..1307 */
+  --abs-pli-solde-repli: 13px;             /* 1320 − 1307 : l'air avant la rive du champ */
+  --abs-pli-jauge: 50px;                   /* la pilule : x 1178..1228, y 231..248 */
+  --abs-pli-jauge-hauteur: 18px;
+  /* LES FEUILLES PLIÉES. Le plateau n'est pas un cadre posé à plat : le dessin le
+     rend comme une pile de feuilles repliées, dont deux rives dépassent en bas à
+     gauche, à huit et à seize du montant (relevées à x 42..45 et x 34..37 pour un
+     montant à 50..52). Le décalage se lit HUIT, la descente est le décalage plus la
+     règle — un seul nombre à écrire, deux usages. `--abs-pli-évasement` est l'air
+     que prend l'éventail : c'est lui qui décide des paddings du champ, jamais un
+     chiffre recopié à la main. */
+  --abs-pli-pli: 8px;
+  --abs-pli-évasement: calc(2 * (var(--abs-pli-pli) + var(--abs-pli-rule)));  /* 22 */
   --abs-pli-registre: 76px;             /* la hauteur du registre du pli */
   --abs-pli-ciel-repli: 4px;            /* l'air entre les deux règles du pli */
   --abs-pli-coin: 18px;                 /* le coin replié de chaque pastille */
@@ -2087,6 +2122,14 @@ button.abs-planche-corps:focus-visible {
      doit laisser libre — écrit deux fois, il se contredit à la première retouche
      et le deuxième rang mangeait la ligne (leçon du 25/11, encore valable ici). */
   --abs-pli-empilement: calc(var(--abs-pli-planche) + var(--charte-espace-1));
+  /* LE CHAMP DES JOURS, en un seul calcul. Le dessin donne 1015 pixels à sept
+     cellules de 145 (x 305 → 1320) : le jour est un jeton que le composant écrit
+     selon le mode, et l'entête comme la piste lisent LE MÊME produit. Écrire la
+     largeur deux fois, c'est rejouer la dérive du 25/11 (−8 px au lundi, −97 au
+     dimanche). `--abs-pli-champ` est donc le seul endroit où le produit se calcule,
+     et le plateau ne connaît plus que lui : sa largeur n'est plus un plancher
+     deviné en JavaScript, c'est la somme de ses jours. */
+  --abs-pli-champ: calc(var(--abs-pli-nb-jours, 7) * var(--abs-pli-jour, 145px));
 }
 
 /* LE CHAMP. Le dessin n'a pas de carte blanche derrière le calendrier : le sable
@@ -2095,8 +2138,20 @@ button.abs-planche-corps:focus-visible {
    souffle à droite et en bas n'est pas un ornement : c'est la place de l'ombre
    dure, que `overflow-x: auto` couperait net. */
 .abs-cal-champ {
-  padding-right: var(--abs-pli-ombre);
-  padding-bottom: var(--abs-pli-ombre);
+  /* LE PLATEAU PREND LA LARGEUR DE SES JOURS, pas celle de l'écran. C'est la loi du
+     dessin — 1273 pour une semaine à 145 — et c'est ce qui rend la rive droite
+     lisible : à un jour de 108, une planche d'une journée cherchait dix pixels de
+     plus et finissait sous la plaquette du solde. `max-content` donne au plateau
+     exactement la somme de ses cellules ; `min-width: 100%` garde le champ plein
+     quand l'écran est plus large que la semaine. Un plancher écrit en JavaScript
+     était une seconde naissance du même nombre, dans un autre fichier. */
+  width: max-content;
+  min-width: 100%;
+  /* l'air de l'éventail à gauche et en bas, celui de l'ombre à droite : le
+     conteneur coupe, et une feuille rognée ne se voit plus pliée. */
+  padding-left: var(--abs-pli-évasement);
+  padding-right: calc(var(--abs-pli-pli) + var(--abs-pli-ombre));
+  padding-bottom: var(--abs-pli-évasement);
 }
 
 .abs-cal-scroll {
@@ -2105,12 +2160,48 @@ button.abs-planche-corps:focus-visible {
 }
 
 .abs-pli-plateau {
+  position: relative;
   border: var(--abs-pli-rule) solid var(--charte-encre);
   border-radius: var(--charte-rayon-champ);
   background: var(--charte-sable);
   /* ombre DURE, jamais floue (C9), et dans la palette : le dessin grise le sable
      à (222, 200, 176), soit `--charte-bordure` (216, 198, 172) à un cheveu. */
   box-shadow: var(--abs-pli-ombre) var(--abs-pli-ombre) 0 0 var(--charte-bordure);
+}
+
+/* LES FEUILLES PLIÉES — ce que le fondateur demande à voir. Le dessin n'encadre pas
+   le champ d'un seul trait : derrière le plateau, deux feuilles repliées dépassent
+   sur sa gauche, à huit puis à seize du montant, chacune descendue d'un deuil de
+   plus que son décalage (x 42..45 et x 34..37 pour une règle à 50..52 ; leurs
+   arêtes courbent au coin et se perdent dans le montant en descendant). Deux
+   pseudo-éléments suffisent : `z-index: -1` les pose DERRIÈRE le fond de sable du
+   plateau, donc seul ce qui dépasse s'encre — exactement le geste du dessinateur,
+   et rien à soustraire quand la grille défile. */
+.abs-pli-plateau::before,
+.abs-pli-plateau::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  box-sizing: border-box;
+  border: var(--abs-pli-rule) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-sable);
+  pointer-events: none;
+}
+
+.abs-pli-plateau::before {
+  transform: translate(
+    calc(-1 * var(--abs-pli-pli)),
+    calc(var(--abs-pli-pli) + var(--abs-pli-rule))
+  );
+}
+
+.abs-pli-plateau::after {
+  transform: translate(
+    calc(-2 * var(--abs-pli-pli)),
+    calc(2 * (var(--abs-pli-pli) + var(--abs-pli-rule)))
+  );
 }
 
 /* LA LIGNE DE COMPTE — « 5 À SIGNALER · 9 RIEN CETTE SEMAINE », centrée sur le
@@ -2174,6 +2265,13 @@ button.abs-planche-corps:focus-visible {
 
 .abs-pli-deplier input:checked { background: var(--charte-aplat) }
 
+/* la case qui n'a rien à ouvrir reste posée — le dessin la dessine toujours —
+   mais elle ne se fait pas passer pour active : encre à demi, geste retiré. */
+.abs-pli-deplier input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .abs-pli-deplier input:focus-visible { outline: var(--charte-trait) solid var(--charte-encre); outline-offset: 2px }
 
 /* L'ENTÊTE DES JOURS — hors du plateau, mais sur le MÊME champ que la piste :
@@ -2185,6 +2283,12 @@ button.abs-planche-corps:focus-visible {
   display: flex;
   align-items: stretch;
   min-height: var(--abs-pli-entête);
+  /* l'entête est posé AU-DESSUS du plateau, mais les cellules qu'il nomment sont
+     CONTENUES par son cadre : sans les trois pixels de règle à chaque bout, les
+     sept étiquettes se répartiraient 1 021 et non 1 015 — un jour de 145,86, et
+     six pixels de dérive à la dernière cellule. C'est exactement la dérive que le
+     verrou 12 refuse depuis le 25/11, sous une autre forme. */
+  padding: 0 var(--abs-pli-rule);
 }
 
 .abs-cal-entete-employes {
@@ -2206,7 +2310,9 @@ button.abs-planche-corps:focus-visible {
 
 .abs-cal-entete-jours {
   flex: 1 1 0;
-  min-width: 0;
+  /* le champ des jours, au MÊME jeton que la piste : sept étiquettes qui ne
+     portent pas la largeur de leurs cellules glissent d'un demi-jour. */
+  min-width: var(--abs-pli-champ);
   display: flex;
 }
 
@@ -2335,7 +2441,9 @@ img.abs-pli-figure { border: 0 }
 .abs-pli-piste {
   position: relative;
   flex: 1 1 0;
-  min-width: 0;
+  /* le plancher du champ, écrit UNE fois : `--abs-pli-champ`. Le jour ne se
+     réduit pas pour « faire tenir » — c'est le plateau qui défile. */
+  min-width: var(--abs-pli-champ);
   background-image: linear-gradient(
     90deg,
     var(--charte-bordure) 0 var(--abs-pli-trait),
@@ -2402,10 +2510,13 @@ img.abs-pli-figure { border: 0 }
      `min-width: max-content` laisse le mot pousser la planche vers la droite —
      jamais l'inverse, jamais une coupe. */
   min-width: max-content;
-  /* et elle pousse JUSQU'AU MUR, pas au-delà : la borne se relit sur la même
-     `--abs-pli-entree` que le `left`, donc un plateau ne s'élargit jamais pour une
-     étiquette. Un seul nombre à gauche, trois usages. */
-  max-width: calc(100% - var(--abs-pli-entree) - 2px);
+  /* et elle pousse JUSQU'À LA PLAQUETTE, pas au-delà : la borne se relit sur la
+     même `--abs-pli-entree` que le `left`, et elle rend au solde la largeur que le
+     dessin lui donne à la rive du champ. Une planche qui glisserait SOUS la
+     plaquette perdrait sa rive droite dans le sable — c'est exactement ce que le
+     fondateur a vu sur la planche « Formation · 1 j » : on ne disait plus où le
+     jour s'arrêtait. Un seul nombre à gauche, trois usages, et la rive se lit. */
+  max-width: calc(100% - var(--abs-pli-entree) - var(--abs-pli-solde) - 2px);
   display: flex;
   align-items: center;
   gap: var(--charte-espace-2);
