@@ -82,15 +82,29 @@ it("6. la page Absences n'a plus de bouton clair/sombre, mais elle lit toujours 
   // `localStorage['encheck.theme']`, et un utilisateur qui l'a réglé hier doit
   // retrouver sa nuit aujourd'hui.
   expect(pageAbsences).not.toContain('abs-theme-toggle')
-  expect(pageAbsences).not.toContain('toggleTheme')
   expect(lire('src/pages/AbsencesAfroTech.css')).not.toContain('.abs-theme-btn')
-  expect(pageAbsences).toContain("const { darkMode } = useTheme()")
+  /* 08/12 — « RAMENE THE SIDEBAR ET LE RAIL DANS LA PAGE ABSENCE ». L'interrupteur
+     a un porteur unique dans la coque : le rail (`SidebarUnique` → `surTheme`), qui
+     le montre sur TOUTES les pages admin. La page Absences ne se dessine donc
+     toujours pas de bouton — elle ne fait que le BRANCHER, et le vérifie ici :
+     `toggleTheme` n'apparaît que dans la déstructuration du contexte et dans la
+     prop du rail, jamais dans un `<button>`. Un bouton de page en plus du rail
+     serait la faute du 27/11, reproduite en deux exemplaires. */
+  for (const ligne of pageAbsences.split('\n')) {
+    if (!ligne.includes('toggleTheme')) continue
+    expect(ligne).toMatch(/useTheme\(\)|surTheme=\{toggleTheme\}/)
+  }
+  expect(pageAbsences).toContain('surTheme={toggleTheme}')
+  expect(pageAbsences).toContain("const { darkMode, toggleTheme } = useTheme()")
   expect(pageAbsences).toContain("data-theme={darkMode ? 'dark' : 'light'}")
   // les composants suivent le thème au lieu de rester figés au sombre
   expect(pageAbsences).toContain('darkMode={darkMode}')
   // le fond n'est plus écrit en dur
   expect(pageAbsences).not.toContain("document.body.style.backgroundColor = '#15110E'")
-  expect(pageAbsences).toContain("container: { minHeight: '100vh', background: 'var(--abs-bg)' }")
+  // 08/12 : la page vit dans `.coque-admin-page`, qui connaît déjà sa hauteur ;
+  // un `minHeight: 100vh` ICI aurait posé un second plancher sous la coque.
+  expect(pageAbsences).toContain("container: { background: 'var(--abs-bg)' }")
+  expect(pageAbsences).not.toContain("container: { minHeight: '100vh'")
 })
 
 it('7. plus aucune teinte sombre figée dans les écrans d’absences', () => {
@@ -197,10 +211,33 @@ it('11. aucun texte blanc ne subsiste en dehors des boutons en dégradé', () =>
 it('12. les teintes d’accent passent par les variables de la charte', () => {
   // les seules qui restent figées sont les couleurs « données »
   // (motifs, statuts, filtres) et les dégradés des boutons pleins
-  expect((pageAbsences.match(/var\(--abs-amber\)/g) || []).length).toBeGreaterThan(20)
+  //
+  // 08/12 — LE COMPTE SE RELIT SUR UN MINIMUM, PAS SUR UN RESTE. Cette aiguille
+  // comptait « plus de 20 `var(--abs-amber)` » pour interdire l'ambre brut ; les
+  // deux sections retravaillées ce soir (le rang des demandes, l'onglet
+  // « configuration congés ») peignent maintenant à l'argile de la maison
+  // (`--charte-aplat`, `--charte-encre`) et non plus à l'ambre — donc le compte
+  // nu baissait SANS QU'UNE COULEUR CRUE REVIENT. Le total relit les deux familles
+  // (une teinte doit passer par UNE variable, la sienne ou celle de la charte),
+  // et l'interdiction devient DIRECTE : les deux blocs redessinés sont pesés au
+  // hex et au rgba, et ne doivent RIEN peser.
+  const accents = (pageAbsences.match(/var\(--(?:abs|charte)-(?:amber|coral|emerald|orange|aplat|encre|douce)\)/g) || [])
+  expect(accents.length).toBeGreaterThan(45)
   expect((pageAbsences.match(/var\(--abs-coral\)/g) || []).length).toBeGreaterThan(5)
   expect((pageAbsences.match(/var\(--abs-emerald\)/g) || []).length).toBeGreaterThan(3)
   expect((pageAbsences.match(/var\(--abs-orange\)/g) || []).length).toBeGreaterThan(3)
+  for (const [début, fin] of [
+    ['<div className="abs-demandes">', '{activeTab === \'config_conges\''],
+    ["{activeTab === 'config_conges' && (", '</main>'],
+  ]) {
+    const i = pageAbsences.indexOf(début)
+    const j = pageAbsences.indexOf(fin, i)
+    expect(i, `bloc introuvable : ${début}`).toBeGreaterThan(-1)
+    expect(j, `fin de bloc introuvable après ${début}`).toBeGreaterThan(i)
+    const bloc = pageAbsences.slice(i, j)
+    expect(bloc).not.toMatch(/#[0-9A-F]{6}/i)
+    expect(bloc).not.toMatch(/rgba?\(/)
+  }
 })
 
 it('13. les boutons et pastilles suivent les gabarits des autres pages', () => {

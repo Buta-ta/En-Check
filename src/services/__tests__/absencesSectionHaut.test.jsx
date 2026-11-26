@@ -72,12 +72,21 @@ describe('Absences · la section du haut, figure E', () => {
   })
 
   it("n'a plus de bouton clair/sombre, mais lit toujours le thème", () => {
+    // 27/11 : « enlève le bouton clair/sombre » le sortait de LA PAGE. 08/12 : « ramène
+    // la sidebar et le rail » — et le rail, lui, porte l'interrupteur de thème (c'est
+    // son office sur toutes les pages de la coque, `SidebarUnique` → `surTheme`). Donc
+    // la loi se relit, sans se relâcher : la page ne se DESSINE plus de bouton (pas de
+    // classe, pas d'icône, pas de `<style>`), elle ne fait que BRANCHER le rail. Un
+    // bouton de page en plus du rail serait la faute d'origine, en deux exemplaires.
     expect(porte(CODE_PAGE, 'abs-theme-toggle')).toBe(false)
-    expect(porte(CODE_PAGE, 'toggleTheme')).toBe(false)
+    expect(porte(CODE_PAGE, 'className="abs-theme')).toBe(false)
+    expect(CODE_PAGE.filter((l) => l.includes('toggleTheme')).every((l) => l.includes('surTheme') || l.includes('useTheme'))).toBe(true)
+    expect(porte(CODE_PAGE, 'surTheme={toggleTheme}')).toBe(true) // la page ne fait que brancher le rail
+    expect(porte(CODE_PAGE, '<SidebarUnique')).toBe(true)
     expect(CSS).not.toContain('.abs-theme-btn')
     const lucide = PAGE.match(/import \{([^}]*)\} from 'lucide-react'/)[1]
     expect(lucide).not.toMatch(/\bMoon\b|\bSun\b/) // plus d'icône de bascule à importer
-    expect(porte(CODE_PAGE, 'const { darkMode } = useTheme()')).toBe(true)
+    expect(porte(CODE_PAGE, 'const { darkMode, toggleTheme } = useTheme()')).toBe(true)
     expect(porte(CODE_PAGE, "data-theme={darkMode ? 'dark' : 'light'}")).toBe(true)
   })
 

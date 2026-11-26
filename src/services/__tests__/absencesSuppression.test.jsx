@@ -178,7 +178,7 @@ it('8. le calendrier transmet la suppression, et la page la branche', () => {
   const page = lire('src/pages/Absences.jsx')
   expect(page).not.toContain('linkedAbsence')
   const maybe = [...page.matchAll(/\.maybeSingle\(\)/g)]
-  expect(maybe).toHaveLength(1) // celui des paramètres de paie, sans rapport
+  expect(maybe).toHaveLength(2) // les paramètres de paie, et l'entreprise de l'admin non super qui rend sa pastille d'image au rail (08/12) : chacune sans rapport
   expect(page).toContain("from('payroll_settings')")
   // l'approbation garde le lien vers la demande
   expect(lire('src/pages/Absences.jsx')).toContain('leave_request_id: selectedRequest.id')

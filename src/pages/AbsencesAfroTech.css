@@ -2245,7 +2245,8 @@ button.abs-planche-corps:focus-visible {
    portée oui, et c'est la cascade qui l'exige. */
 .abs-page,
 .abs-cal {
-  --abs-pli-pas: 78px;                  /* le pas de ligne (200 → 278 → 356) */
+  --abs-pli-pas: var(--abs-pli-pas-semaine);      /* le pas de la semaine, en un seul écrit */
+  --abs-pli-pas-semaine: 78px;        /* le pas de ligne du dessin (200 → 278 → 356) */
   --abs-pli-rule: 3px;                  /* l'épaisseur des règles du plateau */
   --abs-pli-carré: 51px;                /* la pastille d'initiales, hors-tout */
   --abs-pli-planche: 40px;              /* la hauteur d'une planche (220..259) */
@@ -2306,6 +2307,10 @@ button.abs-planche-corps:focus-visible {
      mode mois » (fondateur, 12/12). Le solde du mois se lit dans l'étage Soldes de la
      page, pas dans la rive d'une vignette. Un seul jeton par mode, deux lectures. */
   --abs-pli-solde-mois: 0px;
+
+  /* les colonnes du tableau des soldes de l'onglet Configuration : la largeur du
+     champ se lit ICI, pas dans un plancher JavaScript (la loi du champ, encore). */
+  --abs-soldes-grille: minmax(180px, 2fr) repeat(4, minmax(80px, 1fr));
   --abs-pli-jauge-mois: none;
   /* le cran entre deux planches qui se chevauchent : une planche + un souffle.
      Le MÊME nombre sert à la montée de la planche et à la hauteur que la ligne
@@ -3098,31 +3103,573 @@ img.abs-pli-figure { border: 0 }
 .abs-pli-planche[data-trait='barré']:hover { background: var(--charte-surface) }
 
 /* LE MODE MOIS EST UNE VIGNETTE, PAS UNE SEMAINE PRESSÉE. Le dessin du 10/12 est
-   une semaine à sept colonnes de 145 ; le mois en donne trente et une de 36. Trois
-   choses n'y ont plus leur place, et le fondateur les a toutes signalées le 12/12
-   (« il y a bcp d'anomalie quand la grille passe en mode mois ») : la plaquette du
-   solde, qui mangeait trois jours et demi de champ sur une cellule de trente-six ;
-   le pli, qui envoyait les absents se faire hacher en pastilles pour une ligne vide ;
-   et l'étiquette de vingt pixels dans une planche de trente-six, qui débordait de
-   tous les côtés. Rien n'est supprimé du métier — le solde se lit à l'étage Soldes de
-   la page, le motif complet se lit dans le `title` et le tiroir. Et les valeurs sont
-   des JETONS relus par les règles, pas des règles récrites : un seul endroit où le
-   mois diffère de la semaine. */
+   une semaine à sept colonnes de 145 ; le mois en donne trente et une de 36. Tout
+   ce qui se mesure en sept n'y a plus sa place, et le fondateur les a toutes
+   signalées le 12/12 (« il y a bcp d'anomalie quand la grille passe en mode mois »),
+   puis re-signées le 08/12 sur sa propre capture :
+   · la plaquette du solde, qui mangeait trois jours et demi de champ ;
+   · le pli, qui envoyait les absents se faire hacher en pastilles pour une ligne vide ;
+   · l'étiquette de vingt pixels dans une planche de trente-six, qui débordait ;
+   · le peigne : trois traits par jour, soit UN TRAIT DE DEUX PIXELS TOUS LES DOUZE
+     PIXELS — sur une semaine, le même peigne fait vingt-quatre pixels de vide entre
+     deux poils, sur un mois il raye la page en zèbre ;
+   · la journée de vingt-deux pixels au tiers de cellule, qui flottait au milieu d'une
+     ligne de soixante-dix-huit : le mois n'a qu'un seul rang, sa piste EST la ligne ;
+   · la semaine de soixante-dix-huit pixels par employé, qui ne dit plus rien quand la
+     planche en fait quarante : le mois doit tenir DIX LIGNES là où la semaine en tient
+     cinq (« optimise l'espace pour moins scroller », 07/12) ;
+   · et la lettre du jour (« 4J 5V 6S ») collée au chiffre dans une cellule de trente-
+     six : trente et une étiquettes qui se touchent, cela ne se corrige pas en
+     rapprochant les mots, cela se corrige en n'en écrivant qu'un.
+   Rien n'est supprimé du métier — le solde se lit à l'étage Soldes de la page, le
+   motif complet se lit dans le `title` et le tiroir. Et les valeurs sont des JETONS
+   relus par les règles, pas des règles récrites : la moitié de quelque chose qui est
+   déjà une cote, jamais un nombre de plus. */
 .abs-cal[data-mode='mois'] {
   --abs-pli-solde: var(--abs-pli-solde-mois);
   --abs-pli-jauge: var(--abs-pli-jauge-mois);
+  --abs-pli-pas: calc(var(--abs-pli-pas-semaine) / 2);        /* 39 */
+  --abs-pli-entête: var(--abs-pli-pas);                        /* la vignette n'a pas
+                                                                  de cote d'entête
+                                                                  indépendante : bande =
+                                                                  ligne, et l'air que
+                                                                  l'on gagne, on le rend
+                                                                  au nombre de lignes */
+  --abs-pli-ciel: 0px;                                         /* plus d'air au-dessus
+                                                                  du lavage : la bande
+                                                                  EST le ciel */
+  --abs-pli-planche: var(--abs-pli-pas);                       /* la planche REMPLIT la
+                                                                  ligne : à 39 px de pas,
+                                                                  la planche de 40 du
+                                                                  dessin devient la ligne
+                                                                  elle-même ; ne rien
+                                                                  réduire vaut mieux que
+                                                                  deux cotes qui se
+                                                                  contredisent */
+  --abs-pli-empilement: 0px;                                   /* un seul rang : deux
+                                                                  absences qui se
+                                                                  touchent se confondent,
+                                                                  elles ne se décalent
+                                                                  pas — le mois se lit
+                                                                  en jours, pas en piles */
+  --abs-pli-carré: calc(var(--abs-pli-pas) - 2 * var(--charte-espace-1)); /* 33 : la
+                                                                  pastille d'initiales se
+                                                                  borne à la ligne, son
+                                                                  carré n'est pas un droit
+                                                                  de débord */
+  --abs-pli-rentrée: calc(2 * var(--abs-pli-pas));             /* la pile se referme à la
+                                                                  même distance ABSOLUE
+                                                                  qu'à la semaine (78) */
+  --abs-pli-tiers: 1;                                          /* un trait par jour */
+  --abs-pli-trait-hauteur: 100%;                               /* la journée descend du
+                                                                  ciel de la ligne à sa
+                                                                  règle */
+  /* la hachure du week-end garde sa LARGEUR de dessin (40, quatre pixels de plus
+     que la cellule du mois : le filet déborde d'un cheveu, il ne bave pas) mais
+     reprend sa HAUTEUR à la bande : à 100 % de large, un week-end de vignette se
+     hachait de six diagonales et non de deux — le zèbre du peigne, rejoué en
+     entête. */
+  --abs-pli-hachure-hauteur: calc(var(--abs-pli-pas) - var(--abs-pli-rule));
+}
+
+/* le peigne du mois : une RÈGLE PAR JOUR, pleine, à l'encre (la semaine, elle,
+   marque le TIERS de cellule en `--charte-bordure`). Une seule rive par bloc,
+   droite comprise : le septième jour suivant commence à la même frontière, et un
+   trait À DROITE ET À GAUCHE est un trait double — la loi de la couture, déjà
+   rencontrée dans le rang des demandes. */
+.abs-cal[data-mode='mois'] .abs-pli-piste {
+  background-image: linear-gradient(
+    90deg,
+    var(--charte-encre) 0 var(--abs-pli-trait),
+    transparent var(--abs-pli-trait)
+  );
+  background-size: calc(7 * var(--abs-pli-jour)) var(--abs-pli-trait-hauteur);
+}
+
+/* l'air du CONTENEUR se paye au souffle, pas au défilement : le mois referme sa
+   pile dans le premier pas (2 × 39 = 78, la distance absolue de la semaine), il
+   n'a donc pas besoin des huit pixels de chute à droite et en bas. Les garder,
+   c'était faire défiler la page de huit pixels pour une ombre absente. */
+.abs-cal[data-mode='mois'] .abs-cal-champ {
+  padding-right: 0;
+  padding-bottom: 0;
 }
 
 .abs-cal[data-mode='mois'] .abs-pli-jauge { display: none }
 .abs-cal[data-mode='mois'] .abs-pli-planche { font-size: var(--charte-taille-micro) }
-.abs-cal[data-mode='mois'] .abs-pli-statut { font-size: var(--charte-taille-micro) }
+
+/* Le mois n'a qu'un mot à dire par cellule : le quantième. La lettre du jour se
+   tait — trente et une étiquettes « 4J 5V 6S » écrites à vingt pixels dans
+   trente-six pixels se touchaient, et un mot qui déborde ne se corrige pas en
+   serrant les lettres, il se corrige en n'en écrivant qu'un. Le chiffre se centre
+   dans la bande : à la semaine, il se lit au talon de soixante-seize pixels, dans
+   le mois la bande EST la case (aucune marge à ôter, donc aucun nombre de plus). */
+.abs-cal[data-mode='mois'] .abs-cal-jour-nom { display: none }
+.abs-cal[data-mode='mois'] .abs-cal-jour {
+  align-items: center;
+  padding: 0;
+  font-size: var(--charte-taille-micro);
+}
+
+/* et le mot du statut se tait aussi : posé SOUS la planche (top: 100%), il
+   tombait sur la ligne du voisin dès que le pas descend à trente-neuf. À la
+   vignette, le statut se lit dans le trait de la planche — son porteur réel — et
+   en entier dans le tiroir, comme le motif. */
+.abs-cal[data-mode='mois'] .abs-pli-statut { display: none }
+
 
 /* Le repli ne déplace RIEN : à 650 px, le prénom se borne et la jauge se
    raccourcit. Les planches, les traits, le plomb et le lavage n'ont pas de règle
-   de largeur — c'est ce qui garde les colonnes d'aplomb à toute taille. */
+   de largeur — c'est ce qui garde les colonnes d'aplomb à toute taille.
+
+   ⚠️ CE BLOC EST LE SEUL 650 px de la rubrique : le rang des demandes, plus bas, y
+   pend aussi ses deux règles (une condition, un bloc — deux `@media` au même
+   seuil sont deux conditions qui se contrediront à la première retouche). */
 @media (max-width: 650px) {
   .abs-pli-nom { max-width: 110px }
   .abs-pli-jauge { width: calc(var(--abs-pli-jauge) / 2) }
   .abs-pli-comptes { flex-wrap: wrap; justify-content: flex-start }
   .abs-pli-deplier { position: static }
+  .abs-demandes-alerte { border-right: 0; border-bottom: var(--abs-pli-rule) solid var(--charte-encre) }
+  .abs-demandes-filtres { width: 100% }
+  /* l'onglet « configuration congés » : même seuil, même bloc (voir sa rubrique,
+     plus bas, qui ne contient AUCUN @media à elle) */
+  .abs-config-grille { grid-template-columns: 1fr }
+  .abs-config-tete { align-items: flex-start }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   🧺 LE RANG DES DEMANDES — l'alerte et les pastilles de statut
+   (08/12 : « retravaille cette section », capture à l'appui).
+
+   La capture montrait BANDEAU + QUATRE PASTILLES + FILET POINTILLÉ, trois objets
+   empilés : deux hauteurs perdues avant la première demande, un cerclage de 14 px
+   en pâtisserie, un filet pointillé qui ne cerclait rien (le registre, lui, est
+   cerclé de trois pixels d'encre pleine), et une couleur crue par pastille posée
+   en rgba à côté du texte. Le dessin de l'étage répond :
+
+   · UN SEUL RANG — l'alerte et le filtre sont deux segments du même bandeau,
+     séparés par la règle d'encre ; rien ne s'empile, donc rien de plus à scroller ;
+   · la règle est `--abs-pli-rule` (3), la même que le plateau : ici, le pointillé
+     est une couture manquée, pas un style ;
+   · l'alerte est LE SEUL objet rouge, et seulement quand elle a un objet — une
+     pastille de filtre n'a rien à signaler, elle se cerne d'encre ;
+   · la pastille de statut est la pince de la grille (carrée, 6 px, cerclée de 2,
+     pleine d'argile quand elle est en main) : une figure, deux usages, et pas un
+     rayon de plus à entretenir ;
+   · le compte est écrit en monospace, comme le nombre du plateau ;
+   · sur téléphone le rang se plie, mais sa couture ne se répète pas — ses deux
+     règles de 650 px pendent au bloc du pli, plus haut (un seuil, un bloc).
+   ═══════════════════════════════════════════════════════════ */
+.abs-demandes-rang {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  background: var(--charte-surface);
+  border: var(--abs-pli-rule) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+}
+
+.abs-demandes-segment {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  min-width: 0;
+}
+
+.abs-demandes-alerte {
+  flex: 1 1 260px;
+  border-right: var(--abs-pli-rule) solid var(--charte-encre);
+}
+
+/* le carré d'alerte est la pastille du plateau au gabarit du rang : 30 px cerclés,
+   remplis du rouge de la page, l'icogne posée dessus à 6 px de l'entrée */
+.abs-demandes-sceau {
+  width: var(--abs-pli-case);
+  height: var(--abs-pli-case);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: var(--abs-pli-encre) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--abs-coral);
+  color: var(--charte-blanc);
+}
+
+.abs-demandes-alerte p { margin: 0; min-width: 0 }
+
+.abs-demandes-alerte-nombre {
+  font-weight: 700;
+  color: var(--abs-coral);
+  font-size: var(--charte-taille-titre);
+}
+
+.abs-demandes-alerte-note {
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+
+.abs-demandes-filtres {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  flex-wrap: wrap;
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+}
+
+.abs-demandes-pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-1) var(--charte-espace-3);
+  background: transparent;
+  border: var(--charte-trait) solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-douce);
+  font-family: inherit;
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.abs-demandes-pastille:hover { border-color: var(--charte-encre); color: var(--charte-encre) }
+
+/* l'état se LIT comme la pince du pli : cerclée pleine, et la pastille du compte
+   retourne son ton (jamais la couleur seule — C7) */
+.abs-demandes-pastille[aria-pressed='true'] {
+  background: var(--charte-aplat);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+
+.abs-demandes-pastille:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+.abs-demandes-compte {
+  font-family: var(--charte-mono);
+  font-weight: 700;
+  padding: 0 var(--charte-espace-1);
+  border: var(--charte-trait) solid currentColor;
+  border-radius: var(--charte-rayon-champ);
+}
+
+.abs-demandes-pastille[aria-pressed='true'] .abs-demandes-compte {
+  background: var(--charte-blanc);
+  color: var(--charte-encre);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ⚙️ L'ONGLET « CONFIGURATION CONGÉS » — la même feuille que la grille
+   (08/12 : « retravaille TOUTE l'onglet configuration congé », texte collé à
+   l'appui). Ce que la capture reprochait, et ce que ce bloc corrige :
+
+   · QUATRE CARTES EMPILÉES (motifs, configuration, recalcul, soldes) = quatre
+     cerclages, quatre fonds, quatre fois 40 px de respiration perdue. Le
+     recalcul n'est pas une carte, c'est un PIED de la carte des réglages ;
+   · le cerclage était `1px solid …line-soft` et le rayon 18 : le plateau, lui,
+     est cerclé de TROIS pixels d'encre à rayon 6. Un objet, deux figures — la
+     page se relit donc sur `--abs-pli-rule` et `--charte-rayon-champ`, sans
+     cote nouvelle ;
+   · « Enregistrer » se peignait d'un DÉGRADÉ ambre → ambre foncé et
+     « Nouveau motif » d'un dégradé brique, avec `#000` et `#FFF5E6` écrits à
+     la main : l'unique action pleine de la maison est l'argile
+     (`--charte-aplat`) sous du blanc cassé ;
+   · les aides « Ex: 1.75 jours/mois » et « Ex: 30 jours maximum » étaient
+     écrites SOUS le champ en 11 px dur, alors qu'un exemple se lit DEDANS (le
+     `placeholder`) — sous le champ, on écrit ce que le nombre DEVIENT ;
+   · sous « Référence de calcul », une ligne « Méthode d'acquisition des
+     congés » ne répondait à aucune question : c'était le titre du groupe,
+     égaré en note ;
+   · et la table des soldes répétait ses cerclages ligne par LIGNE, et
+     répétait le même nombre deux fois (« Solde == Acquis » quand rien n'est
+     pris) sans dire d'où vient l'« Acquis ». Le nombre nu se lit en monospace,
+     sa fabrication se lit en note.
+
+   ⚠️ CE BLOC N'A PAS DE `@media` : le seuil de 650 px de la feuille est le
+   bloc du pli (une condition, un bloc), et ses règles de repli y pendent.
+   ═══════════════════════════════════════════════════════════ */
+.abs-config-pile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-4);
+}
+
+.abs-config-carte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-4);
+  padding: var(--charte-espace-4);
+  background: var(--charte-surface);
+  border: var(--abs-pli-rule) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+}
+
+.abs-config-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-4);
+  flex-wrap: wrap;
+}
+
+.abs-config-tete h3 {
+  margin: 0;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+.abs-config-mono { font-family: var(--charte-mono) }
+
+.abs-config-note {
+  margin: var(--charte-espace-1) 0 0;
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+  max-width: 62ch;
+}
+
+/* le champ de réglage : l'étiquette en capitales micro (le portique du
+   tableau), le nombre dans un cerclage de DEUX pixels — un cerclage par
+   bordure : la carte a déjà le sien, deux encre l'une sur l'autre ne font
+   qu'une ligne double */
+.abs-config-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--charte-espace-4);
+}
+
+.abs-config-champ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-1);
+  min-width: 0;
+}
+
+.abs-config-champ > legend,
+.abs-config-etiquette {
+  padding: 0;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.abs-config-champ input,
+.abs-config-champ select {
+  box-sizing: border-box;
+  min-height: var(--abs-pli-case);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  background: transparent;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-corps);
+}
+
+.abs-config-champ input::placeholder {
+  color: var(--charte-bordure);
+  font-family: inherit;
+}
+
+.abs-config-aide {
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+
+/* l'action pleine, la seule : argile + blanc cassé, jamais un dégradé */
+.abs-config-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) var(--charte-espace-4);
+  background: var(--charte-aplat);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-blanc);
+  font-family: inherit;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.abs-config-action:disabled { opacity: 0.5; cursor: wait }
+
+/* la SECONDE action n'est pas pleine : cerclée d'encre, remplie au survol */
+.abs-config-action-secondaire {
+  background: transparent;
+  color: var(--charte-encre);
+}
+
+.abs-config-action-secondaire:hover { background: var(--charte-bordure) }
+
+/* le bas de carte : un pied cerclé PAR-DESSUS, pas une carte de plus */
+.abs-config-pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-4);
+  flex-wrap: wrap;
+  padding-top: var(--charte-espace-3);
+  border-top: var(--charte-trait) solid var(--charte-encre);
+}
+
+/* la bascule du report : une case de 22 (la pince du plateau) sur un rang
+   cerclé de deux, lue par `aria-checked` ET par son remplissage */
+.abs-config-bascule {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  cursor: pointer;
+}
+
+.abs-config-bascule input {
+  width: var(--abs-pli-pince);
+  height: var(--abs-pli-pince);
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--charte-aplat);
+}
+
+.abs-config-bascule-strong {
+  display: block;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+.abs-config-bascule-note {
+  display: block;
+  margin-top: var(--charte-espace-1);
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+
+/* ── la table des soldes : une règle par rangée, pas un cadre par ligne ── */
+.abs-soldes-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.abs-soldes-ligne {
+  display: grid;
+  grid-template-columns: var(--abs-soldes-grille);
+  gap: var(--charte-espace-3);
+  align-items: center;
+  padding: var(--charte-espace-3) 0;
+  border-top: var(--charte-trait) solid var(--charte-bordure);
+}
+
+.abs-soldes-tete {
+  padding-top: 0;
+  border-top: 0;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.abs-soldes-nombre {
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  color: var(--charte-encre);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.abs-soldes-fabrication {
+  display: block;
+  margin-top: var(--charte-espace-1);
+  font-size: var(--charte-taille-micro);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: right;
+  color: var(--charte-douce);
+}
+
+.abs-soldes-identité {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  min-width: 0;
+}
+
+/* la pastille d'initiales de la grille, au gabarit du rang : carrée, cerclée,
+   pleine d'argile — plus de dégradé ambre → émeraude pour trois lettres */
+.abs-soldes-sceau {
+  width: var(--abs-pli-pince);
+  height: var(--abs-pli-pince);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+}
+
+.abs-soldes-nom {
+  font-size: var(--charte-taille-corps);
+  font-weight: 600;
+  color: var(--charte-encre);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abs-soldes-matricule {
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+}
+
+/* le solde est le SEUL nombre de la rangée qu'on souligne : c'est lui qu'on
+   vient chercher ; négatif, il prend le rouge de l'alerte, pas un rouge de plus */
+.abs-soldes-solde {
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-titre);
+  font-weight: 800;
+  color: var(--charte-encre);
+  text-align: right;
+}
+
+.abs-soldes-solde[data-negatif='vrai'] { color: var(--abs-coral) }
+
+/* la jauge du pris : le même trait de 3 que la règle du plateau, peint du
+   rouge de l'alerte une fois la pleine mesure dépassée */
+.abs-soldes-jauge {
+  height: var(--abs-pli-trait);
+  margin-top: var(--charte-espace-1);
+  background: var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  overflow: hidden;
+}
+
+.abs-soldes-jauge-plein {
+  height: 100%;
+  background: var(--charte-encre);
+}
+
+.abs-soldes-jauge-plein[data-plein='vrai'] { background: var(--abs-coral) }

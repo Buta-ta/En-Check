@@ -610,11 +610,18 @@ export default function AbsencesCalendrier({
             {/* Le bilan de la PÉRIODE, jamais l'état du pli : trois lignes ouvertes
                 à la main ne changent pas le nombre d'absences. En mode jour, le
                 compte retombe sur `stats` — la feuille du jour n'a pas de registre. */}
+            {/* La phrase se lit, elle ne se devine pas : la capture du fondateur
+                (08/12) montrait « 4 RIEN CE MOIS-CI » — trois mots collés, un
+                verbe avalé, une casse imposée par la règle du bandeau. Le second
+                membre reprend donc le verbe du premier (« rien À SIGNALER ce
+                mois-ci ») : la loi du champ, encore, un seul mot écrit deux fois
+                vaut mieux que deux mots qui se contredisent. */}
             <span>
               <span className="abs-pli-compte-nombre">{mode === 'jour' ? stats.total : àSignaler}</span>{' '}
               à signaler
               <span aria-hidden="true"> · </span>
               <span className="abs-pli-compte-nombre">{mode === 'jour' ? 0 : rienÀSignaler.length}</span> rien{' '}
+              à signaler{' '}
               {mode === 'mois' ? 'ce mois-ci' : mode === 'jour' ? 'aujourd’hui' : 'cette semaine'}
             </span>
             {/* LE PLI EST RÉVERSIBLE. Le dessin dessine sa case qu'il y ait ou non

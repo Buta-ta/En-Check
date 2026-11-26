@@ -45,6 +45,39 @@ export const getMotifConfig = (id, motifs = MOTIFS_PAR_DEFAUT) =>
 
 export const getStatutConfig = (id) => STATUTS_ABSENCE[id] || STATUTS_ABSENCE.en_attente
 
+/* ═══ LE NOM D'UNE COULEUR ═══
+   Une tuile de motif affichait `#10B981 · 2 absences` : la valeur technique
+   d'un sélecteur, lue comme du texte, est une anomalie (fondateur, 08/12). La
+   base garde l'hex (c'est lui qui peint), l'écran lit le NOM. Une couleur hors
+   palette n'est pas un code-barres : on dit qu'elle est libre, et le nuancier
+   reste à côté pour la montrer. */
+export const NOMS_COULEURS_MOTIFS = {
+  '#10B981': 'Vert sauge',
+  '#059669': 'Vert sapin',
+  '#3B82F6': 'Bleu ciel',
+  '#6366F1': 'Bleu nuit',
+  '#8B5CF6': 'Violet',
+  '#F59E0B': 'Ambre',
+  '#D97706': 'Ocra',
+  '#C25E28': 'Brique',
+  '#EF4444': 'Corail',
+  '#EC4899': 'Rose',
+  '#6B7280': 'Ardoise',
+  '#9CA3AF': 'Gris',
+  '#14B8A6': 'Lagune',
+  '#84CC16': 'Lime',
+}
+
+/** Le nom lisible d'une couleur de motif (`var(--abs-emerald)` et les teintes
+    libres compris) — jamais le hex brut, jamais une chaîne vide. */
+export const nomDeCouleur = (couleur) => {
+  const cle = (couleur || '').trim().toUpperCase()
+  if (NOMS_COULEURS_MOTIFS[cle]) return NOMS_COULEURS_MOTIFS[cle]
+  if (/^#[0-9A-F]{6}$/.test(cle)) return 'Couleur libre'
+  if (!cle) return 'Sans couleur'
+  return 'Couleur du thème'
+}
+
 /** Palette proposée au moment de personnaliser un motif */
 export const PALETTE_MOTIFS = [
   '#10B981', '#059669', '#3B82F6', '#6366F1', '#8B5CF6',
