@@ -43,3 +43,64 @@ que le premier rendu avait manqué : les pièces y sont deux fois plus grandes.
 - **« Aujourd'hui »** n'existe pas sur la maquette : il entre dans ce menu.
 - **survol, focus, thème sombre, mobile** : non dessinés. Déclinés depuis la
   charte, sans toucher à la géométrie du clair.
+
+---
+
+## 2ᵉ passe — la taille à l'écran (26/11, après retour utilisateur)
+
+Le dessin était juste, mais **trop gros** sur un écran de 1420 px. Il fallait
+le réduire sans le redessiner : la composition est une géométrie absolue
+mesurée, la déformer pièce par pièce aurait défait tout le travail de la
+première passe.
+
+### La planche
+
+Le bandeau est enveloppé dans `.pauses-v2-planche`, qui porte **un seul
+facteur d'échelle** :
+
+```css
+.pauses-v2-planche {
+  --pv-echelle: 1;
+  width: 1420px; height: 306px;
+  transform: scale(var(--pv-echelle));
+  transform-origin: top left;
+  margin-bottom: calc(16px - 306px * (1 - var(--pv-echelle)));
+  margin-right:  calc(-1420px * (1 - var(--pv-echelle)));
+}
+```
+
+`transform` ne change pas la boîte : la planche occupe toujours 1420 px dans
+le flux. Les deux marges négatives récupèrent la place, sinon le contenu
+suivant flotterait 100 à 300 px trop bas. **C'est le piège de cette
+approche** — sans elles, tout le reste de la page est décalé.
+
+### Les paliers
+
+| largeur d'écran | échelle | hauteur rendue |
+|---|---|---|
+| ≥ 1420 px | 1 | 306 |
+| 1300 – 1419 | 0,90 | 275 |
+| 1150 – 1299 | 0,82 | 251 |
+| 1030 – 1149 | 0,72 | 220 |
+| < 1030 | composition abandonnée → empilement | auto |
+
+Sous 1030 px, le dessin réduit donnerait des capitales de 9 px : on quitte
+la composition absolue pour un flux empilé. C'est un **compromis assumé** —
+la fidélité au dessin n'a de sens que si on peut le lire.
+
+### Deux pièges rencontrés
+
+1. **Un `<svg>` ne peut pas servir de planche.** Il découpe toujours son
+   contenu à son ratio : en `foreignObject`, les pièces en position absolue
+   sortaient du cadre (hauteur mesurée : 10 px), et `display: contents`
+   sur le SVG ne rend pas les enfants au flux. Approche abandonnée.
+2. **L'ordre des media queries compte.** Les règles de la composition
+   (absolues, largeurs en dur) et celles du mobile ont la même spécificité :
+   placé au milieu du fichier, le bloc mobile perdait l'arbitrage et le
+   bandeau restait en absolu sur téléphone (planche de 16 px, débordement).
+   **Le bloc mobile vit donc en fin de fichier.**
+
+### Réglage
+
+Pour réduire le bandeau d'un cran sur tous les écrans, baisser les trois
+paliers de 0,10 dans les media queries `1419`, `1300`, `1150`.
