@@ -262,8 +262,12 @@ describe('📐 le pli par employé', () => {
     // un montant à 50..52.
     const champ = nud(corps('.abs-cal-champ'))
     expect(champ).toContain('padding-left:var(--abs-pli-évasement)')
-    expect(champ).toContain('padding-bottom:var(--abs-pli-évasement)')
-    expect(champ).toContain('padding-right:var(--abs-pli-deuil)')
+    // l'éventail se REFERME dans le cadre au lieu de pendre dessous : en bas et à
+    // droite, seule la chute de l'ombre compte — un pas, pas une queue. Onze pixels
+    // de hauteur rendus à la page (« moins scroller »), et la `overflow-x` ne rogne
+    // plus que ce qui déborde vraiment.
+    expect(champ).toContain('padding-bottom:var(--abs-pli-pli)')
+    expect(champ).toContain('padding-right:var(--abs-pli-pli)')
     expect(cote('--abs-pli-pli')).toBe(8)
     // LE CHAMP BORNE SES JOURS, IL NE S'ÉTALE PAS SUR L'ÉCRAN. `width: max-content`
     // + `min-width: 100%` était une DOUBLE naissance : la largeur du contenu et
@@ -822,13 +826,17 @@ describe('📐 le pli par employé', () => {
     // x 34..37 pour un montant à 50..52, queues à y 692 et 703 pour un trait bas à
     // 680 (le 12/12, j'avais écrit 22 pour les deux ; le souffle et la pile ne sont
     // pas la même mesure).
-    expect(valeur('--abs-pli-deuil')).toBe(
-      'calc(var(--abs-pli-pli) + var(--abs-pli-rule))'
+    // et l'éventail, en calculs : seize est le double de huit, la pile est le recul
+    // plus la règle, l'évasement EST la pile (un seul nombre, deux usages), la
+    // rentrée se relit sur le pas de ligne — jamais sur un 390 posé à la main.
+    expect(valeur('--abs-pli-recul')).toBe('calc(2 * var(--abs-pli-pli))')
+    expect(valeur('--abs-pli-pile')).toBe(
+      'calc(var(--abs-pli-recul) + var(--abs-pli-rule))'
     )
-    expect(valeur('--abs-pli-pile')).toBe('calc(2 * var(--abs-pli-deuil))')
-    expect(valeur('--abs-pli-évasement')).toBe(
-      'calc(var(--abs-pli-pile) - var(--abs-pli-rule))'
-    )
+    expect(valeur('--abs-pli-évasement')).toBe('var(--abs-pli-pile)')
+    expect(valeur('--abs-pli-rentrée')).toBe('var(--abs-pli-pas)')
+    // `--abs-pli-deuil` (la queue de 11) est MORT avec les raiures droites
+    expect(PLI).not.toContain('--abs-pli-deuil')
     // et la pince se déduit de la case, jamais d'un 22 posé à la main
     expect(valeur('--abs-pli-pince')).toBe(
       'calc(var(--abs-pli-case) - var(--abs-pli-pli))'
@@ -918,25 +926,30 @@ describe('📐 le pli par employé', () => {
     // haut et finissent au niveau du trait du bas.
     const feuille = nud(PLI)
     expect(feuille).toContain('.abs-pli-plateau::before,.abs-pli-plateau::after{')
-    // une REGLE de trois, pas une boite : haut et bas a zero, une largeur geree par
-    // jeton, et une seule encre — la left border. Aucun `inset:0`, aucun cerclage
-    // complet, aucun fond : le sable du plateau recouvre, seul le depassement s'encre.
+    // une BANDE remplie, large de son recul plus la règle, taillée en parallélogramme
+    // par `clip-path`. Ni `inset: 0` (le cadre décalé), ni `border-left` sur toute la
+    // hauteur (la raiure droite), ni `rotate` (un trait de trois pixels tourné de
+    // 1,9° s'antialiasse et le dessin, lui, est net).
     expect(feuille).toContain(
-      'content:"";position:absolute;top:0;left:calc(-1*var(--abs-pli-rule));bottom:0;z-index:-1;box-sizing:border-box'
+      'content:"";position:absolute;top:0;height:100%;z-index:-1;background:var(--charte-encre);pointer-events:none'
     )
-    expect(feuille).toContain('border-left:var(--abs-pli-rule)solidvar(--charte-encre)')
     expect(feuille).not.toContain('inset:0')
-    expect(feuille).not.toContain('background:var(--charte-sable);pointer-events')
-    expect(feuille).toContain('pointer-events:none')
+    expect(feuille).not.toContain('border-left:var(--abs-pli-rule)')
+    expect(feuille).not.toContain('transform:rotate')
     // les deux decalages se deduisent du MEME jeton, l'un simple, l'autre double —
     // ecrire « -16px » a la main serait une cote orpheline ; la queue est le MEME
     // deuil, ecrit de bas en haut (`bottom:` neg), jamais un hauteur absolue
-    expect(feuille).toContain(
-      '.abs-pli-plateau::before{width:calc(2*(var(--abs-pli-pli)+var(--abs-pli-rule)));bottom:calc(-2*(var(--abs-pli-pli)+var(--abs-pli-rule)));transform:translateX(calc(-2*var(--abs-pli-pli)));}'
+    const éventail = feuille
+    expect(éventail).toContain(
+      '.abs-pli-plateau::before{left:calc(-1*var(--abs-pli-pile));width:calc(var(--abs-pli-pile)+var(--abs-pli-rule));'
     )
-    expect(feuille).toContain(
-      '.abs-pli-plateau::after{width:calc(var(--abs-pli-pli)+var(--abs-pli-rule));bottom:calc(-1*(var(--abs-pli-pli)+var(--abs-pli-rule)));transform:translateX(calc(-1*var(--abs-pli-pli)));}'
+    expect(éventail).toContain(
+      '.abs-pli-plateau::after{left:calc(-1*(var(--abs-pli-pli)+var(--abs-pli-rule)));'
     )
+    // les deux rentrées : cinq rangées pour la feuille du dessous, quatre pour celle
+    // du dedans — un pas d'éventail, deux écritures du même jeton
+    expect(éventail).toContain('calc(5*var(--abs-pli-rentrée))')
+    expect(éventail).toContain('calc(4*var(--abs-pli-rentrée))')
     // la pile est a GAUCHE seule : le dessin ne rend aucune feuille a droite (x
     // 1328..1337 y est l'ombre grise, pas un montant). Un `right:` ici serait le
     // double cadre que le fondateur refuse.
@@ -948,7 +961,7 @@ describe('📐 le pli par employé', () => {
     // rognée ne se lit plus pliée
     const champ = nud(corps('.abs-cal-champ'))
     expect(champ).toContain('padding-left:var(--abs-pli-évasement)')
-    expect(champ).toContain('padding-bottom:var(--abs-pli-évasement)')
+    expect(champ).toContain('padding-bottom:var(--abs-pli-pli)')
   })
 
   it('29. le pli est réversible : la case survit au geste qui la rendait inutile', () => {
@@ -1017,7 +1030,7 @@ describe('📐 le pli par employé', () => {
     const feuilles = nud(PLI.slice(PLI.indexOf('.abs-pli-plateau::before,'), PLI.indexOf('.abs-pli-plateau::before {')))
     expect(feuilles).toContain('.abs-pli-plateau::before,.abs-pli-plateau::after{')
     expect(feuilles).toContain('z-index:-1')
-    expect(feuilles).toContain('border-left:var(--abs-pli-rule)solidvar(--charte-encre)')
+    expect(feuilles).toContain('background:var(--charte-encre)')
     // et le plateau ne DOIT pas se garder d'air pour sa pile en padding interne : la
     // gouttière est payée par le conteneur. Poser un `padding-left` sur le plateau
     // (ma premiere reponse au reproche) poussait chaque ligne de vingt-cinq pixels
@@ -1027,7 +1040,7 @@ describe('📐 le pli par employé', () => {
     // le souffle reste payé d\'avance : `overflow-x: auto` coupe la pile à ras
     const champ = nud(corps('.abs-cal-champ'))
     expect(champ).toContain('padding-left:var(--abs-pli-évasement)')
-    expect(champ).toContain('padding-bottom:var(--abs-pli-évasement)')
+    expect(champ).toContain('padding-bottom:var(--abs-pli-pli)')
   })
 
   it('31. le pli se referme sur la ligne seule, et la pince est dans la tête', () => {
@@ -1096,53 +1109,40 @@ describe('📐 le pli par employé', () => {
     expect(large.slice(trou, trou + 240)).toContain('class="abs-pli-durée">1 j<')
   })
   it('35. les rives des feuilles tombent aux cotes du dessin, au pixel', () => {
-    // CE VERROU NE LIT PAS UNE OPINION, il fait l'addition. Le dessin
-    // (`maquettes/absences-grille-2-pli.png`, 1376 × 768) rend le montant gauche du
-    // plateau à x 50..52, la première feuille à x 42..45, la seconde à x 34..37, et
-    // leurs queues à y 692 et 703 pour un trait bas bouclé à 683. Ramenés au bord
-    // EXTÉRIEUR du cadre, ce sont des reculs de 8..5 et 16..13, et des descentes de
-    // 9 et 20. La feuille, elle, ne pose que des `translateX` et des `bottom` négatifs
-    // issus des jetons — on vérifie que la somme donne exactement ces nombres.
-    const pli = cote('--abs-pli-pli')          // 8
-    const règle = cote('--abs-pli-rule')       // 3
-    // le recul d'une feuille = son pas, son encre = la règle (3 px de tracé)
+    // CE VERROU NE LIT PAS UNE OPINION, il fait l'addition. Profil d'encre du flanc
+    // gauche de `maquettes/absences-grille-2-pli.png`, montant à x 50..53 :
+    //   y 225 → x 34..37 et x 42..45 ;  y 300 → 37..39 et 43..46 ;  y 400 → 41..43
+    //   et 45..48 ;  y 434 → une seule encre (le dedans est rentré) ;  y 600 → 50..53
+    //   (le dessous est rentré). Ramené au bord EXTÉRIEUR du cadre : des reculs de
+    //   16..13 et 8..5 AU SOMMET, et rien du tout en bas.
+    const pli = cote('--abs-pli-pli')        // 8
+    const règle = cote('--abs-pli-rule')     // 3
+    // `--abs-pli-recul` et `--abs-pli-rentrée` sont des CALCULS, pas des px : ils se
+    // relisent d'abord comme tels (une aiguille qui ferait `Number('calc(…')`
+    // comparerait `NaN` à `NaN` et croirait mesurer quelque chose)
+    expect(valeur('--abs-pli-recul')).toBe('calc(2 * var(--abs-pli-pli))')
+    expect(valeur('--abs-pli-rentrée')).toBe('var(--abs-pli-pas)')
+    const recul = 2 * pli                    // 16
+    const pas = cote('--abs-pli-pas')       // 78
+    expect([recul, recul - règle]).toEqual([16, 13])
     expect([pli, pli - règle]).toEqual([8, 5])
-    expect([2 * pli, 2 * pli - règle]).toEqual([16, 13])
-    // la descente = le pas + la règle (11), doublée pour la seconde (22) ; le tracé
-    // s'arrête au bord du cadre, donc la queue visible est de dix et de vingt
-    expect(pli + règle).toBe(11)
-    expect(2 * (pli + règle)).toBe(22)
-    // `left: -règle` ramène la pseudo-boîte AU BORD EXTÉRIEUR du cadre, et le
-    // translateX la recule de son pas : l'encre commence donc à -8 et à -16, pas à
-    // -11 et -19 (l'erreur de ce cycle-ci, qui payait la règle deux fois).
-    const tète = nud(PLI.slice(PLI.indexOf('.abs-pli-plateau::before,'), PLI.indexOf('.abs-pli-plateau::before {')))
-    expect(tète).toContain('left:calc(-1*var(--abs-pli-rule))')
-    expect(tète).toContain('width:var(--abs-pli-rule)')
-    // les deux largeurs gèrent la queue : chacune vaut son pas plus la règle, une
-    // fois et deux fois — et le rayon du cadre se reporte sur les deux coins gauches
-    // ATTENTION AU GOLÉAGE : `corps()` lit la PREMIÈRE règle qui porte le
-    // sélecteur, et les deux feuilles sont écrites dans une règle à deux sélecteurs
-    // accolés — `corps('.abs-pli-plateau::after')` retombe donc sur la règle commune.
-    // Les corps propres se cherchent dans la feuille nudée, telle quelle.
-    const nudPLI = nud(PLI)
-    // la règle PROPRE, pas la commune : elle se reconnaît à ce qu'un `}` (ou le
-    // début de la rubrique) précède le sélecteur — la règle à deux sélecteurs, elle,
-    // a une virgule juste avant `::after`.
-    const corpsPropre = (pseudo) => {
-      const re = new RegExp(`(?:^|\\})\\s*\\.abs-pli-plateau::${pseudo}\\{[^}]*\\}`)
-      return (nudPLI.match(re) || [''])[0]
-    }
-    const bas = corpsPropre('before')
-    const milieu = corpsPropre('after')
-    expect(bas.length).toBeGreaterThan(0)
-    expect(milieu.length).toBeGreaterThan(0)
-    expect(bas).toContain('width:calc(2*(var(--abs-pli-pli)+var(--abs-pli-rule)))')
-    expect(milieu).toContain('width:calc(var(--abs-pli-pli)+var(--abs-pli-rule))')
-    expect(bas).toContain('bottom:calc(-2*(var(--abs-pli-pli)+var(--abs-pli-rule)))')
-    expect(milieu).toContain('bottom:calc(-1*(var(--abs-pli-pli)+var(--abs-pli-rule)))')
-    // et la rive droite ne prend RIEN : le dessin n'y montre qu'une ombre grise.
-    expect(bas).not.toContain('right:')
-    expect(milieu).not.toContain('right:')
+    // les rentrées, en pas de ligne : quatre rangées pour le dedans (312 → l'encre
+    // est déjà rentrée à y 434 pour un plateau ouvert à 200), cinq pour le dessous
+    // (390 → y 590, et le montant est seul à y 600)
+    expect(4 * pas).toBe(312)
+    expect(5 * pas).toBe(390)
+    // la bande part de l'ARÊTE EXTÉRIEURE du montant moins son recul : `left: -pile`
+    // pour le dessous (−19 dans la boîte de padding, soit −16 au bord du cadre), et
+    // `-(pli + règle)` pour le dedans (−8). Écrire les deux en `translateX`, comme au
+    // premier cycle, payait la règle deux fois.
+    const nœuds = nud(PLI).slice(
+      nud(PLI).indexOf('.abs-pli-plateau::before{'),
+      nud(PLI).indexOf('.abs-pli-comptes{')
+    )
+    expect(nœuds).not.toContain('right:')
+    // pas de `clip-path` sans points : le parallélogramme a bien quatre sommets
+    expect((nœuds.match(/polygon\(/g) || []).length).toBe(2)
+    expect((nœuds.match(/,/g) || []).length).toBeGreaterThanOrEqual(6)
   })
 
   it('36. le bandeau d\'outils est un rang, écrit une seule fois', () => {

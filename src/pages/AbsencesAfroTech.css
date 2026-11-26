@@ -2205,10 +2205,11 @@ button.abs-planche-corps:focus-visible {
      DEUX CADRES DÉCALÉS : le rendu montrait un double montant à droite et un double
      trait en haut, et zéro pile (fondateur, 13/12 : « c'est ça que tu appelles
      feuilles pliées »). Le décalage est un pas de 8 (`--abs-pli-pli`), la descente
-     le même pas plus la règle (`--abs-pli-deuil`, 11) ; la queue des deux,
-     `--abs-pli-pile` (22), ne paie QUE l'air du conteneur — jamais un padding
-     interne du plateau, qui décalerait les lignes hors de leur montant. Le souffle
-     s'écrit `--abs-pli-évasement` (19 : seize de reculs, trois d'air).
+     les traits se REFERMENT dans le montant en descendant (rentrées de quatre et
+     cinq pas) ; la pile — seize de recul plus trois de règle, dix-neuf — ne paie QUE
+     l'air du conteneur, jamais un padding interne du plateau, qui décalerait les
+     lignes hors de leur montant. Le souffle s'écrit `--abs-pli-évasement`, un seul
+     jeton pour la largeur de l'éventail.
    · repli : double règle (y 594-596 et 601-603, quatre pixels d'air entre les
      deux) puis un registre de 76 (604..680) : pastilles de 45 à x 74, 190, 306,
      429, 557, 683, 811, 943 — écartées de ~125, pas serrées les unes contre les
@@ -2268,21 +2269,22 @@ button.abs-planche-corps:focus-visible {
   /* LES FEUILLES PLIÉES. Le plateau n'est pas un cadre posé à plat : le dessin le
      rend comme une pile de feuilles repliées, dont deux rives dépassent en bas à
      gauche, à huit et à seize du montant (relevées à x 42..45 et x 34..37 pour un
-     montant à 50..52). Le décalage se lit HUIT, la descente est le décalage plus la
-     règle — un seul nombre à écrire, deux usages. `--abs-pli-évasement` est l'air
-     que l'éventail prend HORS du cadre : il décide des paddings du conteneur, jamais
-     de ceux du plateau (poser la gouttière DEDANS poussait chaque ligne de vingt-cinq
-     pixels hors de son montant — le dessin, lui, fait naître les lignes au bord
-     intérieur du trait, x 53 pour une règle à 50..52). */
-  --abs-pli-pli: 8px;
-  /* la descente d'une feuille = son pas + la règle ; la queue des deux = deux fois
-     ça. Un seul jeton pour la hauteur que le conteneur doit leur laisser. */
-  --abs-pli-deuil: calc(var(--abs-pli-pli) + var(--abs-pli-rule));           /* 11 */
-  --abs-pli-pile: calc(2 * var(--abs-pli-deuil));                             /* 22 */
-  /* l'air que la pile réclame AU DEHORS du plateau : les feuilles reculent de
-     dix-neuf, l'ombre tombe de onze, le plus grand des deux paie le souffle du
-     conteneur. Un seul nombre pour les deux rives, jamais un chiffre recopié. */
-  --abs-pli-évasement: calc(var(--abs-pli-pile) - var(--abs-pli-rule));      /* 19 */
+     montant à 50..53) — mais surtout : ces deux rives ne courent pas le long du
+     cadre, elles SE REFERMENT dedans en descendant (x 37..39 et 43..46 à y 300,
+     x 41..43 et 45..48 à y 400, plus une seule encre à y 434 puis à y 600). Deux
+     traits OBLIQUES, pas deux raiures droites : la pile vue de profil. Le recul se lit
+     huit et seize, la rentrée quatre et cinq pas de ligne. */
+  --abs-pli-pli: 8px;                    /* le recul de la feuille du dedans */
+  --abs-pli-recul: calc(2 * var(--abs-pli-pli));                              /* 16 */
+  /* l'unité de la RENTRÉE : une rangée. Écrite en pas de ligne, parce que c'est le
+     nombre du dessin et que l'éventail suit la hauteur de la pile (quatre pas pour la
+     feuille du dedans, cinq pour celle du dessous). */
+  --abs-pli-rentrée: var(--abs-pli-pas);
+  /* la pile entière = le plus grand recul plus la règle : dix-neuf. C'est l'air que
+     le CONTENEUR doit payer (`--abs-pli-évasement`), jamais un padding du plateau —
+     poser la gouttière dedans poussait chaque ligne hors de son montant. */
+  --abs-pli-pile: calc(var(--abs-pli-recul) + var(--abs-pli-rule));             /* 19 */
+  --abs-pli-évasement: var(--abs-pli-pile);
   --abs-pli-registre: 76px;             /* la hauteur du registre du pli */
   --abs-pli-ciel-repli: 4px;            /* l'air entre les deux règles du pli */
   --abs-pli-coin: 18px;                 /* le coin replié de chaque pastille */
@@ -2336,13 +2338,15 @@ button.abs-planche-corps:focus-visible {
      conteneur : les feuilles sont RAYÉES À DEDANS du plateau, elles n'ont plus
      besoin d'air. */
   min-width: max-content;
-  /* L'AIR DE LA PILE. Les feuilles sont peintes HORS du plateau (elles naissent à
-     son arête extérieure et reculent de dix-neuf) : sans ce souffle, la
-     `overflow-x` du conteneur les rognerait, et une feuille coupée ne se voit plus
-     pliée. À droite, c'est la chute de l'ombre qui paie, un deuil. */
+  /* L'AIR DE L'ÉVENTAIL. Les deux feuilles sont peintes HORS du plateau, par-devant
+     son arête (jusqu'à dix-neuf pixels au sommet) : sans ce souffle à gauche,
+     `overflow-x` du conteneur les rognerait, et une feuille coupée ne se lit plus
+     pliée. À droite et en bas, seule la chute de l'ombre compte — un pas — puisque
+     l'éventail se REFERME dans le cadre au lieu de pendre dessous : neuf pixels de
+     rendu, et onze de hauteur rendus à la page. */
   padding-left: var(--abs-pli-évasement);
-  padding-right: var(--abs-pli-deuil);
-  padding-bottom: var(--abs-pli-évasement);
+  padding-right: var(--abs-pli-pli);
+  padding-bottom: var(--abs-pli-pli);
 }
 
 .abs-cal-scroll {
@@ -2365,49 +2369,66 @@ button.abs-planche-corps:focus-visible {
   box-shadow: var(--abs-pli-pli) var(--abs-pli-pli) 0 0 var(--charte-bordure);
 }
 
-/* LES FEUILLES PLIÉES — LE DESSIN, À LA RÈGLE PRÈS (13/12). Ce que j'avais posé
-   était GEOMETRIQUEMENT mesuré et picturalement faux : deux pseudo-éléments `inset:
-   0` cerclés sur leurs QUATRE côtés, translatés de -8/-16. Résultat, sur mon rendu :
-   un double cadre qui remontait au-dessus du trait du haut et courait sur la rive
-   DROITE — deux montants et deux ombres de plus, et zéro pile. « c'est ça que tu
-   appelles feuilles pliées » (fondateur, image du plateau).
+/* LES DEUX FEUILLES — DES TRAITS OBLIQUES, PAS DES CADRES, PAS DES RAIURES DROITES.
+   Ce que j'ai posé successivement, et pourquoi le fondateur a eu raison deux fois :
 
-   Le dessin, lui, ne décale AUCUN CADRE : il raye le flanc gauche de trois parallèles
-   qui naissent AU NIVEAU du trait du haut et finissent AU NIVEAU du trait du bas —
-   x 34..37 et x 42..45 pour un montant à 50..52, chacune courbant au coin et
-   descendant de son pas (11 pour la première, 22 pour la seconde, y 681 à 692 à
-   703). C'est donc une RÈGLE DE TROIS PIXELS, pas une boîte :
+   1. deux pseudo-éléments `inset: 0` cerclés sur quatre côtés, translatés de −8/−16 :
+      un double cadre au-dessus du trait du haut et sur la rive DROITE, et zéro pile ;
+   2. une `border-left` de trois sur toute la hauteur, reculée de huit et seize : les
+      reculs étaient justes, la DROITURE était fausse — deux raiures parallèles se
+      lisaient comme une gouttière, pas comme une pile.
 
-     ::before → la feuille de dessous, à deux pas, descendue de deux deils
-     ::after  → la feuille du milieu, à un pas, descendue d'un deil
+   Le profil d'encre du flanc gauche, ligne à ligne (montant à x 50..53) :
 
-   et les deux se peignent derrièrE le fond du plateau (`z-index: -1`, isolé plus
-   haut), donc leur encre ne se voit que là où le sable ne la recouvre pas. */
+        y 225   x 34..37 et x 42..45     ← seize et huit de recul
+        y 300   x 37..39 et x 43..46
+        y 400   x 41..43 et x 45..48
+        y 434   x 42..55                 ← la feuille du dedans est RENTRÉE
+        y 600   x 50..53                 ← celle du dessous aussi
+
+   Chaque feuille est donc une BANDE remplie, large de son recul plus la règle, dont
+   un `clip-path` fait un parallélogramme de trois pixels : plein à l'arête du montant
+   en haut, refermé DANS le montant après cinq et quatre pas de ligne. Le trait se
+   construit (polygon) et ne se tourne pas (`rotate`) : une rotation de 1,9° sur un
+   tracé de trois pixels l'antialiaserait, et le dessin, lui, est net. Enfin la bande
+   se peint derrièrE le fond de sable (`z-index: -1`, isolé plus haut), donc sa pointe
+   rentrée s'efface sous le cadre sans rien avoir à soustraire quand la grille défile. */
 .abs-pli-plateau::before,
 .abs-pli-plateau::after {
   content: "";
   position: absolute;
   top: 0;
-  left: calc(-1 * var(--abs-pli-rule));   /* à l'arête extérieure du montant */
-  bottom: 0;
+  height: 100%;
   z-index: -1;
-  box-sizing: border-box;
-  width: var(--abs-pli-rule);
-  border-left: var(--abs-pli-rule) solid var(--charte-encre);
-  border-radius: var(--charte-rayon-champ) 0 0 var(--charte-rayon-champ);
+  background: var(--charte-encre);
   pointer-events: none;
 }
 
+/* la feuille du DESSOUS : seize de recul, refermée après cinq rangées */
 .abs-pli-plateau::before {
-  width: calc(2 * (var(--abs-pli-pli) + var(--abs-pli-rule)));
-  bottom: calc(-2 * (var(--abs-pli-pli) + var(--abs-pli-rule)));
-  transform: translateX(calc(-2 * var(--abs-pli-pli)));
+  left: calc(-1 * var(--abs-pli-pile));
+  width: calc(var(--abs-pli-pile) + var(--abs-pli-rule));
+  clip-path: polygon(
+    0 0,
+    var(--abs-pli-rule) 0,
+    calc(var(--abs-pli-pile) + var(--abs-pli-rule)) calc(5 * var(--abs-pli-rentrée)),
+    var(--abs-pli-pile) calc(5 * var(--abs-pli-rentrée))
+  );
 }
 
+/* la feuille du DEDANS : huit de recul, refermée après quatre rangées. Le décalage
+   et la rentrée ne sont pas deux nombres : la bande du dedans est la moitié de
+   l'autre au sommet, et sa rentrée est un pas plus courte — une seule loi d'éventail,
+   deux lectures. */
 .abs-pli-plateau::after {
-  width: calc(var(--abs-pli-pli) + var(--abs-pli-rule));
-  bottom: calc(-1 * (var(--abs-pli-pli) + var(--abs-pli-rule)));
-  transform: translateX(calc(-1 * var(--abs-pli-pli)));
+  left: calc(-1 * (var(--abs-pli-pli) + var(--abs-pli-rule)));
+  width: calc(var(--abs-pli-pli) + var(--abs-pli-rule) + var(--abs-pli-rule));
+  clip-path: polygon(
+    0 0,
+    var(--abs-pli-rule) 0,
+    calc(var(--abs-pli-pli) + var(--abs-pli-rule)) calc(4 * var(--abs-pli-rentrée)),
+    var(--abs-pli-pli) calc(4 * var(--abs-pli-rentrée))
+  );
 }
 
 /* LA LIGNE DE COMPTE — « 5 À SIGNALER · 9 RIEN CETTE SEMAINE », centrée sur le

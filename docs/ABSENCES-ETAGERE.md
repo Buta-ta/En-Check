@@ -707,38 +707,58 @@ positionné, donc `calc((100% - 2 × trait) × plein / 100%)`) et le sens.
 
 # La pile, refaite aux pixels du dessin (13/12)
 
-Deux mots du fondateur sur la même semaine, et ils tombent sur les deux seuls endroits
-où je dessinais au lieu de mesurer : *« c'est ça que tu appelles feuilles pliées,
+Deux fois le même reproche dans la même semaine, pour la même raison : je dessinais la
+pile au lieu de la relever. Ma première réponse d'aujourd'hui (des `border-left`
+verticales aux reculs mesurés) était **juste de nombre et fausse de droiture** — le
+profil d'encre du dessin dit autre chose, et c'est lui qui tranche. Deux mots du
+fondateur, donc, sur les deux seuls endroits où je dessinais au lieu de mesurer : *« c'est ça que tu appelles feuilles pliées,
 désolé mais là tu ne respectes absolument pas la maquette choisie »*, et
 *« optimise l'espace pour moins scroller. Retravaille cette section »* (la barre
 d'outils, `image-123.png`).
 
 ## Ce que le dessin rend, et ce que je rendais
 
-| | `maquettes/absences-grille-2-pli.png`, à la règle | ce que mon cycle précédent posait |
+Le profil d'encre du flanc gauche, **ligne à ligne** (montant du plateau à x 50..53) :
+
+| y | encre relevée à gauche du montant | lecture |
 |---|---|---|
-| la pile | **trois parallèles** sur le seul flanc gauche : montant à x 50..52, première feuille à x 42..45, seconde à x 34..37. Elles **naissent au niveau du trait du haut** (y 200) et **finissent au niveau du trait du bas** (y 680), en descendant d'un pas (queue à y 692) puis de deux (y 703) | deux pseudo-éléments `inset: 0` **cerclés sur quatre côtés**, translatés de −8 et −16 — un cadre complet de plus, pas une feuille |
-| la rive droite | rien : x 1328..1333 est une règle d'ombre (encre (34,10,1), verticale de 681 à 766), x 1334..1337 sa teinte grise (222,201,174) | la même boîte cerclée, donc **un double montant** à droite et un double trait en haut |
-| la chute | **un pas** de pile | `--abs-pli-ombre: 6` — une cote à part, que rien dans le dessin ne séparait du pas |
+| 205..209 | 50..53, puis 47..52 | le coin haut courbe : la première feuille naît du montant |
+| 225 | **34..37** et **42..45** | seize et huit de recul — les deux feuilles ouvertes |
+| 300 | 37..39 et 43..46 | elles se referment |
+| 400 | 41..43 et 45..48 | |
+| 434 | 42..55, une seule encre | la feuille du **dedans** est rentrée (4 pas de ligne) |
+| 600 | 50..53 | la feuille du **dessous** est rentrée (5 pas) |
 
-L'erreur n'était pas une erreur de dessin mais de **forme de donnée** : je cerclais des
-boîtes (un pseudo-élément = une boîte, ça vient tel quel) là où le dessin raye des
-lignes. La feuille s'écrit donc maintenant `border-left` de 3 sur une largeur gérée par
-jeton, `left: -règle`, `translateX(-pas)`, `bottom: -(pas + règle)` — et rien à droite.
+| | le dessin | cycle 55 | premier cycle 56 |
+|---|---|---|---|
+| la pile | deux **traits obliques** sur le seul flanc gauche, pleins au sommet (−16 et −8) et refermés **dans le montant** en descendant | deux pseudo-éléments `inset: 0` cerclés sur quatre côtés, translatés de −8/−16 | deux `border-left` verticales sur toute la hauteur : reculs justes, **droiture fausse** — une gouttière, pas une pile |
+| la rive droite | rien d'autre qu'une ombre : x 1328..1333 encre, x 1334..1337 teinte grise (222,201,174) | la même boîte cerclée → un double montant | — |
+| la chute | un pas de pile | `--abs-pli-ombre: 6`, cote à part | l'ombre se relit sur `--abs-pli-pli` |
 
-    --abs-pli-pli: 8px                                   le pas des feuilles (x 42..45 ← x 50)
-    --abs-pli-deuil: calc(pli + rule)         →  11px    la descente d'une feuille
-    --abs-pli-pile: calc(2 * deuil)           →  22px    la queue des deux
-    --abs-pli-évasement: calc(pile − rule)     →  19px    l'air HORS du cadre, à gauche et en bas
-    box-shadow: var(--abs-pli-pli) var(--abs-pli-pli) 0 0 var(--charte-bordure)
+Chaque feuille est donc **une bande remplie** — large du recul plus la règle — taillée
+en parallélogramme par un `clip-path` à quatre sommets :
 
-Deux nombres disparaissent du dépôt avec cette correction : `--abs-pli-ombre` (la chute
-se relit sur le pas de la pile) et le `padding-left` que j'avais posé sur le plateau en
-croyant devoir y loger la gouttière — le dessin fait naître les lignes **au bord
-intérieur du montant** (x 53 pour une règle à 50..52), donc la pile se paye devant le
-cadre, jamais dedans. Un verrou le dit (35 : la somme des reculs, 8·5 et 16·13, et des
-descendues de 11 et 22, retombent aux cotes relevées) et un autre interdit le padding
-interne (28).
+    --abs-pli-pli: 8px                                      le recul du dedans
+    --abs-pli-recul: calc(2 * var(--abs-pli-pli))     →  16px   celui du dessous
+    --abs-pli-rentrée: var(--abs-pli-pas)              →  78px   l'unité d'éventail
+    --abs-pli-pile: calc(recul + rule)                 →  19px   la bande entière
+    --abs-pli-évasement: var(--abs-pli-pile)                    l'air du CONTENEUR seul
+    ::before → polygon(0 0, 3px 0, 19px 5×rentrée, 16px 5×rentrée)
+    ::after  → polygon(0 0, 3px 0, 11px 4×rentrée,  8px 4×rentrée)
+
+Le trait se **construit**, il ne se tourne pas : une rotation de 1,9° sur un tracé de
+trois pixels l'antialiaserait, et le dessin est net. La pointe rentrée retombe sous le
+fond de sable du plateau (`z-index: -1`, isolé), donc la forme n'a rien à soustraire
+quand la grille défile. Comme l'éventail se referme au lieu de pendre, le souffle du
+bas et de droite n'est plus la queue de la pile mais la seule chute de l'ombre — un pas
+au lieu de vingt-deux : onze pixels de hauteur rendus à la page.
+
+**Ce que je ne rends pas, et pourquoi.** Sous le trait du bas (y 681..766), le fichier
+garde deux verticales de trois pixels, x 51..54 et x 1330..1333, qui courent jusqu'au
+bord de l'image. Le dessin est coupé à 768 : ce sont les montants d'un **support** dont
+on ne voit pas la fin, pas une décoration finie. Les inventer en `::after` du registre
+aurait été ajouter au dessin au lieu de le continuer — je le signale et je le pose dès
+que tu me dis si la planche a une fin (et à combien).
 
 ## Le rang d'outils, qui en faisait trois
 
@@ -794,6 +814,6 @@ erreur d'exécution : sans aiguille, il ne se voit que sur l'image.
 |---|---|
 | `npx vitest run` | **199 fichiers ✓ · 2 847 tests ✓** — pli **36** verrous (34, 35, 36 sont neufs), tringle 24, modes 21, rendu 10, section haute / étagère / charte 46 |
 | échec préexistant, étranger à la page | `alerteHebdoSansPaie.test.js` : 5 tests en timeout de 5 s **aussi sur `8ac940c` sans mes changements** (vérifié en remisant) ; rien à voir avec les absences, rien n'y a été touché |
-| verrous réécrits à la mesure, pas relâchés | 3 (l'ombre se relit sur le pas ; le champ ne s'étale plus), 16 (la pince de ligne se déduit de la case), 22 (mort de `--abs-pli-ombre`, `évasement` 22 → 19, `deuil`/`pile`/`pince` écrits en calculs), 28 (la feuille est une règle, pas une boîte : `not.toContain('inset:0')`), 30 (le plateau ne se garde plus d'air en padding interne) ; 36 porte la loi de portée du bandeau |
+| verrous réécrits à la mesure, pas relâchés | 3 (l'ombre se relit sur le pas, le souffle du bas aussi, et le champ ne s'étale plus), 16 (la pince de ligne se déduit de la case), 22 (mort de `--abs-pli-ombre` puis de `--abs-pli-deuil` ; `recul`/`pile`/`rentrée`/`pince` écrits en calculs), 28 (la feuille est une **bande clinquée** : ni `inset:0`, ni `border-left` droite, ni `transform:rotate`), 30 (le plateau ne se garde plus d'air en padding interne), 35 (l'arithmétique de l'éventail : 16·13 et 8·5 au sommet, rentrées à quatre et cinq pas) ; 36 porte la loi de portée du bandeau |
 | `npm run charte` | **inchangé** : 64 tailles · 43 marges · 27 rayons, recompté sur `git archive HEAD src` (8ac940c) **et** sur l'arbre d'aujourd'hui — aucune valeur neuve |
-| `npm run build` · `npx eslint` | ✓ (20,1 s) · 3 erreurs et 3 warnings **préexistants** dans `Absences.jsx`, aucun neuf |
+| `npm run build` · `npx eslint` | ✓ (23,1 s) · 3 erreurs et 3 warnings **préexistants** dans `Absences.jsx`, aucun neuf |
