@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AlertTriangle,
   ArrowLeft,
   BarChart3,
   Building2,
@@ -13,7 +12,6 @@ import {
   Coffee,
   Download,
   FileText,
-  Hourglass,
   PieChart,
   Plus,
   Search,
@@ -378,6 +376,74 @@ export function PausesCulturalHero({
   )
 }
 
+
+/*  ═══════════════════════════════════════════════════════════════════════
+    LA TASSE DES QUATRE TUILES (26/11, maquette B « pause-café »)
+    ═══════════════════════════════════════════════════════════════════════
+    Une pause, c'est une tasse. Chaque tuile en porte une, en trait d'encre :
+    la vapeur monte de la boîte, l'anse se décroche à droite, la ligne de
+    niveau reste en pointillés tant qu'aucune pause n'est comptée. Le chiffre
+    s'imprime SUR la porcelaine — c'est le seul endroit de la page où un
+    nombre grandit là où on l'attend.
+
+    Tout est en `currentColor` sauf la porcelaine : la tuile choisit sa
+    teinte (`--pv-kpi-teinte`), le dessin suit. Aucune couleur écrite ici.
+    ═══════════════════════════════════════════════════════════════════════ */
+function TassePause({ niveau = 0 }) {
+  return (
+    <svg
+      className="pauses-v2-tasse"
+      viewBox="0 0 152 96"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {/*  La vapeur : deux volutes, celle de gauche plus haute — une tasse
+          qui fume n'est jamais symétrique. */}
+      <g className="pauses-v2-tasse-vapeur" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d="M52 30c-5-6 4-10-1-16" />
+        <path d="M66 26c-4-5 3-8-1-13" />
+      </g>
+      {/*  L'anse, dessinée d'un trait qui revient sur la panse. */}
+      <path
+        d="M104 44h8a15 15 0 0 1 0 30h-10"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+      {/*  La panse : fond bombé, ouverture évasée. */}
+      <path
+        d="M34 40h72l-5 30a16 16 0 0 1-16 14H55a16 16 0 0 1-16-14L34 40Z"
+        fill="var(--pv-tasse-porcelaine)"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinejoin="round"
+      />
+      {/*  Le bord de l'ouverture. */}
+      <path d="M30 40h80" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      {/*  La ligne de niveau : pointillés quand la tasse est vide, trait
+          plein et rempli quand elle ne l'est plus. */}
+      <g className="pauses-v2-tasse-niveau">
+        <path
+          d="M42 66h56"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeDasharray={niveau > 0 ? '0' : '3 4'}
+          opacity={niveau > 0 ? 1 : 0.45}
+        />
+        {niveau > 0 ? (
+          <path
+            d={`M42 66h56v6a14 14 0 0 1-14 12H56a14 14 0 0 1-14-12v-6Z`}
+            fill="currentColor"
+            opacity="0.22"
+          />
+        ) : null}
+      </g>
+    </svg>
+  )
+}
+
 export function PausesExecutiveKpis({
   paies = [],
   activeTab = 'all',
@@ -453,7 +519,6 @@ export function PausesExecutiveKpis({
         <button
           type="button"
           className={`pauses-v2-kpi-card is-amber${subFilter === 'en_direct' ? ' is-selected' : ''}`}
-          style={{ position: 'relative', overflow: 'hidden' }}
           onClick={() => {
             if (subFilter === 'en_direct') {
               onSelectTab && onSelectTab('all')
@@ -465,14 +530,14 @@ export function PausesExecutiveKpis({
           }}
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
+          <div className="pauses-v2-tasse-boite" data-teinte="ambre">
+            <TassePause niveau={openPauses.length} />
+            <strong className="pauses-v2-kpi-number">
+              {String(openPauses.length).padStart(2, '0')}
+            </strong>
+          </div>
           <div className="pauses-v2-kpi-top">
-            <div className="pauses-v2-kpi-circle">
-              <Coffee size={24} />
-            </div>
             <div>
-              <strong className="pauses-v2-kpi-number">
-                {String(openPauses.length).padStart(2, '0')}
-              </strong>
               <span className="pauses-v2-kpi-label">En pause en direct</span>
               {openPauses.length > 0 && (
                 <span className="pauses-v2-kpi-live-sub">
@@ -490,7 +555,7 @@ export function PausesExecutiveKpis({
                 className="pauses-v2-kpi-fill"
                 style={{
                   width: `${openPauses.length > 0 ? Math.max(16, openPct) : 0}%`,
-                  background: 'linear-gradient(90deg, #f0b254, #d97706)',
+                  background: 'var(--charte-aplat)',
                 }}
               />
             </div>
@@ -502,21 +567,20 @@ export function PausesExecutiveKpis({
         <button
           type="button"
           className={`pauses-v2-kpi-card is-emerald${activeTab === 'reelles' && subFilter !== 'en_direct' ? ' is-selected' : ''}`}
-          style={{ position: 'relative', overflow: 'hidden' }}
           onClick={() => {
             onSelectTab && onSelectTab(activeTab === 'reelles' && subFilter === 'all' ? 'all' : 'reelles')
             onSelectSubFilter && onSelectSubFilter('all')
           }}
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
+          <div className="pauses-v2-tasse-boite" data-teinte="emeraude">
+            <TassePause niveau={realPauses.length} />
+            <strong className="pauses-v2-kpi-number">
+              {String(realPauses.length).padStart(2, '0')}
+            </strong>
+          </div>
           <div className="pauses-v2-kpi-top">
-            <div className="pauses-v2-kpi-circle">
-              <Users size={24} />
-            </div>
             <div>
-              <strong className="pauses-v2-kpi-number">
-                {String(realPauses.length).padStart(2, '0')}
-              </strong>
               <span className="pauses-v2-kpi-label">
                 Pauses réelles · {formatDuree(realDurationMin)}
               </span>
@@ -528,7 +592,7 @@ export function PausesExecutiveKpis({
                 className="pauses-v2-kpi-fill"
                 style={{
                   width: `${realPauses.length > 0 ? Math.max(12, realPct) : 0}%`,
-                  background: 'linear-gradient(90deg, #10b981, #34d399)',
+                  background: 'var(--charte-succes)',
                 }}
               />
             </div>
@@ -540,21 +604,20 @@ export function PausesExecutiveKpis({
         <button
           type="button"
           className={`pauses-v2-kpi-card is-copper${activeTab === 'presumees' ? ' is-selected' : ''}`}
-          style={{ position: 'relative', overflow: 'hidden' }}
           onClick={() => {
             onSelectTab && onSelectTab(activeTab === 'presumees' ? 'all' : 'presumees')
             onSelectSubFilter && onSelectSubFilter('presumees_a_statuer')
           }}
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
+          <div className="pauses-v2-tasse-boite" data-teinte="terre">
+            <TassePause niveau={presumedPending.length} />
+            <strong className="pauses-v2-kpi-number">
+              {String(presumedPending.length).padStart(2, '0')}
+            </strong>
+          </div>
           <div className="pauses-v2-kpi-top">
-            <div className="pauses-v2-kpi-circle">
-              <Hourglass size={23} />
-            </div>
             <div>
-              <strong className="pauses-v2-kpi-number">
-                {String(presumedPending.length).padStart(2, '0')}
-              </strong>
               <span className="pauses-v2-kpi-label">Présumées à statuer</span>
             </div>
           </div>
@@ -564,7 +627,7 @@ export function PausesExecutiveKpis({
                 className="pauses-v2-kpi-fill"
                 style={{
                   width: `${presumedPending.length > 0 ? Math.max(12, presumedPct) : 0}%`,
-                  background: 'linear-gradient(90deg, #e07a38, #f0b254)',
+                  background: 'var(--charte-texte)',
                 }}
               />
             </div>
@@ -576,21 +639,20 @@ export function PausesExecutiveKpis({
         <button
           type="button"
           className={`pauses-v2-kpi-card is-coral${activeTab === 'anomalies' ? ' is-selected' : ''}`}
-          style={{ position: 'relative', overflow: 'hidden' }}
           onClick={() => {
             onSelectTab && onSelectTab(activeTab === 'anomalies' ? 'all' : 'anomalies')
             onSelectSubFilter && onSelectSubFilter('anomalies_toutes')
           }}
         >
           <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
+          <div className="pauses-v2-tasse-boite" data-teinte="corail">
+            <TassePause niveau={anomaliesPauses.length} />
+            <strong className="pauses-v2-kpi-number">
+              {String(anomaliesPauses.length).padStart(2, '0')}
+            </strong>
+          </div>
           <div className="pauses-v2-kpi-top">
-            <div className="pauses-v2-kpi-circle">
-              <AlertTriangle size={23} />
-            </div>
             <div>
-              <strong className="pauses-v2-kpi-number">
-                {String(anomaliesPauses.length).padStart(2, '0')}
-              </strong>
               <span className="pauses-v2-kpi-label">
                 {anomaliesPauses.length > 1 ? 'Anomalies' : 'Anomalie'}
               </span>
@@ -602,7 +664,7 @@ export function PausesExecutiveKpis({
                 className="pauses-v2-kpi-fill"
                 style={{
                   width: `${anomaliesPauses.length > 0 ? Math.max(10, anomaliesPct) : 0}%`,
-                  background: 'linear-gradient(90deg, #ef4444, #f87171)',
+                  background: 'var(--charte-erreur)',
                 }}
               />
             </div>
@@ -727,7 +789,11 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
   return (
     <section className="pauses-v2-charts-grid" aria-label="Graphiques analytiques des pauses">
       {/* GRAPHIQUE GAUCHE : ACTIVITÉ DES PAUSES (HISTOGRAMME HORAIRE) */}
-      <article className="pauses-v2-panel">
+      <article className="pauses-v2-panel pauses-v2-planche-service">
+        {/*  Les deux trous de la planche : c'est ce qui fait qu'on la
+            reconnaît comme un objet de cuisine et non comme une carte. */}
+        <span className="pauses-v2-planche-trou pauses-v2-planche-trou--g" aria-hidden="true" />
+        <span className="pauses-v2-planche-trou pauses-v2-planche-trou--d" aria-hidden="true" />
         <div className="pauses-v2-panel-head">
           <div className="pauses-v2-panel-title-wrap">
             <div className="pauses-v2-panel-icon">
@@ -757,12 +823,6 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
           role="img"
           aria-label="Histogramme du nombre de pauses par tranche horaire"
         >
-          <defs>
-            <linearGradient id="pauses-v2-bar-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f2a950" />
-              <stop offset="100%" stopColor="#d97228" />
-            </linearGradient>
-          </defs>
 
           {/* Lignes de grille horizontales */}
           {yTicks.map((t, idx) => (
@@ -832,17 +892,54 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
                   height={148}
                   rx="6"
                 />
-                <rect
-                  x={xCenter - barWidth / 2}
-                  y={baseLine - barHeight}
-                  width={barWidth}
-                  height={barHeight}
-                  rx="4"
-                  fill={slot.count > 0 ? 'url(#pauses-v2-bar-grad)' : 'currentColor'}
-                  fillOpacity={slot.count > 0 ? 1 : 0.14}
-                >
+                {/*  LA TASSE DE LA TRANCHE. Une petite tasse posée sur la
+                    planche ; sa VAPEUR monte proportionnellement au nombre
+                    de pauses. À zéro, aucune vapeur et la tasse reste en
+                    pointillés : on voit qu'il n'y a rien, pas qu'on a oublié.
+
+                    J'ai d'abord dessiné des cuillères debout. À 47 px de
+                    large, un cuilleron sur un manche se lit comme une
+                    épingle — joli en maquette, illisible à l'écran. La tasse
+                    tient dans la largeur, et c'est la vapeur (verticale) qui
+                    porte la donnée. */}
+                <g className={`pauses-v2-tasse-slot${slot.count > 0 ? ' is-pleine' : ''}`}>
                   <title>{`${slot.label} · ${slot.count} pause(s)`}</title>
-                </rect>
+                  {slot.count > 0 ? (
+                    <path
+                      className="pauses-v2-tasse-vapeur"
+                      d={`M${xCenter} ${baseLine - 28} c-7 -8 7 -12 0 -20 c-6 -7 6 -10 0 -16`}
+                      style={{
+                        transformOrigin: `${xCenter}px ${baseLine - 28}px`,
+                        transform: `scale(1, ${(0.5 + 0.5 * (slot.count / Math.max(1, chartTopVal))).toFixed(2)})`,
+                      }}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeDasharray="3 3"
+                    />
+                  ) : null}
+                  <rect
+                    className="pauses-v2-tasse-corps"
+                    x={xCenter - 11}
+                    y={baseLine - 24}
+                    width="22"
+                    height="20"
+                    rx="4"
+                    fill={slot.count > 0 ? 'currentColor' : 'none'}
+                    fillOpacity={slot.count > 0 ? 0.18 : 0}
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeDasharray={slot.count > 0 ? '0' : '3 3'}
+                  />
+                  <path
+                    className="pauses-v2-tasse-anse"
+                    d={`M${xCenter + 11} ${baseLine - 19} h4 a6 6 0 0 1 0 11 h-4`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  />
+                </g>
                 {slot.count > 0 && (
                   <text
                     x={xCenter}
@@ -928,7 +1025,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
       </article>
 
       {/* GRAPHIQUE DROITE : RÉPARTITION DES PAUSES (DONUT + LÉGENDE ALIGNÉE) */}
-      <article className="pauses-v2-panel">
+      <article className="pauses-v2-panel pauses-v2-panneau-tasse">
         <div className="pauses-v2-panel-head">
           <div className="pauses-v2-panel-title-wrap">
             <div className="pauses-v2-panel-icon">
@@ -942,7 +1039,28 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
         </div>
 
         <div className="pauses-v2-donut-layout">
-          <div style={{ position: 'relative', width: 156, height: 156, margin: '0 auto' }}>
+          <div className="pauses-v2-tasse-dessus">
+            <svg
+              className="pauses-v2-tasse-dessus-anse"
+              viewBox="0 0 40 60"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                d="M4 12c16-6 28 4 28 18s-12 24-28 18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
+              <path
+                d="M4 12c16-6 28 4 28 18s-12 24-28 18"
+                fill="none"
+                stroke="var(--charte-surface)"
+                strokeWidth="5"
+                strokeLinecap="round"
+              />
+            </svg>
             <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%' }} aria-hidden="true">
               <circle
                 cx="60"
@@ -959,7 +1077,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
                   cy="60"
                   r="46"
                   fill="none"
-                  stroke="#10b981"
+                  stroke="var(--charte-succes)"
                   strokeWidth="14"
                   strokeDasharray={`${realArc} ${circumference}`}
                   transform="rotate(-90 60 60)"
@@ -971,7 +1089,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
                   cy="60"
                   r="46"
                   fill="none"
-                  stroke="#e07a38"
+                  stroke="var(--charte-aplat)"
                   strokeWidth="14"
                   strokeDasharray={`${presumedArc} ${circumference}`}
                   strokeDashoffset={-realArc}
@@ -994,7 +1112,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
               onClick={() => onSelectTab && onSelectTab('reelles')}
             >
               <div className="pauses-v2-legend-left">
-                <span className="pauses-v2-legend-dot" style={{ background: '#10b981' }} />
+                <span className="pauses-v2-legend-dot" style={{ background: 'var(--charte-succes)' }} />
                 <div>
                   <strong>Pauses réelles</strong>
                   <small>
@@ -1011,7 +1129,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
               onClick={() => onSelectTab && onSelectTab('presumees')}
             >
               <div className="pauses-v2-legend-left">
-                <span className="pauses-v2-legend-dot" style={{ background: '#e07a38' }} />
+                <span className="pauses-v2-legend-dot" style={{ background: 'var(--charte-aplat)' }} />
                 <div>
                   <strong>Pauses présumées</strong>
                   <small>
@@ -1029,7 +1147,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
               style={{ borderBottomColor: 'transparent' }}
             >
               <div className="pauses-v2-legend-left">
-                <span className="pauses-v2-legend-dot" style={{ background: '#ef4444' }} />
+                <span className="pauses-v2-legend-dot" style={{ background: 'var(--charte-erreur)' }} />
                 <div>
                   <strong>Anomalies</strong>
                   <small>
@@ -1596,7 +1714,7 @@ export function PausesCollaborateursSection({
                           </span>
                         ) : isReal ? (
                           <span className="pauses-v2-status-pill is-real">
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981' }} />
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--charte-succes)' }} />
                             <span>
                               {p.source === 'admin'
                                 ? 'Pause réelle (admin)'
