@@ -3965,3 +3965,195 @@
   .jf-seuil-item:nth-child(3) { padding-left: 0; border-left: 0; }
   .jf-seuil-bandeau > .ec-cultural-band { height: 22px; min-height: 22px; }
 }
+
+/* ═══ LE CADRE DU SEUIL : MOITIÉ MOINS HAUT, ET CENTRÉ ═════════════════════
+
+     Sa capture du 26/11 : la bande fait 200 px de haut et 1 300 de large pour
+     trois faits alignés à gauche, donc 800 px de vide au milieu. Deux causes,
+     et il fallait les deux :
+
+       · les DEUX bandeaux de motif mesuraient 27 px chacun — 54 px de décor
+         pour 44 px de contenu ;
+       · la bande gardait `flex: 1 1 auto`, donc elle s'étirait sur toute la
+         largeur de la page au lieu de tenir son contenu.
+
+     Elle tient maintenant son contenu et se centre sous le titre. Le bloc
+     entier fait ~66 px, bandeaux compris. Sur petit écran, les trois faits se
+     replient en colonne — et le cadre, lui, épouse la largeur disponible. */
+.jf-seuil-bandeau {
+  width: fit-content;
+  max-width: calc(100% - 60px);
+  margin: 2px auto 18px;
+  border-radius: var(--jf-radius-capsule);
+}
+.jf-seuil-bandeau > .ec-cultural-band {
+  height: 12px;
+  min-height: 12px;
+}
+.jf-seuil {
+  min-height: 0;
+  padding: 6px 16px;
+  justify-content: center;
+}
+.jf-seuil-gauche {
+  flex: 0 1 auto;
+  justify-content: center;
+}
+.jf-seuil-item { padding: 0 16px; }
+.jf-seuil-libelle { font-size: 7.5px; }
+.jf-seuil-valeur { font-size: 11.5px; }
+.jf-seuil-logo { width: 16px; height: 16px; }
+.jf-seuil-valeur svg { width: 11px; height: 11px; }
+
+/*  Tablette : la bande se cale à gauche de la page, sans se coller au bord. */
+@media (max-width: 1100px) {
+  .jf-seuil-bandeau { width: auto; max-width: none; margin: 2px 14px 16px; }
+  .jf-seuil { justify-content: flex-start; }
+  .jf-seuil-gauche { justify-content: flex-start; }
+}
+
+/*  Téléphone : les trois faits passent l'un sous l'autre, chacun sa ligne,
+     et le cadre prend toute la largeur moins une gouttière. */
+@media (max-width: 720px) {
+  .jf-seuil-bandeau { margin: 2px 10px 14px; }
+  .jf-seuil { padding: 8px 12px; }
+  .jf-seuil-gauche {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    width: 100%;
+  }
+  .jf-seuil-item {
+    padding: 0;
+    justify-content: space-between;
+    border-left: 0;
+    border-top: 1px solid var(--charte-bordure);
+    padding-top: 6px;
+  }
+  .jf-seuil-item:first-child { border-top: 0; padding-top: 0; }
+  .jf-seuil-item + .jf-seuil-item { border-left: 0; }
+  .jf-seuil-libelle { font-size: 8px; }
+  .jf-seuil-valeur { font-size: 12.5px; }
+}
+
+/* ═══ RESPONSIVE, TOUTES TAILLES ═══════════════════════════════════════════
+
+     « Rends la page responsive en toute taille d'écran » (26/11).
+
+     On ne répare pas écran par écran : on donne à la page UNE règle de survie
+     qui vaut partout — rien ne pousse la page plus large que la fenêtre — puis
+     quatre paliers qui rangent vraiment les blocs.
+
+       · 1 200 px : le titre et les sceaux ne tiennent plus côte à côte ;
+       · 1 080 px : la frise de l'année passe au-dessus du registre ;
+       ·   900 px : la bande d'en-tête se replie en lignes ;
+       ·   720 px : tout s'empile, la frise devient une bande */
+.jf-page,
+.jf-coque,
+.jf-corps,
+.jf-registres,
+.jf-registre,
+.jf-frise,
+.jf-jour,
+.jf-jour-corps,
+.jf-entete,
+.jf-titre-bloc { min-width: 0; }
+
+.jf-page { overflow-x: clip; }
+.jf-jour-nom,
+.jf-mesure-detail,
+.jf-modele-nom { overflow-wrap: anywhere; }
+.jf-titre { overflow-wrap: break-word; hyphens: auto; }
+
+/*  1 200 px — le titre respire, les sceaux passent à la ligne suivante
+    plutôt que de comprimer le titre à 200 px. */
+@media (max-width: 1200px) {
+  .jf-entete { column-gap: 16px; }
+  .jf-sceaux { gap: 18px; padding: 6px 4px; }
+  .jf-sceaux .jf-mesures { gap: 18px; }
+  .jf-sceaux .jf-mesure { width: 88px; max-width: 88px; height: 88px; }
+  .jf-sceaux .jf-mesure-libelle { font-size: 6.8px; letter-spacing: 0.06em; }
+  .jf-sceaux .jf-mesure-valeur { font-size: 21px; }
+}
+
+/*  1 080 px — la frise quitte la colonne de gauche. En colonne de 150 px
+    elle n'a plus la place de ses épingles ; au-dessus du registre, elle
+    devient une bande horizontale lisible. */
+@media (max-width: 1080px) {
+  .jf-corps { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .jf-frise { position: static; }
+  .jf-frise .jf-annee-bande {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px 10px;
+  }
+  .jf-frise .jf-annee-mois { min-height: 24px; }
+  .jf-frise .jf-annee-legende { flex-direction: row; flex-wrap: wrap; gap: 10px 16px; }
+}
+
+/*  900 px — l'en-tête se replie en trois lignes : retour + sceau, titre,
+    sélecteurs puis sceaux. */
+@media (max-width: 900px) {
+  .jf-entete {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    row-gap: 12px;
+    padding: 16px 14px 8px;
+  }
+  .jf-titre { font-size: clamp(26px, 6.4vw, 38px); }
+  .jf-sceaux { grid-column: 1 / -1; order: 9; }
+  .jf-sceaux-fil { display: none; }
+  .jf-sceaux .jf-mesures { flex-wrap: wrap; gap: 12px; }
+  .jf-sceaux .jf-mesure { width: 78px; max-width: 78px; height: 78px; }
+  .jf-sceaux .jf-mesure-libelle { font-size: 6.2px; }
+  .jf-sceaux .jf-mesure-valeur { font-size: 19px; }
+  .jf-coque { padding: 14px 12px 30px; }
+  .jf-onglets { width: 100%; overflow-x: auto; }
+  .jf-onglet { flex: 0 0 auto; }
+  .jf-barre { gap: 8px; }
+  .jf-pays { flex: 1 1 100%; }
+  .jf-explication { border-radius: var(--jf-radius-piece); }
+}
+
+/*  720 px — tout s'empile. Les pièces cousues passent à une par rangée,
+    les fils de bâti disparaissent (ils n'auraient plus de traversée à
+    faire), et les mois se rangent en trois colonnes. */
+@media (max-width: 720px) {
+  .jf-frise .jf-annee-bande { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .jf-registre { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 18px 0 12px; }
+  .jf-registre::before,
+  .jf-registre::after { display: none; }
+  .jf-jour { padding: 14px 14px 12px; border-radius: var(--jf-radius-piece); }
+  .jf-registre .jf-jour {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px 12px;
+    align-items: start;
+  }
+  .jf-registre .jf-jour-corps { grid-column: 2; }
+  .jf-registre .jf-jour-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px dashed color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  }
+  .jf-onglet { padding: 7px 12px; font-size: 11.5px; }
+  .jf-onglet-compte { margin-left: 4px; }
+  .jf-modale { max-height: 94vh; }
+}
+
+/*  480 px — les derniers conforts : les sceaux en deux rangées de deux,
+    le titre au plus juste, les boutons pleine largeur. */
+@media (max-width: 480px) {
+  .jf-sceaux .jf-mesures { gap: 10px; }
+  .jf-sceaux .jf-mesure { width: 70px; max-width: 70px; height: 70px; }
+  .jf-sceaux .jf-mesure-libelle { font-size: 5.8px; }
+  .jf-sceaux .jf-mesure-valeur { font-size: 17px; }
+  .jf-sceaux .jf-mesure-valeur small { font-size: 5.8px; }
+  .jf-frise .jf-annee-bande { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jf-entete { padding: 12px 10px 6px; }
+  .jf-coque { padding: 12px 10px 26px; }
+  .jf-bouton { width: 100%; justify-content: center; }
+  .jf-barre .jf-bouton { width: auto; }
+}

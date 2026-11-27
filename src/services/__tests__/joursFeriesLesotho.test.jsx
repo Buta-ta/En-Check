@@ -171,6 +171,22 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(html).toContain('jf-annee-suite')
   })
 
+  it('le sous-titre est retiré, et la page tient sur petit écran', () => {
+    //  « Enlève ce texte » (26/11) : la phrase de présentation ne s'affiche
+    //  plus. L'eyebrow et le titre restent.
+    expect(PAGE).not.toContain('jf-sous-titre')
+    expect(PAGE).not.toContain('coudre les siennes')
+    expect(PAGE).toContain('Le calendrier tissé')
+
+    //  « Rends la page responsive en toute taille d'écran » (26/11) : les
+    //  paliers existent, et la page ne peut pas déborder en largeur.
+    for (const palier of [1200, 1080, 900, 720, 480]) {
+      expect(CSS).toContain(`@media (max-width: ${palier}px)`)
+    }
+    expect(CSS).toContain('overflow-x: clip')
+    expect(CSS).toContain('.jf-corps { grid-template-columns: minmax(0, 1fr); gap: 20px; }')
+  })
+
   it('la modale est un panneau, pas un disque', () => {
     //  La panne du 26/11 : `--jf-radius-piece` valait 999 px, donc le panneau
     //  se refermait en cercle et l'on ne voyait ni les champs ni le pied.
