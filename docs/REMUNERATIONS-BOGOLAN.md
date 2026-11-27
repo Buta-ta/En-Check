@@ -517,3 +517,119 @@ même commande, avant puis après :
 | C10 rayons hors liste | 323 sur 18 valeurs | 307 sur 17 valeurs |
 
 Et plus un seul des trois fichiers de la page n'apparaît dans le rapport.
+
+## L'en-tête est une planche rognée (8 novembre 2026)
+
+La demande, avec la maquette retenue
+(`docs/maquettes/rw-entete-billet-forme-choix.png`) :
+
+> Retravaille ce bloc pour que sa forme ressemble à un billet de banque, enlève
+> le bandeau motif en haut, et entoure-le de ce bloc comme dans la page
+> employés.
+
+Puis, après une première proposition trop décorée :
+
+> Je change d'idée, propose autre chose. Enlève les chiffres, les numéros de
+> série. Moi je ne veux que la forme.
+
+C'est ce second cadrage qui est tenu ici : **la forme seule**. Ni chiffre de
+valeur, ni série, ni filigrane, ni guillochage — un billet ne se reconnaît pas
+à ses ornements dans une interface, il se reconnaît à sa silhouette et à son
+double cadre.
+
+### Ce qui est tombé
+
+`<PageCulturalBand pathname="/remunerations" />` du haut, et avec lui la
+`couture` de pointillés (`.rw-bordure`, trois pixels de rouleau cuivre répétés
+tous les huit). Le bandeau du bas reste : c'est lui qui ferme la page.
+L'en-tête, lui, n'a plus son `border-bottom` de trois pixels — un bloc qui se
+cadre tout seul n'a rien à souligner en dessous.
+
+Deux lois **exigeaient** la pose du haut (`la page garde ses deux bandeaux`,
+dans la vue coût, et `le bandeau est le vrai fichier bogolan`, dans la section
+motif). Elles sont retournées, pas supprimées : la page ne doit plus contenir
+la balise du haut, ni le mot `rw-bordure`, et la feuille ne doit plus contenir
+la règle. Le fichier `PageCulturalBand.jsx` est intact, et les seize autres
+pages qui le posent le posent toujours en haut : seule la pose de Rémunérations
+change.
+
+### La parenté avec les Employés
+
+`.empv3-entete` est un **bloc posé** : contour de deux pixels d'encre, fond de
+surface, ombre dure, marge autour — pas une barre pleine largeur. C'est ce
+vocabulaire que la planche adopte, à une différence : le contour n'est pas un
+`border`, et l'ombre n'est pas un `box-shadow`.
+
+| objet | avant | après |
+| --- | --- | --- |
+| largeur | bord à bord, 24 px de padding | une planche dans la colonne de la coque (`--rw-colonne` = `--rw-largeur` moins deux gouttières), centrée |
+| cadre | un filet du bas de 3 px | deux traits : 2 px d'encre au bord, un second filet à 10 px, sur les quatre côtés rognés |
+| coins | carrés | coupés en biseau de 14 px (`--rw-coupe`), aux quatre angles |
+| ombre | aucune | une chute de 3 px, franche, sans flou |
+| angles | rien | quatre carrés de cuivre de 6 px, logés contre le filet intérieur |
+| tiers droit | du vide avant le sélecteur | une souche : règle verticale de deux pixels, qui tombe sous 760 px |
+| sélecteur d'entreprise | liseré cuivre sur le côté gauche | cuivre autour (`--rw-trait` sur les quatre bords) |
+
+### Pourquoi trois calques et pas deux propriétés
+
+Le rognage se fait en `clip-path`, seul moyen de couper l'onglet sans dessiner
+un pseudo-triangle de couleur par coin. Or `clip-path` rogne **tout** ce que
+porte l'élément : un `box-shadow` externe disparaît avec le reste, et un
+`border` rectangle ne suit pas la coupe. D'où :
+
+- les deux calques (`.rw-entete::after` = la planche, `::before` = la chute)
+  portent **le même** `clip-path: var(--rw-billet)`, et sont décalés l'un de
+  l'autre par un `translate(var(--rw-chute))` — l'ombre est une seconde
+  silhouette, pas une projection ;
+- le cadre se peint en trois `box-shadow` **internes**, déclarées du plus étroit
+  au plus large, parce que la première de la liste est peinte par-dessus :
+  encre de 0 à 2 px, dégagement de crème de 2 à 8, filet de 8 à 10 ;
+- les quatre carrés sont quatre couches de `background-image` posées à
+  `var(--rw-filetage)` des bords — `left 10px top 10px`, et les trois autres
+  angles. Le jeton `--rw-coings` est un `linear-gradient(cuivre 0 0)` : deux
+  arrêts à zéro, donc une couleur pleine. Un dégradé ne sert ici à rien, le
+  tampon est un tampon ;
+- `.rw-entete` porte `isolation: isolate` parce que les deux calques sont en
+  `z-index` négatif : sans contexte d'empilement propre, ils glissaient sous le
+  fond de la page et la planche s'effaçait derrière le lavis. C'est le
+  troisième défaut que cette passe a eu à attraper — les deux autres étant
+  l'ordre des ombres internes et la rognure de l'ombre externe.
+- la chute est peinte en `var(--rw-boue)` (`--charte-tissu`), pas en encre :
+  l'encre s'inverse avec le thème, et une ombre claire sur une planche sombre
+  n'est plus une ombre. Le tissu, lui, ne s'inverse pas.
+
+### Ce que la loi refuse, et par quoi elle l'a prouvé
+
+La section 12 du test de motif tient six assertions : la planche ne peint rien
+elle-même (aucun `background` sur le contenant) ; elle n'est pas collée au bord
+(`width: var(--rw-colonne)`, et la colonne se déduit de la largeur + un pas
+d'échelle, jamais d'un chiffre) ; les deux calques sont rognés du même
+polygone ; le polygone a huit points et huit retraits de `var(--rw-coupe)`,
+sans un `px` ; **aucun pseudo n'écrit** (`content:` non vide interdit) — c'est
+la loi qui dit « je ne veux que la forme » en termes vérifiables ; le cartouche
+est entouré et non barré ; la souche tombe sur petit écran.
+
+Seize mutations jouées contre la feuille et le composant : **seize rougies,
+aucune silencieuse**. Dont « le bandeau du haut revient », « la couture de
+pointillés revient », « l'isolation saute », « un pseudo se met à écrire un
+numéro », « les quatre coins redeviennent un dégradé », « l'ordre des trois
+traits est inversé », « la planche quitte la colonne de la coque ».
+
+### Compteurs
+
+`npx vitest run src/services/__tests__/remunerations` : 82/82. Suite complète :
+2692 tests passés, les 18 fichiers en échec sont ceux d'avant (variables
+Supabase absentes de l'environnement, pas de régression). `npm run build`
+passe. La feuille fait 2528 lignes, aucune au-delà de 100 caractères, parse
+postcss OK (315 règles), zéro couleur écrite, zéro jeton orphelin.
+`npm run charte` : 4368 couleurs en dur / 119 ombres floues / 307 rayons hors
+liste — exactement les chiffres d'avant la passe. Le `clip-path` n'est compté
+par aucune règle, la chute n'est pas une `box-shadow` floue, et le rayon du
+cartouche reste celui de la carte.
+
+### Ce qui n'a pas été fait
+
+Les autres blocs de la page (le seuil, les mesures, le pagne, la barre
+d'assemblage) gardent leur cadre : la demande portait sur le bloc du haut. La
+couture de pointillés ne reparaît nulle part — elle n'existait que sous le
+bandeau du haut, et le bandeau du bas se passe de doublure depuis toujours.

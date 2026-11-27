@@ -898,10 +898,11 @@ export default function Remunerations() {
 
   return (
     <div className="rw-page">
-      <PageCulturalBand pathname="/remunerations" />
-      <div className="rw-bordure" aria-hidden="true" />
+      {/*  plus de bandeau motif au-dessus de l'en-tête, plus de couture de
+            pointillés : la planche rognée se suffit de son propre cadre. Le
+            bandeau du bas reste, c'est lui qui ferme la page. */}
 
-      {/* ══ L'EN-TÊTE ══ */}
+      {/* ══ L'EN-TÊTE : une planche rognée en billet ══ */}
       <header className="rw-entete">
         <button
           type="button"

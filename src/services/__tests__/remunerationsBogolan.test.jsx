@@ -203,9 +203,13 @@ describe('1. le motif est celui de la Paie, et le bandeau le dit', () => {
     expect(bandCss).toContain(
       ".ec-cultural-band[data-cultural-motif='bogolan'].ec-cultural-bottom { background-image: url('/images/paie-bogolan-bas.webp')"
     )
-    //  et la page en pose deux : en haut et en bas
-    expect(PAGE).toContain('<PageCulturalBand pathname="/remunerations" />')
+    //  la page n'en pose plus qu'un : celui du bas. Le bandeau du haut est
+    //  tombé quand l'en-tête est devenu une planche qui se cadre elle-même,
+    //  et la couture de pointillés qui le doublait avec lui
+    expect(PAGE).not.toContain('<PageCulturalBand pathname="/remunerations" />')
     expect(PAGE).toContain('<PageCulturalBand pathname="/remunerations" placement="bottom" />')
+    expect(PAGE).not.toContain('rw-bordure')
+    expect(CSS).not.toContain('.rw-bordure')
   })
 
   it('le chargement emploie le même motif que la page', () => {
@@ -868,10 +872,19 @@ describe('11. le brut adouci : l’encre, la bosse et rien d’autre', () => {
   it('aucun contour de un pixel, aucune ombre floue', () => {
     expect(DECL.match(/border[^;:]*:\s*1px/g)).toBeNull()
     expect(DECL).not.toMatch(/box-shadow:[^;]*\d+px \d+px \d+px/)
-    //  les ombres de la page, c'est le jeton, ou rien
-    const ombres = [...DECL.matchAll(/box-shadow:\s*([^;]+);/g)].map(m => m[1].trim())
+    //  les ombres de la page, c'est le jeton, ou rien. Une seule exception
+    //  nommée : le cadre de la planche, qui n'est pas une ombre mais trois
+    //  traits internes rognés par le `clip-path` — et l'exception est tenue
+    //  LITTÉRALEMENT, pour qu'aucun des trois ne change en douce
+    const CADRE_BILLET = 'inset 0 0 0 var(--rw-trait) var(--rw-encre), '
+      + 'inset 0 0 0 calc(var(--rw-filetage) - var(--rw-trait)) var(--rw-panneau), '
+      + 'inset 0 0 0 var(--rw-filetage) var(--rw-ligne)'
+    const ombres = [...DECL.matchAll(/box-shadow:\s*([^;]+);/g)]
+      .map(m => m[1].replace(/\s+/g, ' ').trim())
     expect(ombres.length).toBeGreaterThan(4)
+    expect(ombres.filter(o => o === CADRE_BILLET)).toHaveLength(1)
     for (const ombre of ombres) {
+      if (ombre === CADRE_BILLET) continue
       expect(ombre, ombre).toMatch(
         /^(var\(--charte-ombre-dure\)|none|inset 0 0 0 var\(--rw-trait\) var\(--rw-[a-z0-9-]+\)|0 0 0 var\(--charte-espace-2\) var\(--rw-[a-z0-9-]+\))$/
       )
@@ -928,5 +941,78 @@ describe('11. le brut adouci : l’encre, la bosse et rien d’autre', () => {
     //  action de l'écran est unique, les autres restent en creux
     expect(PAGE).not.toContain('rw-bouton-principal')
     expect(CSS).not.toContain('.rw-bouton-principal')
+  })
+})
+
+describe('12. la planche : la forme du billet, rien de plus', () => {
+  const DECL12 = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+  const regle12 = (selecteur) => {
+    const i = DECL12.indexOf(`\n${selecteur} {`)
+    if (i < 0) return null
+    return DECL12.slice(i, DECL12.indexOf('}', i))
+  }
+  const PLANCHE = regle12('.rw-entete')
+  const DESSUS = regle12('.rw-entete::after')
+  const DESSOUS = regle12('.rw-entete::before')
+
+  it('ce n’est plus une barre collée aux bords', () => {
+    expect(PLANCHE, 'la planche est un bloc posé, pas une bande').not.toBeNull()
+    //  plus de filet du bas : c'est le cadre qui ferme le bloc
+    expect(PLANCHE).not.toMatch(/border-bottom/)
+    expect(PLANCHE).toMatch(/margin: [^;]*var\(--charte-espace-\d\) auto/)
+    //  et la planche est posée dans la colonne de la coque, pas collée au bord
+    expect(PLANCHE).toContain('width: var(--rw-colonne)')
+    const d = CSS.indexOf('--rw-colonne:')
+    const colonne = CSS.slice(d, CSS.indexOf(';', d))
+    expect(colonne, 'la colonne se déduit de la largeur de la page').toContain('var(--rw-largeur)')
+    expect(colonne).toContain('var(--charte-espace-5)')
+    expect(colonne).not.toMatch(/\d+px/)
+    //  et le contenant ne peint rien lui-même — sinon il couvrirait sa planche
+    expect(PLANCHE).not.toMatch(/\bbackground/)
+    expect(PLANCHE).toContain('isolation: isolate')
+    expect(PAGE).toContain('className="rw-entete"')
+  })
+
+  it('les deux calques sont rognes du meme polygone', () => {
+    expect(DESSUS, 'la planche').not.toBeNull()
+    expect(DESSOUS, 'la chute').not.toBeNull()
+    expect(DECL12.match(/clip-path: var\(--rw-billet\)/g)).toHaveLength(2)
+    //  la chute n'est pas une ombre : c'est une copie décalée, et le décalage
+    //  est un jeton, sur les deux axes
+    expect(DESSOUS).toContain('transform: translate(var(--rw-chute), var(--rw-chute))')
+    expect(DESSOUS).toContain('background: var(--rw-boue)')
+    //  les deux sont dessous le contenu, sinon les boutons disparaissent
+    expect(DESSUS).toContain('z-index: -1')
+    expect(DESSOUS).toContain('z-index: -2')
+  })
+
+  it('la forme seule, pas le billet décoré', () => {
+    const billet = CSS.slice(CSS.indexOf('--rw-billet: polygon('))
+    const poly = billet.slice(0, billet.indexOf(');'))
+    //  huit points : les quatre coins coupés, et huit retraits du même jeton
+    //  — la coupe est une mesure de la page, pas huit chiffres éparpillés
+    expect(poly.split(',')).toHaveLength(8)
+    expect((poly.match(/var\(--rw-coupe\)/g) || [])).toHaveLength(8)
+    expect(poly).not.toMatch(/\d+px/)
+    //  ni chiffre de valeur, ni numéro de série, ni filigrane : la forme
+    //  seule. Aucun pseudo n'écrit un mot, ils peignent
+    expect(DECL12.match(/content:\s*(["'])[^"']+\1/g), 'un pseudo qui signerait le billet').toBeNull()
+    //  les quatre carrés de cuivre sont le seul ornement, et ils sont peints
+    expect((DESSUS.match(/var\(--rw-coings\)/g) || [])).toHaveLength(4)
+    expect(DESSUS).toContain('background-size: var(--rw-coing) var(--rw-coing)')
+    //  un tampon, pas un dégradé : les deux arrêts sont à zéro
+    expect(CSS).toContain('--rw-coings: linear-gradient(var(--rw-cuivre) 0 0);')
+  })
+
+  it('le cartouche de l’entreprise est entouré, pas barré', () => {
+    const cart = regle12('.rw-entreprise')
+    expect(cart).toContain('border: var(--rw-trait) solid var(--rw-cuivre)')
+    expect(cart).not.toMatch(/border-left:/)
+    //  et le tiers droit porte une souche, qui tombe sur petit écran
+    const droite = regle12('.rw-entete-droite')
+    expect(droite).toContain('border-left: var(--rw-trait) solid var(--rw-ligne)')
+    const repli = DECL12.slice(DECL12.indexOf('@media (max-width: 760px)'))
+    expect(repli.slice(0, repli.indexOf('}', repli.indexOf('.rw-entete-droite'))))
+      .toContain('border-left: 0')
   })
 })
