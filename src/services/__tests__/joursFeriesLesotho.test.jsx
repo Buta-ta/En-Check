@@ -489,6 +489,26 @@ describe('5. les autres écrans restent à portée', () => {
     expect(PAGE).toContain('<details className="jf-explication">')
     expect(PAGE).toContain('Ce qu’un jour férié change dans les calculs')
   })
+
+  it('l’explication ouverte se redresse : capsule fermée, pièce ouverte', () => {
+    //  Sa capture du 27/11 (image 1) : le panneau ouvert gardait le rayon de
+    //  999 px de la capsule. Le navigateur le ramène alors à la moitié de la
+    //  hauteur, donc la courbe traversait la première ligne — « Férié non
+    //  travaillé » était rogné en haut à gauche — et la couture du bas
+    //  passait sous la bordure.
+    //
+    //  Une capsule, c'est pour une barre d'une ligne ; dès qu'il y a un
+    //  corps, c'est une pièce cousue.
+    expect(CSS).toMatch(/\.jf-explication \{[^}]*border-radius: var\(--jf-radius-capsule\);/)
+    expect(CSS).toMatch(/\.jf-explication\[open\] \{\s*border-radius: var\(--jf-radius-piece\);/)
+
+    //  Aucun palier ne doit redonner la capsule à un panneau OUVERT : ce sont
+    //  les deux règles `:not([open])` qui le faisaient sous 900 et 700 px.
+    for (const regle of CSS.matchAll(/\.jf-explication[^{]*\{([^}]*)\}/g)) {
+      if (regle[0].includes('[open]')) continue
+      expect(regle[1]).not.toMatch(/border-radius: var\(--jf-radius-piece\)/)
+    }
+  })
 })
 
 describe('6. les cinq pièces du motif se dessinent', () => {
