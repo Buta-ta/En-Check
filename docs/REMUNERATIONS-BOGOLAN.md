@@ -633,3 +633,135 @@ Les autres blocs de la page (le seuil, les mesures, le pagne, la barre
 d'assemblage) gardent leur cadre : la demande portait sur le bloc du haut. La
 couture de pointillés ne reparaît nulle part — elle n'existait que sous le
 bandeau du haut, et le bandeau du bas se passe de doublure depuis toujours.
+
+## Le tissu autour de la planche, et le rail (8 novembre 2026)
+
+Deux retours d'un seul mouvement : « entoure ce bloc du bandeau tissu bogolan
+comme dans la page employés », et « ramène la sidebar + son rail, avec les
+images de profil des entreprises ». La planche n'est pas défaite — elle garde
+ses huit coupes, ses trois traits, ses quatre ongles de cuivre et sa chute.
+C'est une enveloppe qu'on ajoute autour, et une barre qu'on rend à la page.
+
+### Le tissu : deux bandes, pas une
+
+Le modèle est `.empv3-entete` de la page Employés : le conteneur passe à
+`display: block; padding: 0`, le contenu descend dans un `.rw-entete-corps`
+qui reprend son rythme (`gap` et `padding` aux jetons), et deux `<span>`
+portent l'étoffe, un premier, un dernier. `Employee360.css` nommait bien une
+bande, mais ne l'écrivait pas : dans `src/pages`, deux feuilles seulement
+taillent le bandeau dans leur propre en-tête — `EmployesV3.css` et, depuis
+aujourd'hui, `Remunerations.css`.
+
+L'étoffe est le fichier de la maison, pas une copie : `paie-bogolan-haut.webp`
+(1536 × 76) en haut, `paie-bogolan-bas.webp` (1536 × 32) en bas, les deux
+mêmes images que lit `PageCulturalBand`. Deux jetons d'alias
+(`--rw-tissu-haut`, `--rw-tissu-bas`) et deux `url()` dans la feuille — les
+seuls. `background-repeat: repeat-x` et `background-size: auto
+var(--rw-tissu)` : la bande fait 18 px de haut comme sur les Employés, et le
+motif garde sa proportion, donc sa tuile fait 364 px de large (1536 × 18/76)
+et se répète trois fois et un tiers sous les 1200 px que laisse la colonne
+(1232 px à la largeur maximale, moins l'ongle de chaque côté). Il n'est jamais
+étiré — la loi C4 de la charte.
+
+### Pourquoi la bande descend dans le gousset
+
+Recopiée telle quelle, la bande posée à `top: 0` peignait le trait d'encre du
+cadre : le contour de la planche s'ouvrait en haut et en bas, exactement ce
+que la charte défend (C11, contour 2 px sur tout objet). La bande est donc
+descendue de l'épaisseur du filetage, `margin: var(--rw-filetage)
+var(--rw-agrafe) 0` — 10 px, le calcul du cadre, pas un chiffre. Le trait
+reste continu tout autour, et l'étoffe est prise DANS le cadre.
+
+Ce dégagement fait aussi les agrafes : les quatre carrés de cuivre sont posés
+à `var(--rw-filetage)` du bord et font `var(--rw-coing)`, soit de x = 10 à
+x = 16. La bande, elle, commence à `--rw-agrafe` = `calc(filetage + coing)` =
+16 px. Le tissu finit où l'ongle commence, à la hauteur de l'ongle. Un
+`background-size: 100%` ou un `border-bottom: 1px` — la doublure du modèle
+— n'aurait rien dit de tout ça, et la séparation de 1 px couleur encre qu'on
+lit à `.empv3-entete-bandeau` n'a pas été reprise : ici le trait du cadre est
+déjà continu, une seconde ligne l'aurait dédoublé.
+
+Enfin, la cage ne rogne rien : pas d'`overflow: hidden` sur `.rw-entete`, la
+leçon est écrite en toutes lettres à `.empv3-entete` et le verrouille ici. Le
+rognage reste l'affaire du `clip-path` des deux calques. Sous 760 px, la bande
+se maigrit avec le bloc (`--rw-tissu: var(--rw-filetage)`, 10 px) et le corps
+du bloc passe au pas de 12.
+
+### Le rail : la fabrique, pas une seconde barre
+
+`CoqueAdmin` + `SidebarUnique` + `sectionsNavAdmin`, la triple ligne déjà
+posée à `HeuresSupplementaires`, `Pauses`, `Absences` : huit fichiers de
+`src/pages` rendent maintenant `<CoqueAdmin>`. La rubrique « Paie →
+Rémunérations » de `sectionsNavAdmin.js` est gardée par `module_remunerations`,
+donc le rail s'allume ici tout seul, sans qu'on ait eu à déclarer une vue.
+
+Deux choix ne sont pas des détails :
+
+- **les vues `contrats` / `coût` ne sont pas données au rail.** La page a son
+  seuil avec ses deux boutons ; `vues` dans le rail serait un second
+  interrupteur pour la même lampe, et l'un des deux mentirait. C'est la leçon
+  écrite à `Planning.jsx`, et une loi le tient (`le rail ne reçoit pas vues`).
+- **`surEntreprise` ne charge rien** : il pose `setSelectedEntId(id)`, et
+  l'effet qui regarde `selectedEntId` recharge tout — le rail n'ouvre pas un
+  second chemin d'écriture, sinon la réponse de l'entreprise quittée arrive en
+  retard et écrit sur la nouvelle.
+
+Les images de profil venaient de là. `SelecteurEntreprise` rend sa pastille
+avec `PhotoSignee` (bucket `photos`, URL signée) à partir de
+`entreprise.logo_url`, et retombe sur la lettre du nom quand la colonne est
+absente. La requête de la page sélectionnait `id, name, code` : le rail
+n'avait jamais rien à signer. C'est `id, name, code, logo_url` — le même
+défaut que Retards et Annonces accueil avaient eu le 26/11, corrigé là-bas en
+`.select('*')`, et corrigé ici par le mot manquant.
+
+`useTheme()` est revenu dans la page, et ce n'est pas un retour en arrière :
+le verrou du 26/12 tenait un SECOND thème entretenu par l'écran (classe
+locale, `data-theme`, ancre `encheck.theme`, palette parallèle). Il n'y en a
+toujours pas. Le hook est lu pour alimenter la commande du rail
+(`darkMode`/`surTheme`), et `toggleTheme` n'apparaît que deux fois dans tout
+le fichier : la déstructure, et la prop.
+
+### Ce que la loi refuse, et par quoi elle l'a prouvé
+
+Une section 13 de six cas, et cinq assertions de plus dans la section qui
+monte la page (le rail est dans le DOM ; les deux bandes et le corps sont dans
+la planche). Elle refuse : une seule bande au lieu de deux, un fichier
+inventé, une étoffe étirée, une cage qui rogne, le rythme qui remonte sur la
+cage, un `--rw-agrafe` écrit en chiffres, la bande qui remange le trait, les
+bandes du haut et du bas portant le même tissage, le rail qui reçoit `vues`,
+la requête sans `logo_url`, un `data-theme` ou un bouton de thème dans la
+page.
+
+Seize mutations jouées contre les deux fichiers : **seize rougies**. L'une
+d'elles est restée verte au premier passage, et mérite sa place — effacer
+`background-image: var(--rw-tissu-bas)` de la règle `--bas` laissait toutes
+les lois vertes, la bande du bas répétant alors celle du haut. La loi des
+deux étoffes a été écrite pour ça, dans la foulée.
+
+### Compteurs
+
+`npx vitest run src/services/__tests__/remunerations` : 88/88. Suite
+complète, avec les variables Supabase posées : 202 fichiers, 2913 tests, tous
+passés (les 18 fichiers non ramassés la fois dernière venaient de
+l'environnement, pas du code : sans les variables Supabase, ils n'entrent pas
+dans le compte). `npm run build` passe en 15,9 s. `npm run charte` : 119
+ombres floues / 307 rayons sur 17 valeurs — au caractère près les chiffres
+d'avant la passe, et le diff du rapport est vide ; le bandeau n'ajoute ni
+couleur, ni flou, ni rayon. La feuille fait 2582 lignes, aucune au-delà de 100
+caractères, 320 règles parsees par postcss, zéro couleur en dur, deux `url()`
+seulement — les deux jetons d'étoffe —, zéro jeton `--rw-*` orphelin ou non
+consommé.
+
+### Ce qui n'a pas été fait
+
+Un admin d'une seule entreprise ne verra pas de bandeau d'entreprises dans le
+rail, mais la marque de la maison : `chargerEntreprises()` ne liste que pour
+`super_admin`, et c'est le comportement de `Pauses` comme d'
+`HeuresSupplementaires`, qui posent la même condition. L'uniformiser ici
+voudrait dire ouvrir à ces pages le chargement d'une ligne d'entreprise — une
+autre passe.
+
+Et rien n'a été vu à l'œil : le sandbox n'a ni Chromium ni Playwright, la
+géométrie de la bande est tenue par la loi, pas par une capture. La hauteur
+cumulée du bloc (10 + 18 + 16 de rythme avant le contenu, autant en bas) est
+calculée, pas mesurée sur écran.
