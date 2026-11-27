@@ -605,10 +605,8 @@ export default function JoursFeries() {
         <div className="jf-titre-bloc">
           <span className="jf-eyebrow">Le calendrier tissé</span>
           <h1 className="jf-titre">Jours fériés<span>.</span></h1>
-          <p className="jf-sous-titre">
-            Les fêtes du pays s’appliquent à toutes les entreprises ; chacune peut
-            désactiver celles qu’elle ne suit pas, et coudre les siennes.
-          </p>
+          {/*  Le sous-titre est retiré — sa demande du 26/11 : « enlève ce
+               texte ». L'eyebrow et le titre restent. */}
         </div>
 
         {/*  LES QUATRE SCEAUX — quatre médaillons reliés par un fil de bâti,
