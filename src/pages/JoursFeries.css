@@ -2334,10 +2334,15 @@
 
 /* ── 4 · LE CORPS : L'ANNÉE À GAUCHE, LE REGISTRE À DROITE ─────────────── */
 
+/*  La coque prend la GÉOMÉTRIE DE PAUSES : même largeur de page (1 440 px)
+    et même gouttière (clamp(16px, 2.5vw, 34px)). Sa remarque du 28/11 —
+    « le bouton retour n'est pas proportionnellement au même endroit que dans
+    la page Pauses » — venait de là : 1 360 px ici contre 1 440 là-bas, et
+    une gouttière de 28 px au lieu de 34. */
 .jf-coque {
-  width: min(1360px, 100%);
+  width: min(1440px, 100%);
   margin: 0 auto;
-  padding: clamp(16px, 2.4vw, 30px) clamp(14px, 3vw, 28px) clamp(30px, 4vw, 52px);
+  padding: clamp(16px, 2.4vw, 30px) clamp(16px, 2.5vw, 34px) clamp(30px, 4vw, 52px);
 }
 
 .jf-corps {
@@ -4083,7 +4088,8 @@
   .jf-sceaux .jf-mesure { width: 78px; max-width: 78px; height: 78px; }
   .jf-sceaux .jf-mesure-libelle { font-size: 6.2px; }
   .jf-sceaux .jf-mesure-valeur { font-size: 19px; }
-  .jf-coque { padding: 14px 12px 30px; }
+  /*  La gouttière reste celle de Pauses : seul le champ vertical change. */
+  .jf-coque { padding: 14px clamp(16px, 2.5vw, 34px) 30px; }
   .jf-onglets { width: 100%; overflow-x: auto; }
   .jf-onglet { flex: 0 0 auto; }
   .jf-barre { gap: 8px; }
@@ -4124,7 +4130,7 @@
   .jf-sceaux .jf-mesure-libelle { font-size: 5.8px; }
   .jf-sceaux .jf-mesure-valeur { font-size: 17px; }
   .jf-sceaux .jf-mesure-valeur small { font-size: 5.8px; }  .jf-entete { padding: 12px 10px 6px; }
-  .jf-coque { padding: 12px 10px 26px; }
+  .jf-coque { padding: 12px clamp(16px, 2.5vw, 34px) 26px; }
   .jf-bouton { width: 100%; justify-content: center; }
   .jf-barre .jf-bouton { width: auto; }
 }
@@ -4599,4 +4605,68 @@
     width: 100%;
   }
   .jf-sceaux .jf-mesure { width: 100%; max-width: none; height: auto; aspect-ratio: 1; }
+}
+
+/* ═══ LE RETOUR TOMBE AU MÊME ENDROIT QUE SUR PAUSES (28/11) ══════════════
+
+     « Le bouton flèche retour n'est pas proportionnellement au même endroit
+     que dans la page Pauses par exemple. »
+
+     C'est vrai, et l'écart se mesurait. Les deux pages ne se tenaient pas
+     de la même façon :
+
+       PAUSES        une seule enveloppe — `.pauses-v2-container` —
+                     `width: min(100%, 1440px)` et
+                     `padding: 0 clamp(16px, 2.5vw, 34px)`.
+                     L'enseigne du retour est DEDANS, à 35 px de son bord.
+
+       JOURS FÉRIÉS  la coque faisait 1 360 px (80 px de moins), et
+                     `.jf-entete` AJOUTAIT par-dessus sa propre gouttière,
+                     différente à chaque palier : 34 px en grand, 16 px en
+                     dessous de 900, 10 px sous 480. Le retour ne partait
+                     donc jamais du même bord que sur Pauses, et l'écart
+                     changeait avec la largeur de la fenêtre.
+
+     On ne copie pas un nombre, on copie la STRUCTURE : la page a une
+     largeur, une gouttière, et c'est la coque qui les porte. L'en-tête et le
+     seuil, qui vivent dans cette coque, n'ajoutent plus les leurs — sinon
+     les deux gouttières s'additionnent et le retour repart à l'intérieur.
+
+     Le retour reprend aussi la taille de celui de Pauses : 44 px sous
+     1 030 px (la valeur de `.pauses-v2-planche .pauses-v2-back-btn`), 42 px
+     au-dessus. */
+
+/*  La gouttière est celle de la coque : l'en-tête n'en ajoute pas. */
+.jf-page .jf-entete {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/*  Le seuil suivait la même pente : `.jf-seuil-bandeau` porte `margin: 0 30px`
+    (14 px en petit écran), donc il rentrait de 30 px de plus que le retour.
+    La bande vit désormais d'un bord à l'autre de la gouttière, comme sur
+    Pauses où le bandeau culturel n'a pas de marge latérale. */
+.jf-page .jf-seuil-bandeau {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/*  Même taille de cible que sur Pauses, aux mêmes paliers. */
+.jf-page .jf-entete > .jf-retour {
+  width: 42px;
+  height: 42px;
+}
+
+@media (max-width: 1030px) {
+  .jf-page .jf-entete > .jf-retour {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/*  Les paliers étroits redisaient la gouttière de l'en-tête (16 px, 14 px,
+    10 px). Elle ne leur appartient plus : on la remet à zéro là où ils la
+     posaient, sans toucher à leur géométrie de grille. */
+@media (max-width: 900px) {
+  .jf-page .jf-entete { padding-left: 0; padding-right: 0; }
 }

@@ -299,6 +299,30 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(CSS).toMatch(/@media \(max-width: 560px\)[\s\S]*?gap: 16px 18px;/)
   })
 
+  it('le retour tombe au même endroit que sur Pauses', () => {
+    //  Sa remarque du 28/11 : « le bouton flèche retour n'est pas
+    //  proportionnellement au même endroit que dans la page Pauses ».
+    //
+    //  Les deux pages ne se tenaient pas de la même façon. Pauses a UNE
+    //  enveloppe (1 440 px, gouttière clamp(16px, 2.5vw, 34px)) et l'enseigne
+    //  du retour est dedans. Jours fériés avait une coque plus étroite
+    //  (1 360 px) ET un en-tête qui ajoutait sa propre gouttière par-dessus,
+    //  différente à chaque palier.
+    //
+    //  On ne copie pas un nombre, on copie la structure : la largeur et la
+    //  gouttière appartiennent à la coque, l'en-tête n'en ajoute pas.
+    expect(CSS).toMatch(/\.jf-coque \{\s*width: min\(1440px, 100%\);/)
+    expect(CSS).toMatch(/\.jf-coque \{\s*width: min\(1440px, 100%\);[\s\S]{0,200}?padding: clamp\(16px, 2\.4vw, 30px\) clamp\(16px, 2\.5vw, 34px\)/)
+
+    //  …et l'en-tête ne rajoute pas la sienne par-dessus.
+    expect(CSS).toMatch(/\.jf-page \.jf-entete \{\s*padding-left: 0;\s*padding-right: 0;/)
+
+    //  Aucun palier ne doit plus rétrécir la gouttière de la coque : ce sont
+    //  les deux règles qui la ramenaient à 12 puis 10 px.
+    expect(CSS).not.toMatch(/\.jf-coque \{ padding: 14px 12px/)
+    expect(CSS).not.toMatch(/\.jf-coque \{ padding: 12px 10px/)
+  })
+
   it('le sous-titre est retiré, et la page tient sur petit écran', () => {
     //  « Enlève ce texte » (26/11) : la phrase de présentation ne s'affiche
     //  plus. L'eyebrow et le titre restent.
