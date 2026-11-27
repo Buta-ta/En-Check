@@ -74,7 +74,11 @@ it('câblage : accueil paie depuis Planning et billet dans les trois vues', () =
   expect(source).toContain('navigate("/paie")'); expect(source).toContain('<FileText size={14} />')
   expect(source).not.toContain('path: "/paie?onglet=fiches"')
   expect(source.match(/<PlanningPayslipBadge entries=/g)).toHaveLength(3)
-  expect(readFileSync('src/pages/PaieFiscalite.jsx','utf8')).toContain("excludePaths={['/paie']}")
+  //  Le 27/11, la bande de raccourcis a quitté la page Paie elle aussi : plus
+  //  besoin d'en exclure l'adresse, la page ne les monte plus du tout.
+  const paie = readFileSync('src/pages/PaieFiscalite.jsx','utf8')
+  expect(paie).not.toContain('RaccourcisPages')
+  expect(paie).not.toContain("excludePaths={['/paie']}")
   expect(readFileSync('src/components/PlanningPayslipBadge.css','utf8')).toContain('prefers-reduced-motion:reduce')
 })
 

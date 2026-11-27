@@ -34,7 +34,10 @@ it('matrice des deux modules : fiscalité seule, paie seule, aucun, super-admin'
 it('trois sections et les deux bandeaux validés, brouillon conservé en changeant de volet', async () => {
   await render(<MemoryRouter><PaieFiscalite/></MemoryRouter>)
   expect(host.querySelectorAll('.pw-tabs button')).toHaveLength(3)
-  expect(host.querySelectorAll('.pw-bogolan')).toHaveLength(2)
+  //  Une seule bande de motif demeure : celle du pied. Celle du haut a
+  //  disparu le 27/11 — le bogolan entoure maintenant le bloc de tête.
+  expect(host.querySelectorAll('.pw-bogolan')).toHaveLength(1)
+  expect(host.querySelector('.pw-bogolan-top')).toBeNull()
   const draft = host.querySelector('[aria-label="Brouillon A"]')
   await input(draft, 'En cours')
   await click('Fiscalité')
@@ -47,11 +50,43 @@ it('changement entreprise confirmé : le volet précédent est démonté et les 
   vi.spyOn(window, 'confirm').mockReturnValue(true)
   await render(<MemoryRouter><PaieFiscalite/></MemoryRouter>)
   const previous = host.querySelector('[aria-label="Brouillon A"]')
-  await act(async () => { const select = host.querySelector('select'); select.value = 'B'; select.dispatchEvent(new Event('change', { bubbles: true })) })
+  const select = host.querySelector('.pw-bandeau-entreprise select')
+  expect(select).toBeTruthy()
+  await act(async () => { select.value = 'B'; select.dispatchEvent(new Event('change', { bubbles: true })) })
   expect(previous.isConnected).toBe(false)
   expect(host.querySelectorAll('.pw-tabs button')).toHaveLength(1)
   expect(host.querySelector('.pw-tabs').textContent).toBe('Fiscalité')
 })
+it('le bloc de tête est celui des Retards : cadre bogolan, ni raccourcis ni bouton de thème', async () => {
+  await render(<MemoryRouter><PaieFiscalite/></MemoryRouter>)
+  const source = readFileSync('src/pages/PaieFiscalite.jsx', 'utf8')
+  const css = readFileSync('src/pages/PaieWorkspace.css', 'utf8')
+
+  //  « Un bloc encerclé du bandeau bogolan » : la toile est en CADRE, et
+  //  c'est la planche posée dessus qui masque le milieu.
+  const cadre = host.querySelector('.pw-cadre')
+  expect(cadre).toBeTruthy()
+  expect(cadre.querySelector('.ec-cultural-cadre')).toBeTruthy()
+  expect(cadre.querySelector('.ec-cultural-cadre').getAttribute('data-cultural-motif')).toBe('bogolan')
+  expect(cadre.querySelector('.pw-planche')).toBeTruthy()
+
+  //  Repris tel quel du `.rt-cadre` / `.rt-bandeau` des Retards.
+  expect(css).toMatch(/\.pw-cadre \{[^}]*--pw-cadre-epaisseur: 26px;/)
+  expect(css).toMatch(/\.pw-cadre \{[^}]*--ec-cadre-epaisseur: var\(--pw-cadre-epaisseur\);/)
+  expect(css).toMatch(/\.pw-bandeau button\.pw-retour \{[^}]*width: 36px;/)
+  expect(css).toMatch(/\.pw-bandeau-titre h1 \{[^}]*font-size: 17px;/)
+
+  //  Les deux retraits du 27/11 : plus de raccourcis, plus de bascule de thème.
+  expect(host.querySelector('.pw-shortcuts')).toBeNull()
+  expect(source).not.toContain('RaccourcisPages')
+  expect(source).not.toMatch(/aria-label=\{darkMode \? 'Mode clair' : 'Mode sombre'\}/)
+
+  //  Le titre et son sous-titre, l'entreprise à droite.
+  expect(host.querySelector('.pw-bandeau-titre h1').textContent).toContain('Paie & Fiscalité')
+  expect(host.querySelector('.pw-bandeau-titre p').textContent).toBe('Vos équipes. Votre rythme.')
+  expect(host.querySelector('.pw-bandeau-entreprise select')).toBeTruthy()
+})
+
 it('une erreur réseau ne devient pas un zéro salarié', async () => {
   state.error = { message: 'Connexion interrompue' }
   await render(<MemoryRouter><PaieFiscalite/></MemoryRouter>)
