@@ -2698,7 +2698,17 @@
   text-align: center;
 }
 
-/*  le bas de page : une capsule, comme dans la maquette */
+/*  Le bas de page : une capsule FERMÉE, une pièce cousue OUVERTE.
+
+    Sa capture du 27/11 (image 1) : ouvert, le panneau gardait le rayon de
+    999 px de la capsule. Le navigateur ramène alors ce rayon à la moitié de
+    la hauteur — mais le texte, lui, commence à 22 px du bord. La courbe
+    tombait donc DANS la première ligne : « Férié non travaillé » était rogné
+    en haut à gauche, et la couture du bas passait sous la bordure.
+
+    Une capsule, c'est pour une barre d'une ligne. Dès qu'il y a un corps,
+    c'est une pièce cousue — le même galet de 34 px que les registres et la
+    modale. On ne change donc le rayon qu'à l'ouverture. */
 .jf-explication {
   margin-top: 22px;
   border: var(--jf-trait);
@@ -2706,6 +2716,20 @@
   background: var(--charte-surface);
   box-shadow: var(--jf-feutre-1);
   overflow: hidden;
+}
+
+.jf-explication[open] {
+  border-radius: var(--jf-radius-piece);
+}
+
+/*  Ouvert, le panneau ne se contente pas d'arrondir : il respire. Les trois
+    faits s'espacent, la couture se décolle du texte, et la note de bas de
+    page se détache du filet. */
+.jf-explication[open] summary {
+  padding-bottom: 10px;
+}
+.jf-explication[open] .jf-explication-corps {
+  padding-top: 2px;
 }
 .jf-explication summary {
   display: flex;
@@ -3054,7 +3078,6 @@
   .jf-registre { grid-template-columns: minmax(0, 1fr); gap: 26px; }
   .jf-registre::before, .jf-registre::after { display: none; }
 
-  .jf-explication { border-radius: var(--jf-radius-capsule); }
 }
 
 @media (max-width: 560px) {
@@ -4060,7 +4083,10 @@
   .jf-onglet { flex: 0 0 auto; }
   .jf-barre { gap: 8px; }
   .jf-pays { flex: 1 1 100%; }
-  .jf-explication { border-radius: var(--jf-radius-piece); }
+  /*  Ici, la capsule reste la forme du panneau fermé : c'est déjà ce que
+      disent les paliers 720 et 700, plus bas. Ce palier ne la redit donc
+      plus en 34 px, sinon le rayon sautait d'un palier à l'autre. */
+  .jf-explication:not([open]) { border-radius: var(--jf-radius-capsule); }
 }
 
 /*  720 px — tout s'empile. Les pièces cousues passent à une par rangée,
