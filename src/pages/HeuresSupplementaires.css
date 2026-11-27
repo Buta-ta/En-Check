@@ -808,7 +808,16 @@
 }
 
 /* ───────────  LE TIROIR DES RÈGLES  ─────────── */
+/*  LE TIROIR NE DÉBORDE PAS. Le corps du formulaire est plus haut que l'écran
+    (huit réglages, un `details`, une note) et, avant aujourd'hui, il ne débordait
+    pas JUSQU'ICI : il débordait PAR-DESSUS LE PIED. Le pied (`Annuler` /
+    `Sauvegarder`) et la bande du bas sont peints APRÈS le corps, donc par-dessus
+    son trop-plein — le dernier réglage du tiroir se retrouvait rayé des yeux ET
+    hors d'atteinte, le tiroir ne scrollant pas. `overflow: hidden` sur la boîte
+    coupe le débordement ; `overflow-y: auto` plus bas sur le corps le rend
+    visitable. Les deux se lisent ensemble. */
 .ot-drawer {
+  overflow: hidden;
   position: fixed;
   inset: 0 0 0 auto;
   margin: 0;
@@ -861,13 +870,22 @@
     et une bordure blanche translucide d'un pixel. Ces deux lignes sont
     devenues la règle de trois et l'espace de la maison — et le blanc translucide
     est tombé, parce que sur le fond crème de la charte il n'a rien à éclaircir. */
-.ot-rules-header {
+/*  L'ÉTAGE DU HAUT ET L'ÉTAGE DU BAS SE RESSEMBLENT : même fond, mêmes
+      respirations — écrit UNE fois, pour les deux. Le défaut pointé sur la
+      capture du 27/11 est là : le pied n'avait son `padding` QUE dans le bloc
+      `@media (max-width: 650px)`. Sur un écran large, ses deux boutons
+      touchaient la règle de trois du haut et les bords du tiroir, collés l'un
+      à l'autre par le seul blanc du JSX. */
+.ot-rules-header,
+.ot-rules-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--charte-espace-4);
   padding: var(--charte-espace-4) var(--charte-espace-5);
   background: var(--ot-surface);
+}
+.ot-rules-header {
+  justify-content: space-between;
+  gap: var(--charte-espace-4);
   border-bottom: var(--ot-regle) solid var(--ot-encre);
 }
 .ot-rules-titre {
@@ -880,12 +898,19 @@
   margin: 0;
   font-size: var(--charte-taille-titre);
 }
+/*  `overscroll-behavior: contain` était déjà là : la promesse d'un conteneur
+      qui scrollait sans entraîner la page derrière elle n'avait jamais été payée
+      de son `overflow-y`. Les deux moitiés sont maintenant écrites ensemble —
+      `min-height: 0` (plus haut, sur `.ot-drawer > .ot-rules-body`) est la
+      troisième : sans elle, la colonne flex refuserait de rétrécire et le pied
+      sortirait de l'écran. */
 .ot-rules-body {
   display: flex;
   flex-direction: column;
   gap: var(--charte-espace-4);
   padding: var(--charte-espace-4) var(--charte-espace-5);
   background: var(--ot-bg);
+  overflow-y: auto;
   overscroll-behavior: contain;
 }
 .ot-rules-section {
@@ -909,7 +934,9 @@
   padding: var(--charte-espace-2) var(--charte-espace-3);
 }
 .ot-rules-footer {
-  background: var(--ot-surface);
+  /*  8 px, le même trou que la rangée de gestes d'un état vide (`.ot-vide-gestes`) :
+        deux boutons côte à côte se ressemblent d'un bout à l'autre de la page. */
+  gap: var(--charte-espace-2);
   border-top: var(--ot-regle) solid var(--ot-encre);
 }
 .ot-rules-body input:focus-visible {
