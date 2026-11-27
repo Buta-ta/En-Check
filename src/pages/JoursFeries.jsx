@@ -25,7 +25,7 @@ import SidebarUnique from '../components/SidebarUnique'
 import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Plus, Globe, Building2, Calendar, CalendarDays,
+  Plus, Globe, Building2, Calendar, CalendarDays,
   Pencil, Trash2, X, Info, Power, PowerOff, Sun, Moon,
   RefreshCw, Save, AlertTriangle, Check,
 } from 'lucide-react'
@@ -583,15 +583,11 @@ export default function JoursFeries() {
 
       {/* ══ L'EN-TÊTE ══ */}
       <header className="jf-entete">
-        <button
-          type="button"
-          className="jf-retour"
-          onClick={() => navigate('/dashboard')}
-          aria-label="Revenir au tableau de bord"
-          title="Tableau de bord"
-        >
-          <ArrowLeft size={17} />
-        </button>
+        {/*  Le bouton retour est retiré (28/11). Sa demande : « en fait,
+             retirez le bouton retour de Jours fériés ». Le rail de la
+             sidebar porte déjà le retour au tableau de bord, et la flèche
+             en tête de page en faisait un second, jamais au même endroit
+             que sur les autres pages. */}
 
         {/*  Le sceau du titre. Il a SA classe : la feuille de style doit
              pouvoir le placer sans risquer d'attraper une icône de bouton. */}

@@ -272,27 +272,23 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(CSS).toMatch(/\.jf-page \.jf-titre \{[^}]*hyphens: none;/)
     expect(CSS).toMatch(/\.jf-page \.jf-titre \{[^}]*min-width: min-content;/)
     //  2. la colonne du titre ne peut plus s'écraser : plancher de contenu.
-    expect(CSS).toContain('grid-template-columns: auto auto minmax(min-content, 1fr) auto auto;')
+    //  Quatre pistes depuis le 28/11 : le sceau, le titre, les raccourcis,
+    //  les mesures. La cinquième, à gauche, était celle du bouton retour.
+    expect(CSS).toContain('grid-template-columns: auto minmax(min-content, 1fr) auto auto;')
     //  3. sous 1 200 px, le titre prend une ligne à lui, pleine largeur.
     expect(CSS).toMatch(/@media \(max-width: 1200px\) \{[\s\S]*?\.jf-entete > \.jf-titre-bloc \{\s*grid-column: 1 \/ -1;/)
   })
 
   it('le rang du haut est droit : plus de marges héritées', () => {
-    //  Sa capture du 28/11, fenêtre réduite : « le bouton flèche retour un
-    //  peu plus à gauche, tu peux un peu espacer les éléments en haut ».
-    //  Deux marges de l'ancienne mise en page — quand le sceau vivait à CÔTÉ
-    //  du titre — n'avaient jamais été annulées : `margin-top: 34px` sur le
-    //  retour, `margin-top: 16px` sur le sceau. Elles désalignaient le rang.
-    const retour = CSS.match(/\.jf-retour \{([^}]*)\}/)
-    expect(retour).not.toBeNull()
-    expect(retour[1]).not.toMatch(/margin-top/)
+    //  Sa capture du 28/11, fenêtre réduite : « tu peux un peu espacer les
+    //  éléments en haut ». Une marge de l'ancienne mise en page — quand le
+    //  sceau vivait à CÔTÉ du titre — n'avait jamais été annulée :
+    //  `margin-top: 16px` sur le sceau. Elle désalignait le rang.
     const sceauSvg = CSS.match(/\.jf-entete > svg \{([^}]*)\}/)
     expect(sceauSvg).not.toBeNull()
     expect(sceauSvg[1]).not.toMatch(/margin-top/)
     //  …et la remise à zéro est écrite une fois, pour toutes les largeurs.
-    expect(CSS).toMatch(
-      /\.jf-page \.jf-entete > \.jf-retour,[\s\S]{0,120}\.jf-page \.jf-entete > \.jf-sceau \{\s*margin-top: 0;/
-    )
+    expect(CSS).toMatch(/\.jf-page \.jf-entete > \.jf-sceau \{\s*margin-top: 0;/)
   })
 
   it('les éléments du haut ne se touchent pas', () => {
@@ -303,22 +299,35 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(CSS).toMatch(/@media \(max-width: 560px\)[\s\S]*?gap: 16px 18px;/)
   })
 
-  it('le retour tombe au même endroit que sur Pauses', () => {
-    //  Sa remarque du 28/11 : « le bouton flèche retour n'est pas
-    //  proportionnellement au même endroit que dans la page Pauses ».
+  it('le bouton retour est retiré (28/11)', () => {
+    //  « En fait, retirez le bouton retour de Jours fériés. » Le rail de la
+    //  sidebar porte déjà le retour au tableau de bord ; la flèche en tête
+    //  de page en faisait un second, jamais au même endroit que les autres
+    //  pages — et c'est bien ce qui le gênait depuis le 28/11.
+    expect(PAGE).not.toContain('jf-retour')
+    expect(PAGE).not.toContain('<ArrowLeft')
+    expect(PAGE).not.toContain("navigate('/dashboard')")
+    expect(CSS).not.toContain('.jf-retour')
+
+    //  La première piste de la grille ne lui est plus réservée : c'est le
+    //  sceau qui ouvre le rang, à toutes les largeurs.
+    expect(CSS).not.toMatch(/grid-template-columns: auto auto minmax\(min-content, 1fr\) auto auto/)
+    expect(CSS).toMatch(/@media \(min-width: 1201px\)[\s\S]{0,300}?\.jf-entete > \.jf-sceau \{\s*grid-column: 1;/)
+  })
+
+  it('la page garde une seule largeur et une seule gouttière, comme Pauses', () => {
+    //  Sa remarque du 28/11 : « le bouton retour n'est pas proportionnellement
+    //  au même endroit que dans la page Pauses ». L'écart venait de la
+    //  structure : Pauses a UNE enveloppe (1 440 px, gouttière
+    //  clamp(16px, 2.5vw, 34px)), Jours fériés avait une coque plus étroite
+    //  (1 360 px) ET un en-tête qui ajoutait sa propre gouttière par-dessus.
     //
-    //  Les deux pages ne se tenaient pas de la même façon. Pauses a UNE
-    //  enveloppe (1 440 px, gouttière clamp(16px, 2.5vw, 34px)) et l'enseigne
-    //  du retour est dedans. Jours fériés avait une coque plus étroite
-    //  (1 360 px) ET un en-tête qui ajoutait sa propre gouttière par-dessus,
-    //  différente à chaque palier.
-    //
-    //  On ne copie pas un nombre, on copie la structure : la largeur et la
-    //  gouttière appartiennent à la coque, l'en-tête n'en ajoute pas.
+    //  Le bouton est parti depuis, mais la géométrie reste : c'est elle qui
+    //  fait tomber le sceau et le titre sur le même bord que les autres pages.
     expect(CSS).toMatch(/\.jf-coque \{\s*width: min\(1440px, 100%\);/)
     expect(CSS).toMatch(/\.jf-coque \{\s*width: min\(1440px, 100%\);[\s\S]{0,200}?padding: clamp\(16px, 2\.4vw, 30px\) clamp\(16px, 2\.5vw, 34px\)/)
 
-    //  …et l'en-tête ne rajoute pas la sienne par-dessus.
+    //  …et l'en-tête n'ajoute pas la sienne par-dessus.
     expect(CSS).toMatch(/\.jf-page \.jf-entete \{\s*padding-left: 0;\s*padding-right: 0;/)
 
     //  Aucun palier ne doit plus rétrécir la gouttière de la coque : ce sont
