@@ -266,3 +266,125 @@ it('garde la bande culturelle mince et vectorielle', () => {
   expect(svg).toContain('viewBox="0 0 240 40"')
   expect(svg).not.toMatch(/<image|data:image|<filter/)
 })
+
+/*  ──────────────────────────────────────────────────────────────────────────
+    LA STRUCTURE DE LA FEUILLE, ET PAS SEULEMENT SON CONTENU.
+
+    Deux orphelins ont été trouvés dans cette feuille le 27/11, tous deux
+    hérités de la base (fusion #394), tous deux INVISIBLES aux aiguilles de
+    valeurs : la page citait ses jetons comme il fallait, et malgré ça le
+    histogramme n'avait plus de couleur. Une CLÔTURE de commentaire échappée dans
+    le texte d'une note ne casse AUCUNE cote — elle déplace le sélecteur de la
+    règle suivante dans une poubelle, et le navigateur jette la règle avec. Une
+    OUVERTURE jamais refermée avale cent lignes et laisse un bloc ouvert jusqu'en
+    fin de fichier. (Cette note écrit les deux mots au lieu des deux caractères,
+    et ce n'est pas une coquetterie : le second orphelin de la feuille est né
+    d'une note qui citait sa propre clôture.)
+
+    Ce dépôt n'a ni navigateur ni parseur CSS déclaré (`postcss` n'est pas une
+    dépendance du projet : l'utiliser ici serait écriture d'une dette). Une
+    feuille de style se relit pourtant avec trente lignes de marche d'états —
+    code, commentaire, chaîne — et c'est exactement ce que ces deux fautes
+    violent. D'où trois aiguilles, toutes mutées avant d'être cruces :
+      1. clôture de commentaire hors commentaire, accolade non refermée,
+         profondeur finale : 0 ;
+      2. le repli « sans animation » doit être À LA RACINE (un média ouvert qui
+         ne se ferme pas l'enferme sous `(max-width: 650px)` : le respect de
+         `prefers-reduced-motion` ne devient pas une faveur de l'écran petit) ;
+      3. la phrase-témoin de la panne du 28/11 ne doit être écrite qu'UNE fois
+         — sa seconde apparition était précisément l'orphelin.
+    ────────────────────────────────────────────────────────────────────────── */
+function structure(css) {
+  const fautes = []
+  const profondeurAvant = [0]
+  let etat = 'code'
+  let prof = 0
+  let ligne = 1
+  let guillemet = ''
+  for (let i = 0; i < css.length; i++) {
+    const c = css[i]
+    const d = css[i + 1] || ''
+    if (c === '\n') {
+      //  Une chaîne CSS ne change jamais de ligne : une apostrophe non refermée
+      //    AVANT le saut est une faute, pas un début de texte. C'est ce détail
+      //    qui rend le marcheur utile sur une feuille en français — sinon, l'«
+      //    apostrophe » de `l'état` dans une note avalerait la ligne d'après et
+      //    le `*/` orphelin passerait inaperçu. (Muté : vert. Corrigé : rouge.)
+      if (etat === 'chaine') {
+        fautes.push(`ligne ${ligne} : chaîne ouverte non refermée`)
+        etat = 'code'
+      }
+      ligne++
+      profondeurAvant.push(prof)
+      continue
+    }
+    if (etat === 'commentaire') {
+      if (c === '*' && d === '/') {
+        etat = 'code'
+        i++
+      }
+      continue
+    }
+    if (etat === 'chaine') {
+      if (c === guillemet) etat = 'code'
+      continue
+    }
+    if (c === '/' && d === '*') {
+      etat = 'commentaire'
+      i++
+      continue
+    }
+    if (c === '"' || c === "'") {
+      etat = 'chaine'
+      guillemet = c
+      continue
+    }
+    if (c === '*' && d === '/') {
+      fautes.push(`ligne ${ligne} : « */ » hors commentaire`)
+      i++
+      continue
+    }
+    if (c === '{') prof++
+    else if (c === '}') {
+      prof--
+      if (prof < 0) {
+        fautes.push(`ligne ${ligne} : accolade fermante sans ouvrante`)
+        prof = 0
+      }
+    }
+  }
+  if (etat === 'commentaire') fautes.push('commentaire ouvert jamais fermé')
+  if (etat === 'chaine') fautes.push('chaîne ouverte jamais fermée')
+  if (prof !== 0) fautes.push(`profondeur finale ${prof} : la feuille ne se referme pas`)
+  return { fautes, profondeurAvant }
+}
+
+it('relit la feuille sans orphelin : commentaire fermé, média à la racine', () => {
+  const { fautes, profondeurAvant } = structure(CSS)
+  expect(fautes, `la feuille ne se relit pas — ${fautes.join(' ; ')}`).toEqual([])
+
+  const replis = [
+    ...CSS.matchAll(/^@media\(prefers-reduced-motion/gm),
+  ].map((m) => CSS.slice(0, m.index).split('\n').length)
+  expect(replis.length, 'la feuille a perdu son repli sans animation').toBe(2)
+  replis.forEach((n) => {
+    expect(
+      profondeurAvant[n - 1],
+      `repli sans animation enfermé à la ligne ${n} : un bloc ouvert ne s'est pas refermé`,
+    ).toBe(0)
+  })
+
+  //  La règle du cerne des barres doit être LA PREMIÈRE PAROLE de sa ligne :
+  //    précédée d'un texte de commentaire mal fermé, elle devient la queue d'un
+  //    sélecteur invalide et le navigateur la jette — c'est ainsi que
+  //    l'histogramme s'est retrouvé sans teinte.
+  expect(nu(CSS), 'la règle .ot-bar n’est plus ouverte par son propre sélecteur').toMatch(
+    /^\.ot-bar \{$/m,
+  )
+
+  const temoin = CSS.split('la maison ne colore pas une alternance').length - 1
+  expect(
+    temoin,
+    `la phrase-témoin de la panne du 28/11 est écrite ${temoin} fois : une seconde fois, c'est un orphelin`,
+  ).toBe(1)
+})
