@@ -351,14 +351,26 @@ bloc `:hover` / `:active` / `:disabled` de boutons). Trois conséquences, mesur�
 - `npm run charte`, lu sur la feuille : **4** tailles déclarées (quatre jetons,
   comme avant ce chapitre), **0** couleur en dur hors couche d'alias, **0** rayon
   hors liste, **0** flou, **0** dégradé.
-- Et le compteur du dépôt n'a PAS bougé d'une virgule entre la base et ce
-  chapitre — mesuré en rejouant le contrôle après `git stash` : 67 tailles
-  distinctes · 42 marges · 27 rayons · 4441 couleurs en dur dans 180 fichiers,
-  avant comme après, y compris les DÉCLARATIONS (2305 / 1679 / 1181 des deux
-  côtés) : la reprise déplace des règles à l'intérieur de la même feuille, elle
-  n'y ajoute pas de valeurs. Les 67 tailles ne viennent pas d'ici :
-  `src/pages/JoursFeries.css`, arrivé par #392, en porte à lui seul une douzaine
-  en dur (10, 10,5, 11, 11,5, 12, 12,5, 13, 13,5, 14, 14,5, 15, 16 px).
+- Et le compteur du dépôt n'a PAS bougé d'une virgule entre la base de cette
+  branche et ce chapitre — mesuré deux fois : en rejouant le contrôle après un
+  `git stash`, puis en relanchant `scripts/charte-check.mjs` dans les deux
+  tarballs d'archives (`a0a9884`, le parent de la reprise du 26/12, et
+  `75a9cb7`, sa fusion) : **67 tailles distinctes · 27 rayons · 4441 couleurs en
+  dur dans 180 fichiers**, avec les DÉCLARATIONS (2305 / 1679 / 1181 des deux
+  côtés). Cette reprise déplace des règles à l'intérieur de la même feuille, elle
+  n'y ajoute aucune valeur.
+- Le recoupement avec les archives **confirme** ce que le chapitre du 26/12
+  revendiquait, ligne 187-190, sans l'avoir mesuré aux révisions : la reprise a
+  bien retiré **une marge** au recensement du dépôt (**43 → 42** marges
+  distinctes), **4471 → 4441** couleurs en dur, **182 → 180** fichiers — et rien
+  d'autre ne bouge : 67 tailles et 27 rayons des deux côtés.
+  Les 67 tailles ne viennent pas d'ici : `src/pages/JoursFeries.css` (la page
+  Jours fériés) en porte, mesuré au regex sur ses seules lignes hors commentaires,
+  **132 déclarations de `font-size`, 38 valeurs littérales distinctes — dont 10
+  `clamp()`** (5,8 ; 6,2 ; 6,5 ; 6,8 ; 7,5 ; 8 ; 8,5 ; 9 ; 9,5 ; 10 ; 10,5 ; 11 ;
+  11,5 ; 12 ; 12,5 ; 13 ; 13,5 ; 14 ; 14,5 ; 15 ; 16 ; 17 ; 18 ; 19 ; 20 ; 21 ;
+  22 ; 26 px). Autrement dit : cette page-là est le vrai chantier de la charte, et
+  il n'a jamais été dans mon périmètre ni dans mon autorisation.
 
 ### Le câble de l'export, vérifié ligne à ligne
 
@@ -372,6 +384,55 @@ qui a été signalé. Elle est maintenant appendue, cliquée, retirée, et
 `revokeObjectURL` garde son délai. Ce point n'est pas verrouillé par un test :
 `URL.createObjectURL` n'existe pas en jsdom, et inventer une aiguille muette
 aurait fait comptable d'une preuve inexistante.
+
+### Deux orphelins de commentaire — et l'aiguille que le dépôt n'avait pas
+
+En relisant la feuille ligne à ligne pour ce chapitre, deux notes étaient mal
+fermées. Elles ne venaient pas de cette reprise : elles sont arrivées par la base
+(`a517d3b`, fusion #394), et #395/#396 les avaient déjà réparées sur `main`. Elles
+sont décrites ici quand même, parce que la leçon est un cran au-dessous des cotes.
+
+| où | la faute | ce qu'elle faisait, mesuré sans navigateur |
+| --- | --- | --- |
+| avant `.ot-bar` | le commentaire répétait sa propre dernière phrase **sous** sa clôture : deux lignes de français nu, finies par un `*/` orphelin | le navigateur recolle ces lignes au sélecteur suivant : `.ot-bar` devient la QUEUE d'un sélecteur invalide, donc **la règle entière est jetée**. Or `.ot-bar` est l'unique définition de la barre — `width: 70%`, `background: var(--ot-action)`, le cerclage, le rayon du haut. L'histogramme perd sa teinte alors que chaque cote de la feuille est bonne |
+| dans `@media (max-width: 650px)` | une note ouverte par `/*` et **jamais refermée** | le commentaire court jusqu'au prochain `*/`, 104 lignes plus bas : les deux blocs responsives (650 et 600 px) sont avalés et le `@media` de 650 px reste **ouvert jusqu'à la fin du fichier**. `postcss.parse` refuse la feuille (`Unclosed block`) ; le marcheur d'états rend `profondeur finale 1`. Les deux blocs `@media(prefers-reduced-motion:reduce)` finissent ENFERMÉS dans ce média : le repli « pas d'animation » ne jouait plus que sous 650 px de large — l'inverse exact de la promesse, et sur grand écran précisément |
+
+**Ce que le dépôt ne voyait pas.** `src/services/__tests__/feuillesCssValides.test.js`
+(#395) lit toutes les feuilles avec un lexer d'une trentaine de lignes et refuse un
+`*/` hors commentaire, une chaîne ouverte, la phrase-témoin en double. **Ces trois
+aiguilles passent sur la seconde faute** : rejouée à l'identique (une clôture ôtée
+ligne 1257), le test du dépôt reste **vert 4/4**. Il ne marche pas la profondeur
+des accolades, donc un commentaire qui finit par se refermer — n'importe où, plus
+bas — ne le gêne pas. Le contrôle de charte ne la voit pas non plus : il compte
+des valeurs, pas un arbre.
+
+**L'aiguille ajoutée** (`overtimeBrandAlignment.test.js`, 7e `it`) : un marcheur
+code / commentaire / chaîne, qui rend ses fautes et la profondeur avant chaque
+ligne, plus quatre assertions —
+
+1. `fautes` vide : ni clôture hors commentaire, ni chaîne ouverte, ni accolade
+   fermante sans ouvrante, et **profondeur finale 0** ;
+2. les deux blocs `prefers-reduced-motion` sont écrits à **profondeur 0** ;
+3. `.ot-bar {` occupe une ligne ENTIÈRE (`^\.ot-bar \{$`) — un sélecteur qui a
+   avalé du texte de note ne remplit plus cette forme ;
+4. la phrase-témoin `la maison ne colore pas une alternance` est écrite **une**
+   fois.
+
+Mutations, chacune vérifiée ATTEIGNANTE avant d'être crue : l'orphelin réinjecté
+depuis `a517d3b` → rouge (`ligne 411 : chaîne ouverte non refermée ; ligne 412 :
+« */ » hors commentaire`) ; la clôture ôtée → rouge (`profondeur finale 1`) ; la
+phrase doublée dans une note honnête → rouge.
+
+**Deux pièges, pour ceux qui reprendront ce test.** Le premier a failli me faire
+mentir : ma toute première version du marcheur ouvrait une chaîne sur une
+apostrophe — ce que le CSS fait — et `l'état` de la note orpheline avalait alors
+le `*/` suivant : **la mutation restait verte**. La correction tient en une ligne
+: en CSS une chaîne ne change jamais de ligne, donc une apostrophe non refermée
+avant le saut EST la faute (c'est du reste le mécanisme exact de la panne du
+28/11). Le second piège : ma première tentative de mutation n'avait rien muté du
+tout — la chaîne de recherche ne correspondait pas (un `le ` de trop) et le test,
+vert, racontait que tout allait bien. **Une mutation doit être comptée
+(`count(avant) == 1`) avant d'être crue.**
 
 ### Ouvert
 
