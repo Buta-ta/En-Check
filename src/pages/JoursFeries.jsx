@@ -600,7 +600,9 @@ export default function JoursFeries() {
           <ArrowLeft size={17} />
         </button>
 
-        <LesothoSceauSvg taille={46} ton="terre" />
+        {/*  Le sceau du titre. Il a SA classe : la feuille de style doit
+             pouvoir le placer sans risquer d'attraper une icône de bouton. */}
+        <LesothoSceauSvg taille={62} ton="terre" className="jf-sceau" />
 
         <div className="jf-titre-bloc">
           <span className="jf-eyebrow">Le calendrier tissé</span>
@@ -609,28 +611,9 @@ export default function JoursFeries() {
                texte ». L'eyebrow et le titre restent. */}
         </div>
 
-        {/*  LES QUATRE SCEAUX — quatre médaillons reliés par un fil de bâti,
-             à droite du titre. Sur la maquette ils racontent la même chose
-             que la bande de mesures : combien de fêtes, combien ajoutées,
-             combien éteintes, dans combien de jours la prochaine. */}
-        <div className="jf-entete-droite">
-          {isSuperAdmin && (
-            <div className="jf-entreprise">
-              <Building2 size={14} aria-hidden="true" />
-              <select
-                value={selectedEntId || ''}
-                onChange={e => handleEntChange(e.target.value || null)}
-                aria-label="Entreprise dont on règle les jours fériés"
-              >
-                <option value="">Toutes les entreprises</option>
-                {enterprises.map(e => (
-                  <option key={e.id} value={e.id}>{e.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-        </div>
+        {/*  « Enlève ce bouton sélecteur » (27/11, image 2). L'entreprise se
+             choisit dans le rail de la sidebar — le doublon dans l'en-tête
+             n'avait plus de raison d'être. */}
 
         <div className="jf-sceaux">
           <span className="jf-sceaux-fil" aria-hidden="true" />
