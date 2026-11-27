@@ -237,8 +237,10 @@ describe('1. une seule page pour les deux lectures', () => {
     expect(VERROU).not.toContain("'/cout-salarial'")
   })
 
-  it('la page garde ses deux bandeaux et ses repères', () => {
-    expect(PAGE).toContain('<PageCulturalBand pathname="/remunerations" />')
+  it('un bandeau sur deux, et les repères', () => {
+    //  celui du haut est tombé avec la couture de pointillés, quand
+    //  l'en-tête est devenu une planche qui se cadre elle-même
+    expect(PAGE).not.toContain('<PageCulturalBand pathname="/remunerations" />')
     expect(PAGE).toContain('<PageCulturalBand pathname="/remunerations" placement="bottom" />')
     //  la bascule de thème et le bandeau de raccourcis sont tombés : le
     //  premier vit dans le rail, le second redisait la barre latérale

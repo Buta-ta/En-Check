@@ -115,7 +115,33 @@
   /* le lavis de la bande, en haut : la teinte du fond, pas un dégradé */
   --rw-lavis: color-mix(in srgb, var(--rw-cuivre) 10%, var(--rw-nuit));
 
-  /* les dimensions propres à l'écran : la case du kit (36 px) et ce que
+  /*  LA PLANCHE. L'en-tête n'est plus une barre collée aux bords de la coque
+      ni une bande soulignée d'un filet : c'est une planche posée sur le fond,
+      rognée en biseau à ses quatre coins — la silhouette d'un billet, et rien
+      d'autre du billet. Pas de chiffre, pas de numéro de série, pas de
+      guillochage : la forme seule. `--rw-coupe` est l'onglet, `--rw-filetage`
+      le dégagement où court le second filet, `--rw-coing` le carré de cuivre
+      qui s'y loge aux quatre angles, `--rw-chute` le décalage de l'ombre.
+      L'ombre ne peut pas être un `box-shadow` de la planche : le `clip-path`
+      la rognerait avec tout le reste — c'est une seconde silhouette, rognée
+      du même polygone et décalée, peinte dessous. */
+  --rw-coupe: 14px;
+  --rw-filetage: 10px;
+  --rw-coing: 6px;
+  --rw-coings: linear-gradient(var(--rw-cuivre) 0 0);
+  --rw-chute: 3px;
+  /*  la planche doit être posée dans la même colonne que le seuil et le
+      pagne : la largeur de la coque, moins les gouttières qu'elle se donne */
+  --rw-colonne: min(calc(var(--rw-largeur) - 2 * var(--charte-espace-5)),
+    calc(100% - 2 * var(--charte-espace-5)));
+  --rw-billet: polygon(
+    var(--rw-coupe) 0, calc(100% - var(--rw-coupe)) 0,
+    100% var(--rw-coupe), 100% calc(100% - var(--rw-coupe)),
+    calc(100% - var(--rw-coupe)) 100%, var(--rw-coupe) 100%,
+    0 calc(100% - var(--rw-coupe)), 0 var(--rw-coupe)
+  );
+
+  /*  les dimensions propres à l'écran : la case du kit (36 px) et ce que
       l'écran ajoute — une coche, un sceau, la piste d'un interrupteur.
       Aucun de ces chiffres n'est un pas d'espacement. */
   --rw-cadre: 36px;
@@ -142,31 +168,68 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── 1. La couture sous le bandeau ───────────────────────── */
+/* ── 1. La planche : l'en-tête rogné en billet ──────────── */
 
-/*  une couture, pas un ornement : trois pixels de ruleau, un point de
-      cuivre tous les huit. Elle remplit la boîte, d'où ni position ni
-      répétition à régler. */
-.rw-bordure {
-  flex: none;
-  height: var(--rw-filet);
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--rw-cuivre) 0 var(--rw-trait),
-    transparent var(--rw-trait) var(--charte-espace-2)
-  );
-}
-
-/* ── 2. L'en-tête ────────────────────────────────────────── */
-
+/*  Le contenant ne porte aucun fond : il tient la planche à distance des
+      bords de la coque et pose le rythme du bloc. Le cadre, la coupe, la
+      chute vivent sur ses deux pseudos, rognés du même polygone — un
+      `border` ordinaire resterait rectangle et ne suivrait pas les onglets,
+      tandis qu'une ombre interne est coupée net aux quatre coins, ce qui est
+      exactement ce qu'on cherche. */
 .rw-entete {
+  position: relative;
+  /*  l'isolation est obligatoire : sans contexte d'empilement propre, les deux
+      pseudos en `z-index` négatif glisseraient sous le fond de la page et la
+      planche disparaîtrait derrière le lavis. */
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: var(--charte-espace-3);
   flex-wrap: wrap;
+  width: var(--rw-colonne);
+  margin: var(--charte-espace-5) auto var(--charte-espace-4);
   padding: var(--charte-espace-4) var(--charte-espace-5);
-  border-bottom: var(--rw-trait) solid var(--rw-ligne-forte);
 }
+
+/*  la planche elle-même : le fond, les trois traits du double feutre et les
+      quatre carrés de cuivre. Les traits sont des `box-shadow` internes —
+      peintes du plus étroit au plus large, elles laissent 2 px d'encre au
+      bord, un dégagement, puis un filet à 10 px. */
+.rw-entete::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--rw-panneau);
+  background-image: var(--rw-coings), var(--rw-coings),
+    var(--rw-coings), var(--rw-coings);
+  background-repeat: no-repeat;
+  background-size: var(--rw-coing) var(--rw-coing);
+  background-position:
+    left var(--rw-filetage) top var(--rw-filetage),
+    right var(--rw-filetage) top var(--rw-filetage),
+    right var(--rw-filetage) bottom var(--rw-filetage),
+    left var(--rw-filetage) bottom var(--rw-filetage);
+  clip-path: var(--rw-billet);
+  box-shadow:
+    inset 0 0 0 var(--rw-trait) var(--rw-encre),
+    inset 0 0 0 calc(var(--rw-filetage) - var(--rw-trait)) var(--rw-panneau),
+    inset 0 0 0 var(--rw-filetage) var(--rw-ligne);
+}
+
+/*  la chute : une copie rognée, décalée, pleine de tissu — la couleur ne
+      s'inverse pas avec le thème, l'ombre reste donc une ombre des deux côtés */
+.rw-entete::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  transform: translate(var(--rw-chute), var(--rw-chute));
+  background: var(--rw-boue);
+  clip-path: var(--rw-billet);
+}
+
+/* ── 2. Ce qui est posé sur la planche ───────────────────── */
 
 /*  Le carré de l'en-tête : la case du kit, deux pixels d'encre, rien de
       plus. Il s'appelait `rw-bascule` parce qu'il portait aussi la bascule
@@ -237,6 +300,10 @@
   align-items: center;
   gap: var(--charte-espace-2);
   flex-wrap: wrap;
+  padding-left: var(--charte-espace-4);
+  /*  le billet a une souche : le tiers droit est séparé du titre par une
+      règle, pas par du vide */
+  border-left: var(--rw-trait) solid var(--rw-ligne);
 }
 
 /* le sélecteur d'entreprise — même place sur toutes les pages */
@@ -246,8 +313,8 @@
   gap: var(--charte-espace-2);
   padding: var(--charte-espace-2) var(--charte-espace-3);
   background: var(--rw-panneau);
-  border: var(--rw-trait) solid var(--rw-ligne);
-  border-left: var(--rw-filet) solid var(--rw-cuivre);
+  /*  le cartouche du billet : du cuivre autour, plus un liseré sur un côté */
+  border: var(--rw-trait) solid var(--rw-cuivre);
   border-radius: var(--charte-rayon-carte);
   color: var(--rw-douce);
 }
@@ -2238,6 +2305,14 @@
 @media (max-width: 760px) {
   .rw-entete {
     padding: var(--charte-espace-3);
+    width: calc(100% - 2 * var(--charte-espace-3));
+    margin-top: var(--charte-espace-4);
+    margin-bottom: var(--charte-espace-3);
+  }
+
+  .rw-entete-droite {
+    padding-left: 0;
+    border-left: 0;
   }
 
   .rw-titre-bloc {
