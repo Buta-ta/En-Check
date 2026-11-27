@@ -8,7 +8,9 @@
 //
 //   · le motif est celui de la Paie, et le bandeau le dit ;
 //   · les repères d'habitude sont à leur place (retour, entreprise,
-//     bascule, raccourcis, action principale) ;
+//     action principale) — la bascule de thème et le bandeau de
+//     raccourcis sont tombés le 8 novembre 2026, et les tests ci-dessous
+//     défendent maintenant leur ABSENCE ;
 //   · le tableau de treize colonnes n'existe plus ;
 //   · « Enregistrer (n) » compte de VRAIS écarts, pas des frappes ;
 //   · « Reprendre pour… » ne recopie jamais un salaire par défaut ;
@@ -44,6 +46,53 @@ const regle = (selecteur) => {
   expect(trouve, selecteur).not.toBeNull()
   const debut = trouve.index + trouve[1].length
   return CSS.slice(debut, CSS.indexOf('}', debut))
+}
+// ── la palette, résolue jusqu'au jeton ──────────────────────────────
+//  Huit novembre 2026 : la page ne peint plus rien elle-même. On ne peut
+//  donc plus la contrôler en lisant des hex dans sa feuille — il faut
+//  suivre la chaîne complète, `--rw-*` → `--charte-*` → le thème posé à la
+//  racine. Ce résolveur fait en sRGB ce que fait le navigateur, et c'est
+//  lui qui juge les contrastes : la page n'a plus de couleur à montrer.
+const TOKENS = readFileSync('src/styles/tokens.css', 'utf8')
+const ALIAS = regle('.rw-page,\n.rw-chargement')
+const sansCommentaires = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '')
+const racineDu = (theme) => {
+  const i = TOKENS.indexOf("[data-theme='dark']")
+  const blocs = sansCommentaires(TOKENS.slice(0, i))
+  return theme === 'sombre' ? `${blocs}\n${sansCommentaires(TOKENS.slice(i))}` : blocs
+}
+const canaux = (hex) => hex.replace('#', '').match(/[0-9a-f]{2}/gi).map(v => parseInt(v, 16))
+const versHex = (trois) => `#${trois.map(v => Math.round(v).toString(16).padStart(2, '0')).join('')}`
+const melange = (a, b, part) => {
+  const [x, y] = [a, b].map(canaux)
+  return versHex(x.map((v, i) => v * part + y[i] * (1 - part)))
+}
+const resoudre = (valeur, theme) => {
+  const ref = /^var\((--[\w-]+)\)$/.exec(valeur)
+  if (ref) {
+    const nom = ref[1]
+    const source = nom.startsWith('--rw-') ? sansCommentaires(ALIAS) : racineDu(theme)
+    const m = new RegExp(`${nom}:\\s*([^;]+);`).exec(source)
+    expect(m, nom).not.toBeNull()
+    return resoudre(m[1].trim(), theme)
+  }
+  const mix = /^color-mix\(in srgb,\s*(.+?)\s+(\d+)%,\s*(.+)\)$/.exec(valeur)
+  if (mix) {
+    return melange(resoudre(mix[1].trim(), theme), resoudre(mix[3].trim(), theme), Number(mix[2]) / 100)
+  }
+  expect(valeur, 'valeur de couleur non résolue').toMatch(/^#[0-9a-fA-F]{6}$/)
+  return valeur.toLowerCase()
+}
+/** La couleur d'un jeton de la page, une fois mélangée au thème demandé. */
+const encre = (nom, theme) => resoudre(`var(--rw-${nom})`, theme)
+const luminance = (hex) => {
+  const [r, g, b] = canaux(hex).map(c => c / 255)
+    .map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+const contraste = (a, b) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
+  return (x + 0.05) / (y + 0.05)
 }
 
 // ── la base simulée ────────────────────────────────────────
@@ -160,35 +209,45 @@ describe('1. le motif est celui de la Paie, et le bandeau le dit', () => {
   })
 
   it('le chargement emploie le même motif que la page', () => {
-    const html = renderToStaticMarkup(<RemunerationsLoading darkMode onSkip={() => {}} />)
+    const html = renderToStaticMarkup(<RemunerationsLoading onSkip={() => {}} />)
     expect(html).toContain('data-cultural-motif="bogolan"')
     expect(html).toContain('ec-cultural-top')
   })
 })
 
 describe('2. les repères sont toujours à la même place', () => {
-  it('retour en premier, bascule en dernier — sur toutes les pages', () => {
+  it('retour en premier, entreprise en dernier — et plus de bascule', () => {
     const entete = PAGE.slice(PAGE.indexOf('<header className="rw-entete">'), PAGE.indexOf('</header>'))
     expect(entete.indexOf('rw-retour')).toBeGreaterThan(-1)
-    expect(entete.indexOf('rw-bascule')).toBeGreaterThan(entete.indexOf('rw-retour'))
-    //  la bascule de thème est le dernier bouton de l'en-tête
-    expect(entete.lastIndexOf('role="switch"')).toBeGreaterThan(
-      entete.lastIndexOf('Recharger les rémunérations')
-    )
-    expect(entete).toContain('aria-checked={darkMode}')
-    //  et c'est la même géométrie que sur les autres pages refondues
-    const jf = readFileSync('src/pages/JoursFeries.css', 'utf8')
-    expect(jf).toMatch(/\.jf-bascule \{[^}]*width: 38px;[^}]*height: 38px;/s)
-    expect(CSS).toMatch(/\.rw-bascule \{[^}]*width: 38px;[^}]*height: 38px;/s)
-    expect(CSS).toMatch(/\.rw-bascule \{[^}]*border-radius: 50%;/s)
+    //  le sélecteur d'entreprise reste l'objet le plus à droite de l'en-tête
+    expect(entete.indexOf('rw-entreprise')).toBeGreaterThan(entete.indexOf('rw-retour'))
+    expect(entete.indexOf('rw-entreprise')).toBeLessThan(entete.indexOf('Recharger les rémunérations'))
+    //  la bascule de thème est tombée avec le bouton : le thème se règle
+    //  dans le rail, comme sur le contrat de temps (overtimeBrandAlignment)
+    expect(entete).not.toContain('toggleTheme')
+    expect(entete).not.toContain('aria-checked={darkMode}')
+    expect(entete).not.toContain('role="switch"')
+    //  le carré de l'en-tête a gardé la case du kit, pour les deux boutons
+    const carre = regle('.rw-retour,\n.rw-cadre')
+    expect(carre).toContain('width: var(--rw-cadre);')
+    expect(carre).toContain('height: var(--rw-cadre);')
+    expect(carre).toContain('border: var(--rw-trait) solid var(--rw-ligne-forte);')
+    expect(carre).toContain('border-radius: var(--charte-rayon-champ);')
   })
 
-  it('les raccourcis vivent dans le seuil, pas dans l’en-tête', () => {
-    const seuil = PAGE.slice(PAGE.indexOf('className="rw-seuil"'), PAGE.indexOf('</section>'))
-    expect(seuil).toContain('<RaccourcisPages compact excludePaths={[\'/remunerations\']} />')
-    const entete = PAGE.slice(PAGE.indexOf('<header'), PAGE.indexOf('</header>'))
-    expect(entete).not.toContain('RaccourcisPages')
-    expect(CSS).toContain('.rw-raccourcis .abs-raccourci')
+  it('le bandeau de raccourcis est tombé : le rail les dit déjà', () => {
+    //  la page ne monte plus le composant, n'en garde plus la classe, et
+    //  son seuil ne promet plus d'« accès rapides » qu'il ne montre pas
+    expect(PAGE).not.toContain('RaccourcisPages')
+    expect(PAGE).not.toContain('rw-raccourcis')
+    expect(CSS).not.toContain('rw-raccourcis')
+    expect(PAGE).toContain('aria-label="Entreprise, devise, période"')
+    //  le raccourci clavier, lui, est un service rendu — pas un meuble :
+    //  il reste collé au bouton qui écrit, dans la barre d'assemblage
+    expect(PAGE).toContain('className="rw-touche"')
+    expect(PAGE).toContain('raccourci.current = vue === \'contrats\' ? enregistrerTout : null')
+    //  et le tableau de bord n'a pas bougé d'un pouce
+    expect(PAGE).toContain("onClick={() => navigate('/dashboard')}")
   })
 
   it('l’action principale est une barre collée en bas, pas un bouton du fond', () => {
@@ -199,10 +258,26 @@ describe('2. les repères sont toujours à la même place', () => {
     expect(PAGE).toMatch(/\{modifications > 0 && \(/)
   })
 
-  it('la page a deux thèmes, avec sa propre bascule', () => {
-    expect(CSS).toContain('.rw-page.rw-clair {')
-    expect(PAGE).toContain("const page = `rw-page${darkMode ? '' : ' rw-clair'}`")
-    expect(PAGE).toContain('onClick={toggleTheme}')
+  it('la page n’entretient pas un second thème à côté du global', () => {
+    //  ce que défend ce verrou n'est pas « la page ignore le thème » mais
+    //  « la page n'en tient pas un deuxième » : une classe locale, un
+    //  `data-theme` posé par l'écran, l'ancre `encheck.theme`, une échelle
+    //  de couleurs parallèle. Le rail décide, la page obéit aux jetons.
+    expect(CSS).not.toContain('rw-clair')
+    expect(PAGE).not.toContain('rw-clair')
+    expect(PAGE).not.toContain('data-theme=')
+    expect(PAGE).not.toContain('encheck.theme')
+    expect(PAGE).not.toMatch(/<button[^>]*onClick=\{toggleTheme\}/)
+    expect(CSS).not.toMatch(/Mode (sombre|clair)/)
+    //  la page s'appelle elle-même, sans condition
+    expect(PAGE).toContain('<div className="rw-page">')
+    //  `color-scheme` se pose sur le champ qui prête sa liste, jamais sur
+    //  la page : le système n'est pas une affaire d'écran
+    expect(regle('.rw-page :is(input, select)')).toContain('color-scheme: light dark')
+    expect(ALIAS).not.toContain('color-scheme')
+    //  et le chargeur, qui monte hors de la page, relit la même couche
+    expect(CHARGEMENT).not.toContain('darkMode')
+    expect(CSS).toMatch(/\.rw-page,\n\.rw-chargement \{/)
   })
 })
 
@@ -220,10 +295,13 @@ describe('3. le tableau de treize colonnes n’existe plus', () => {
       expect(PAGE.toLowerCase(), interdit).not.toContain(interdit.toLowerCase())
       expect(CSS.toLowerCase(), interdit).not.toContain(interdit.toLowerCase())
     }
-    //  la palette de la page vient de la boue et du cuivre
-    for (const couleur of ['#1A1009', '#2A1509', '#9C5321', '#D4813C', '#F4ECDD', '#231911']) {
-      expect(CSS.toUpperCase()).toContain(couleur)
+    //  la palette de la page ne s'écrit plus, elle se relit dans le kit :
+    //  douze jetons traversent la feuille, et c'est tout ce qu'on lui demande
+    for (const nom of ['sable', 'surface', 'surface2', 'tissu', 'encre', 'douce',
+      'aplat', 'texte', 'bordure', 'succes', 'alerte', 'erreur']) {
+      expect(CSS, `--charte-${nom}`).toContain(`var(--charte-${nom})`)
     }
+    expect(CHARGEMENT).not.toMatch(/#[0-9a-fA-F]{3,8}/)
   })
 
   it('la page n’a plus de styles en ligne : tout vit dans la feuille', () => {
@@ -265,7 +343,7 @@ describe('4. les quatre pièces du motif ont un rôle', () => {
   })
 
   it('le chargement est dessiné, jamais photographié', () => {
-    const html = renderToStaticMarkup(<RemunerationsLoading darkMode onSkip={() => {}} />)
+    const html = renderToStaticMarkup(<RemunerationsLoading onSkip={() => {}} />)
     expect(html).not.toContain('<img')
     expect(html).toContain('rw-tenture')
     expect(html).toMatch(/rw-pan rw-pan-[1-6]/)
@@ -312,7 +390,7 @@ describe('5. la page se monte et se lit', () => {
   const bande = (nom) => [...hote.querySelectorAll('.rw-bande')]
     .find(b => texte(b).includes(nom))
 
-  it('la coque, les mesures, les bandes et les raccourcis sont là', async () => {
+  it('la coque, les mesures, les bandes sont là — et plus de raccourcis', async () => {
     await monter()
 
     expect(hote.querySelector('.rw-page')).not.toBeNull()
@@ -322,7 +400,7 @@ describe('5. la page se monte et se lit', () => {
     expect(hote.querySelectorAll('.rw-mesure')).toHaveLength(4)
     //  une bande par salarié
     expect(hote.querySelectorAll('.rw-bande')).toHaveLength(3)
-    expect(hote.querySelector('[data-testid="raccourcis-pages"]')).not.toBeNull()
+    expect(hote.querySelector('[data-testid="raccourcis-pages"]')).toBeNull()
     //  et le pied de page en bogolan
     expect(hote.querySelector('.ec-cultural-bottom')).not.toBeNull()
   })
@@ -459,7 +537,7 @@ describe('6. « Enregistrer » compte de vrais écarts, pas des frappes', () => 
     await monter()
     await ecrire(champDe('Kossi ALABI', 'Mensuelle'), '300000')
 
-    const bouton = hote.querySelector('.rw-barre .rw-bouton')
+    const bouton = hote.querySelector('.rw-barre .ch-btn-pleine')
     await clic(bouton)
 
     expect(etat.ecritures).toHaveLength(1)
@@ -572,7 +650,7 @@ describe('7. « Reprendre pour… » ne recopie jamais un salaire par défaut', 
     await clic(destinataire)
     expect(destinataire.getAttribute('aria-pressed')).toBe('true')
 
-    const reprendre = [...modale.querySelectorAll('.rw-modale-pied .rw-bouton')]
+    const reprendre = [...modale.querySelectorAll('.rw-modale-pied .ch-btn-pleine')]
       .find(b => texte(b).includes('Reprendre'))
     await clic(reprendre)
 
@@ -592,7 +670,7 @@ describe('7. « Reprendre pour… » ne recopie jamais un salaire par défaut', 
   it('sans destinataire, rien ne se passe et on le dit', async () => {
     await monter()
     const modale = await ouvrir('Kossi ALABI')
-    const reprendre = [...modale.querySelectorAll('.rw-modale-pied .rw-bouton')]
+    const reprendre = [...modale.querySelectorAll('.rw-modale-pied .ch-btn-pleine')]
       .find(b => texte(b).includes('Reprendre'))
     await clic(reprendre)
     //  la modale reste ouverte : on n'a rien appliqué
@@ -600,64 +678,53 @@ describe('7. « Reprendre pour… » ne recopie jamais un salaire par défaut', 
   })
 })
 
-describe('8. le texte reste lisible dans les deux champs', () => {
-  const luminance = (hex) => {
-    const [r, g, b] = hex.replace('#', '').match(/[0-9a-f]{2}/gi)
-      .map(h => parseInt(h, 16) / 255)
-      .map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-  }
-  const contraste = (a, b) => {
-    const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
-    return (x + 0.05) / (y + 0.05)
-  }
-  const bloc = (selecteur) => {
-    const debut = CSS.indexOf(selecteur)
-    expect(debut).toBeGreaterThan(-1)
-    return CSS.slice(debut, CSS.indexOf('}', debut))
-  }
-  const jeton = (source, nom) => {
-    const m = source.match(new RegExp(`--rw-${nom}: (#[a-fA-F0-9]{6});`))
-    expect(m, nom).not.toBeNull()
-    return m[1]
-  }
+describe('8. le texte reste lisible, et la page n’a plus qu’une palette', () => {
+  //  plus de thème local : les deux thèmes sont ceux du kit, et c'est le
+  //  résolveur du haut de fichier qui les va-et-vient. Un seuil de 4,5 est
+  //  une loi, pas une préférence : il se vérifie sur les deux.
+  const FONDS = ['nuit', 'panneau', 'panneau-2', 'creux']
+  const NIVEAUX = ['encre', 'douce', 'faible']
 
-  it('les trois niveaux de texte passent 4,5:1 sur les quatre fonds', () => {
-    for (const [selecteur, nom] of [['.rw-page {', 'sombre'], ['.rw-page.rw-clair {', 'clair']]) {
-      const b = bloc(selecteur)
-      const fonds = ['nuit', 'panneau', 'panneau-2', 'creux']
-      for (const niveau of ['encre', 'douce', 'faible']) {
-        for (const fond of fonds) {
-          expect(
-            contraste(jeton(b, niveau), jeton(b, fond)),
-            `${nom} · ${niveau} sur ${fond}`
-          ).toBeGreaterThanOrEqual(4.5)
+  for (const theme of ['clair', 'sombre']) {
+    it(`les trois niveaux de texte passent 4,5:1 sur les quatre fonds (${theme})`, () => {
+      for (const niveau of NIVEAUX) {
+        for (const fond of FONDS) {
+          expect(contraste(encre(niveau, theme), encre(fond, theme)), `${theme} · ${niveau} sur ${fond}`)
+            .toBeGreaterThanOrEqual(4.5)
         }
       }
-    }
-  })
+    })
 
-  it('les états et l’accent tiennent là où ils vivent', () => {
-    for (const [selecteur, nom] of [['.rw-page {', 'sombre'], ['.rw-page.rw-clair {', 'clair']]) {
-      const b = bloc(selecteur)
-      //  l'accent est du texte sur le fond, le panneau et le seuil
-      for (const fond of ['nuit', 'panneau', 'panneau-2']) {
-        expect(contraste(jeton(b, 'cuivre'), jeton(b, fond)), `${nom} cuivre/${fond}`)
+    it(`l’accent écrit, les états et le texte d’un pan remplis tiennent (${theme})`, () => {
+      //  le cuivre ÉCRIT est l'argile écrite du kit ; le cuivre PEINT est
+      //  une figure et se juge à 3:1. Deux métiers, deux jetons.
+      for (const fond of FONDS) {
+        expect(contraste(encre('ocre', theme), encre(fond, theme)), `${theme} · écrit/${fond}`)
           .toBeGreaterThanOrEqual(4.5)
       }
-      //  les badges d'état vivent sur le creux
+      for (const fond of ['nuit', 'panneau', 'creux']) {
+        expect(contraste(encre('cuivre', theme), encre(fond, theme)), `${theme} · peint/${fond}`)
+          .toBeGreaterThanOrEqual(3)
+      }
       for (const etat of ['ok', 'attente', 'alerte']) {
-        expect(contraste(jeton(b, etat), jeton(b, 'creux')), `${nom} ${etat}/creux`)
+        expect(contraste(encre(etat, theme), encre('creux', theme)), `${theme} · ${etat}/creux`)
           .toBeGreaterThanOrEqual(4.5)
       }
-    }
-  })
+      expect(contraste(encre('sur-cuivre', theme), encre('boue', theme)), `${theme} · texte sur un pan`)
+        .toBeGreaterThanOrEqual(4.5)
+    })
+  }
 
-  it('le texte des boutons cuivre reste lisible dessus', () => {
-    const sombre = bloc('.rw-page {')
-    const clair = bloc('.rw-page.rw-clair {')
-    expect(contraste(jeton(sombre, 'sur-cuivre'), jeton(sombre, 'cuivre'))).toBeGreaterThanOrEqual(4.5)
-    expect(contraste(jeton(clair, 'sur-cuivre'), jeton(clair, 'cuivre'))).toBeGreaterThanOrEqual(4.5)
+  it('la feuille ne peint rien : toute couleur est un alias du kit', () => {
+    expect(CSS).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+    expect(CSS).not.toMatch(/rgba?\(/)
+    for (const nom of ['nuit', 'panneau', 'panneau-2', 'creux', 'encre', 'douce', 'faible',
+      'cuivre', 'ocre', 'boue', 'ligne', 'ligne-forte', 'ok', 'attente', 'alerte', 'sur-cuivre']) {
+      expect(ALIAS, `--rw-${nom}`).toContain(`--rw-${nom}:`)
+    }
+    //  un alias qui SERAIT une couleur = la charte au second degré
+    expect(ALIAS).not.toMatch(/--rw-[a-z-]+:\s*#/)
+    expect(ALIAS).not.toMatch(/--rw-[a-z-]+:\s*rgba?\(/)
   })
 })
 
@@ -703,7 +770,7 @@ describe('9. le ton reste professionnel', () => {
   })
 
   it('ni dans l’écran de chargement', () => {
-    const html = renderToStaticMarkup(<RemunerationsLoading darkMode onSkip={() => {}} />)
+    const html = renderToStaticMarkup(<RemunerationsLoading onSkip={() => {}} />)
     const vu = html
       .replace(/<[^>]+>/g, ' ')
       .replace(/&[a-z]+;/g, ' ')
@@ -761,47 +828,105 @@ describe('10. le survol ne dégrade jamais la lisibilité', () => {
 
   it('la case reste un champ : fond distinct de la ligne, dans les deux thèmes', () => {
     expect(regle('.rw-case')).toContain('background: var(--rw-creux)')
-    //  et les champs natifs suivent le thème de la page
-    expect(regle('.rw-page')).toContain('color-scheme: dark')
-    expect(regle('.rw-page.rw-clair')).toContain('color-scheme: light')
+    //  les champs natifs ne reçoivent plus d'avis depuis la page : ils
+    //  relisent le thème du système, et c'est le seul `color-scheme` ici
+    expect(regle('.rw-page :is(input, select)')).toContain('color-scheme: light dark')
+    expect(CSS.match(/color-scheme:/g)).toHaveLength(1)
     //  aucun fond natif ne peut se peindre par-dessus
     expect(regle('.rw-case-champ')).toContain('appearance: none')
   })
 
   it('le texte tient 4,5:1 sur le fond des cases et sur la case du rythme', () => {
-    const luminance = (hex) => {
-      const [r, g, b] = hex.replace('#', '').match(/[0-9a-f]{2}/gi)
-        .map(h => parseInt(h, 16) / 255)
-        .map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b
-    }
-    const contraste = (a, b) => {
-      const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
-      return (x + 0.05) / (y + 0.05)
-    }
-    const melange = (a, b, part) => {
-      const [x, y] = [a, b].map(h => h.replace('#', '').match(/[0-9a-f]{2}/gi)
-        .map(v => parseInt(v, 16)))
-      return `#${x.map((v, i) => Math.round(v * part + y[i] * (1 - part))
-        .toString(16).padStart(2, '0')).join('')}`
-    }
-    const jeton = (source, nom) => {
-      const m = source.match(new RegExp(`--rw-${nom}: (#[a-fA-F0-9]{6});`))
-      expect(m, nom).not.toBeNull()
-      return m[1]
-    }
-
-    for (const [selecteur, nom] of [['.rw-page {', 'sombre'], ['.rw-page.rw-clair {', 'clair']]) {
-      const b = regle(selecteur)
-      const creux = jeton(b, 'creux')
-      const teinte = melange(jeton(b, 'cuivre'), creux, 0.06)
-
+    //  la case du rythme se teinte de 6 % de cuivre dans le creux : le
+    //  lavis est un mélange colorimétrique, pas une opacité — il ne
+    //  traversera donc jamais la ligne, et il se retourne avec le thème
+    expect(regle('.rw-case[data-actif=\'oui\']')).toContain('color-mix(in srgb, var(--rw-cuivre) 6%, var(--rw-creux))')
+    for (const theme of ['clair', 'sombre']) {
+      const teinte = resoudre('color-mix(in srgb, var(--rw-cuivre) 6%, var(--rw-creux))', theme)
+      const creux = encre('creux', theme)
       for (const niveau of ['encre', 'douce', 'faible']) {
-        expect(contraste(jeton(b, niveau), creux), `${nom} ${niveau}/creux`)
+        expect(contraste(encre(niveau, theme), creux), `${theme} ${niveau}/creux`)
           .toBeGreaterThanOrEqual(4.5)
-        expect(contraste(jeton(b, niveau), teinte), `${nom} ${niveau}/case active`)
+        expect(contraste(encre(niveau, theme), teinte), `${theme} ${niveau}/case active`)
           .toBeGreaterThanOrEqual(4.5)
       }
     }
+  })
+})
+
+describe('11. le brut adouci : l’encre, la bosse et rien d’autre', () => {
+  //  Un contour de deux pixels ET une ombre franche sans flou posées sur le
+  //  même objet — jamais deux anneaux l’un dans l’autre. C'est la loi que la
+  //  feuille du contrat de temps s'est donnée ; la page s'y plie aux mêmes
+  //  endroits, et le contrôle est littéral : la feuille ne contient plus un
+  //  seul chiffre là où le kit a un jeton.
+  const BOGOLAN_SRC = readFileSync('src/components/RemunerationsBogolan.jsx', 'utf8')
+  //  un commentaire n'est pas une déclaration : la feuille est d'abord
+  //  vidée de ses notes, sinon on se met à défendre ce qu'elle RAconte
+  const DECL = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  it('aucun contour de un pixel, aucune ombre floue', () => {
+    expect(DECL.match(/border[^;:]*:\s*1px/g)).toBeNull()
+    expect(DECL).not.toMatch(/box-shadow:[^;]*\d+px \d+px \d+px/)
+    //  les ombres de la page, c'est le jeton, ou rien
+    const ombres = [...DECL.matchAll(/box-shadow:\s*([^;]+);/g)].map(m => m[1].trim())
+    expect(ombres.length).toBeGreaterThan(4)
+    for (const ombre of ombres) {
+      expect(ombre, ombre).toMatch(
+        /^(var\(--charte-ombre-dure\)|none|inset 0 0 0 var\(--rw-trait\) var\(--rw-[a-z0-9-]+\)|0 0 0 var\(--charte-espace-2\) var\(--rw-[a-z0-9-]+\))$/
+      )
+    }
+  })
+
+  it('les rayons, les tailles et les pas viennent du kit', () => {
+    //  le seul rayon écrit en chiffre est le 0 du grain de trame
+    const bruts = [...CSS.matchAll(/border-radius:\s*([^;]+);/g)]
+      .map(m => m[1].trim())
+      .filter(v => /^\d/.test(v))
+    expect(bruts, bruts.join(' · ')).toEqual(['0'])
+    expect(CSS).not.toMatch(/font-size:\s*[\d.]+px/)
+    expect(CSS).not.toMatch(/(gap|padding|margin)(-[a-z]+)?:\s*[\d.]+px/)
+    //  et le fond de la page ne sepeint pas d'un dégradé d'atelier
+    expect(CSS).not.toMatch(/radial-gradient/)
+    expect(CSS).not.toMatch(/backdrop-filter/)
+  })
+
+  it('la page ne connaît ni l’opacité qui délaye, ni l’important qui force', () => {
+    expect(DECL).not.toMatch(/!important/)
+    //  deux `opacity` hors des boucles de dessin, et une seule affaire : le
+    //  pan de teinture qui n'est pas encore peint (`0`), et son repli (`1`)
+    //  quand la préférence demande l'animation coupée. Aucun texte délayé —
+    //  pour pâlit on mélange, on n'efface pas
+    const opacites = [...DECL.matchAll(/(?:^|\n)\s*opacity:\s*([^;]+);/g)].map(m => m[1].trim())
+    expect(opacites, opacites.join(' · ')).toEqual(['0', '1'])
+  })
+
+  it('le motif a gardé son dessin et perdu sa palette', () => {
+    expect(BOGOLAN_SRC).not.toMatch(/#[0-9a-fA-F]{3,8}/)
+    expect(BOGOLAN_SRC).not.toMatch(/rgba?\(/)
+    //  les quatre signes sont toujours là, par classe
+    for (const classe of ['rw-bo-cadre', 'rw-bo-losange', 'rw-bo-points', 'rw-bo-case', 'rw-bo-pan']) {
+      //  des ancres entre guillemets : `rw-bo-points` est l'amorce de
+      //  `rw-bo-points-doux`, et une aiguille sans borne se satisfait des deux
+      expect(BOGOLAN_SRC, classe).toContain(`"${classe}"`)
+      expect(CSS, classe).toContain(`.${classe} {`)
+    }
+    //  trois tons nommés, et le pigment se décide dans la feuille
+    expect(BOGOLAN_SRC).toContain('rw-bogolan--${ton}')
+    for (const ton of ['rw-bogolan--craie', 'rw-bogolan--boue']) {
+      expect(CSS).toContain(`.${ton}`)
+    }
+  })
+
+  it('un seul bouton plein par écran, et c’est celui du kit', () => {
+    //  une barre par vue, jamais une barre par écran : les deux vues ne
+    //  s'affichent pas ensemble, chacune a DONC sa pleine action à soi
+    expect(PAGE.match(/className="rw-barre"/g)).toHaveLength(2)
+    const pleines = [...PAGE.matchAll(/className="ch-btn-pleine"/g)]
+    expect(pleines).toHaveLength(3)
+    //  jamais un `rw-bouton` ne se remplit d'argile en plus : la pleine
+    //  action de l'écran est unique, les autres restent en creux
+    expect(PAGE).not.toContain('rw-bouton-principal')
+    expect(CSS).not.toContain('.rw-bouton-principal')
   })
 })

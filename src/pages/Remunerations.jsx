@@ -51,15 +51,13 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Wallet, RefreshCw, AlertTriangle, Info, Save, CheckCircle2, Users,
-  Clock, TrendingUp, Sun, Moon, Building2, Search, Copy, X, Check, ArrowRight,
+  Clock, TrendingUp, Building2, Search, Copy, X, Check, ArrowRight,
   TriangleAlert, Coins, Calendar, PiggyBank, ChevronLeft, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
-import { useTheme } from '../contexts/ThemeContext'
 import useLoadingMinimum from '../hooks/useLoadingMinimum'
 import PageCulturalBand from '../components/PageCulturalBand'
-import RaccourcisPages from '../components/RaccourcisPages'
 import RemunerationsLoading from '../components/RemunerationsLoading'
 import {
   BogolanMedaillonSvg, BogolanTeinture, BogolanLosangeSvg, BogolanPanSvg,
@@ -225,7 +223,6 @@ const formaterHeures = (v) => {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function Remunerations() {
   const navigate = useNavigate()
-  const { darkMode, toggleTheme } = useTheme()
   const { minLoadingDone, skipLoading } = useLoadingMinimum(1400)
 
   const [admin, setAdmin] = useState(null)
@@ -884,7 +881,6 @@ export default function Remunerations() {
   if ((loading && employes.length === 0) || !minLoadingDone) {
     return (
       <RemunerationsLoading
-        darkMode={darkMode}
         onSkip={() => {
           skipLoading()
           setLoading(false)
@@ -898,11 +894,10 @@ export default function Remunerations() {
     || entreprise?.name
     || 'votre entreprise'
 
-  const page = `rw-page${darkMode ? '' : ' rw-clair'}`
   const aucunResultat = visibles.length === 0
 
   return (
-    <div className={page}>
+    <div className="rw-page">
       <PageCulturalBand pathname="/remunerations" />
       <div className="rw-bordure" aria-hidden="true" />
 
@@ -950,8 +945,7 @@ export default function Remunerations() {
 
           <button
             type="button"
-            className="rw-bascule"
-            data-forme="carre"
+            className="rw-cadre"
             onClick={() => { setRafraichir(true); chargerTout(selectedEntId) }}
             disabled={rafraichir || !selectedEntId}
             aria-label="Recharger les rémunérations"
@@ -960,17 +954,6 @@ export default function Remunerations() {
             <RefreshCw size={15} className={rafraichir ? 'rw-tourne' : ''} />
           </button>
 
-          <button
-            type="button"
-            className="rw-bascule"
-            role="switch"
-            aria-checked={darkMode}
-            onClick={toggleTheme}
-            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
-            title={darkMode ? 'Thème clair' : 'Thème sombre'}
-          >
-            {darkMode ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
-          </button>
         </div>
       </header>
 
@@ -1000,7 +983,7 @@ export default function Remunerations() {
         </nav>
 
         {/* ══ LE SEUIL ══ */}
-        <section className="rw-seuil" aria-label="Entreprise, devise et accès rapides">
+        <section className="rw-seuil" aria-label="Entreprise, devise, période">
           <div className="rw-seuil-gauche">
             <div className="rw-seuil-item">
               <span className="rw-seuil-libelle">Entreprise</span>
@@ -1026,10 +1009,6 @@ export default function Remunerations() {
               <span className="rw-seuil-libelle">Salariés actifs</span>
               <span className="rw-seuil-valeur">{total}</span>
             </div>
-          </div>
-
-          <div className="rw-raccourcis">
-            <RaccourcisPages compact excludePaths={['/remunerations']} />
           </div>
         </section>
 
@@ -1964,8 +1943,7 @@ export default function Remunerations() {
           <span className="rw-touche" aria-hidden="true">{(navigator.userAgent || '').includes('Mac') ? '⌘' : 'Ctrl'} + S</span>
           <button
             type="button"
-            className="rw-bouton"
-            data-ton="cuivre"
+            className="ch-btn-pleine"
             onClick={enregistrerTout}
             disabled={enregistrementTout}
           >
@@ -1993,8 +1971,7 @@ export default function Remunerations() {
           </span>
           <button
             type="button"
-            className="rw-bouton"
-            data-ton="cuivre"
+            className="ch-btn-pleine"
             onClick={controlerBudget}
             disabled={controleBudget}
           >
@@ -2101,7 +2078,7 @@ export default function Remunerations() {
               <button type="button" className="rw-bouton" onClick={() => setAppliquer(null)}>
                 Annuler
               </button>
-              <button type="button" className="rw-bouton" data-ton="cuivre" onClick={appliquerReprise}>
+              <button type="button" className="ch-btn-pleine" onClick={appliquerReprise}>
                 <Copy size={13} aria-hidden="true" />
                 Reprendre
               </button>
