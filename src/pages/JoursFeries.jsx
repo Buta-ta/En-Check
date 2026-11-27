@@ -25,7 +25,7 @@ import SidebarUnique from '../components/SidebarUnique'
 import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Plus, Globe, Building2, Calendar, CalendarDays,
+  Plus, Globe, Building2, Calendar, CalendarDays,
   Pencil, Trash2, X, Info, Power, PowerOff, Sun, Moon,
   RefreshCw, Save, AlertTriangle, Check,
 } from 'lucide-react'
@@ -36,11 +36,8 @@ import HolidayService, { SUPPORTED_COUNTRIES } from '../services/holidayService'
 import { modeleFeries, paysAvecModele, feriesAAjouter } from '../services/modelesFeries'
 import { useTheme } from '../contexts/ThemeContext'
 import useLoadingMinimum from '../hooks/useLoadingMinimum'
-import PageCulturalBand from '../components/PageCulturalBand'
-import JoursFeriesAnnee from '../components/JoursFeriesAnnee'
 import JoursFeriesLoading from '../components/JoursFeriesLoading'
 import { LesothoSceauSvg, LesothoLosangeSvg, LesothoCoutureSvg } from '../components/LesothoMotif'
-import PhotoSignee from '../components/PhotoSignee'
 import './JoursFeries.css'
 
 // ── Les deux registres ──
@@ -166,10 +163,6 @@ export default function JoursFeries() {
 
   // Activation en masse
   const [togglingAll, setTogglingAll] = useState(false)
-
-  //  Le repère de la lisière qu'on vient de cliquer : il reste allumé tant
-  //  qu'on n'en choisit pas un autre.
-  const [repereActif, setRepereActif] = useState(null)
 
   // Modèle de fêtes du pays (Bénin, …)
   const [showModele, setShowModele] = useState(false)
@@ -590,15 +583,11 @@ export default function JoursFeries() {
 
       {/* ══ L'EN-TÊTE ══ */}
       <header className="jf-entete">
-        <button
-          type="button"
-          className="jf-retour"
-          onClick={() => navigate('/dashboard')}
-          aria-label="Revenir au tableau de bord"
-          title="Tableau de bord"
-        >
-          <ArrowLeft size={17} />
-        </button>
+        {/*  Le bouton retour est retiré (28/11). Sa demande : « en fait,
+             retirez le bouton retour de Jours fériés ». Le rail de la
+             sidebar porte déjà le retour au tableau de bord, et la flèche
+             en tête de page en faisait un second, jamais au même endroit
+             que sur les autres pages. */}
 
         {/*  Le sceau du titre. Il a SA classe : la feuille de style doit
              pouvoir le placer sans risquer d'attraper une icône de bouton. */}
@@ -668,109 +657,27 @@ export default function JoursFeries() {
 
       </header>
 
-      {/*  « Je veux que le bandeau motif en haut puisse entourer ce bloc »
-           (26/11, image 4). Le seuil n'est plus une capsule posée dans
-           l'en-tête : il est DANS le bandeau, qui fait le tour de lui. */}
-      <div className="jf-seuil-bandeau">
-        <PageCulturalBand pathname="/jours-feries" />
-        {/*  LA BANDE DU SEUIL — entreprise, année, prochain. Trois faits,
-             une seule ligne. Plus de raccourcis (26/11). */}
-        <div className="jf-seuil" role="group" aria-label="Entreprise, année et accès rapides">
-          <div className="jf-seuil-gauche">
-            <div className="jf-seuil-item">
-              <span className="jf-seuil-libelle">Entreprise</span>
-              <span className="jf-seuil-valeur">
-                {/*  « Affiche l'image de l'entreprise aussi » (26/11,
-                    image 4). Le logo remplace l'icône d'immeuble ; s'il n'y
-                    en a pas, ou s'il est cassé, PhotoSignee rend le chevron
-                    et l'on retombe sur l'icône d'avant. */}
-                <span className="jf-seuil-logo" aria-hidden="true">
-                  <PhotoSignee
-                    url={entrepriseActive?.logo_url}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    fallback={<Building2 size={11} />}
-                  />
-                </span>
-                {nomEntreprise}
-              </span>
-            </div>
-            <div className="jf-seuil-item">
-              <span className="jf-seuil-libelle">Année</span>
-              <span className="jf-seuil-valeur">
-                <Calendar size={12} aria-hidden="true" />
-                {annee}
-              </span>
-            </div>
-            <div className="jf-seuil-item">
-              <span className="jf-seuil-libelle">Prochain</span>
-              <span className="jf-seuil-valeur">
-                <CalendarDays size={12} aria-hidden="true" />
-                {prochain ? formaterJour(prochain.date) : 'aucun à venir'}
-              </span>
-            </div>
-          </div>
-        </div>
-        {/*  Le même bandeau, retourné : il ferme le cadre par le bas. */}
-        <PageCulturalBand pathname="/jours-feries" />
-      </div>
+      {/*  Le seuil est retiré (28/11). Sa demande : « enlève ce bloc », avec
+           la capture de la capsule entreprise / année / prochain.
+
+           C'était la bande que le 26/11 avait fait entrer dans un cadre de
+           motif. Le cadre s'en va avec ce qu'il entourait : les trois faits
+           qu'il portait — l'entreprise, l'année, la prochaine fête — se
+           lisent déjà dans l'en-tête, au-dessus, et les répéter dans une
+           capsule ne disait rien de plus. */}
 
       <main className="jf-coque">
 
 
+        {/*  La frise latérale est retirée (28/11) : « enlève aussi cette
+             partie », avec « L'année en lisière / 59 repères — un losange par
+             jour férié».
+
+             Elle avait été rendue cliquable le 26/11 pour renvoyer vers la
+             fiche de chaque fête. Mais elle ne disait que ce que les deux
+             registres disent déjà, en double, et elle prenait une colonne
+             entière de la page. Le corps n'a donc plus qu'une colonne. */}
         <div className="jf-corps">
-          <aside className="jf-frise" aria-label="L’année en frise">
-          <JoursFeriesAnnee
-            annee={annee}
-            globalHolidays={globalHolidays}
-            ownHolidays={ownHolidays}
-            isGlobalEnabled={isGlobalEnabled}
-            prochain={
-              prochain && prochain.date.getFullYear() === annee
-                ? { jour: prochain.date.getDate(), mois: prochain.date.getMonth() }
-                : null
-            }
-            noteSuivante={
-              prochain && prochain.date.getFullYear() !== annee
-                ? `La prochaine fête tombe en ${prochain.date.getFullYear()} : ${formaterJour(prochain.date)} ${prochain.date.getFullYear()}.`
-                : ''
-            }
-            onChoisirRepère={(r) => {
-              /*  « Normalement quand on clique sur un point ça doit nous
-                  diriger vers le jour férié dédié » (26/11, image 3).
-
-                  Un repère n'est donc plus un filtre : c'est un RENVOI vers
-                  la fiche. On ouvre le bon registre, on filtre sur le bon
-                  pays, on fait défiler jusqu'à la pièce, on l'allume — puis
-                  on ouvre sa fiche, parce que c'est là qu'on veut aller. */
-              const fete = r.origine === 'pays'
-                ? globalHolidays.find(h => h.id === r.id)
-                : ownHolidays.find(h => h.id === r.id)
-              if (!fete) return
-
-              setRegistre(r.origine === 'pays' ? REGISTRES.PAYS : REGISTRES.MAISON)
-              if (r.origine === 'pays') setFilterCountry(r.pays || 'ALL')
-              setRepereActif(r.cle)
-
-              window.setTimeout(() => {
-                const piece = document.getElementById(`jf-piece-${r.id}`)
-                if (piece) {
-                  piece.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  piece.classList.add('jf-piece-appelee')
-                  window.setTimeout(() => piece.classList.remove('jf-piece-appelee'), 1600)
-                }
-              }, 60)
-
-              /*  La fiche s'ouvre pour qui la modifie. Un lecteur sans droit
-                  d'écriture n'a pas de fiche à ouvrir : on s'arrête au
-                  surlignage, et la pièce reste sous ses yeux. */
-              const peutModifier = r.origine === 'pays' ? isSuperAdmin : Boolean(selectedEntId)
-              if (peutModifier) {
-                window.setTimeout(() => openEditModal(fete), 220)
-              }
-            }}
-          />
-          </aside>
 
           <section className="jf-registres">
 

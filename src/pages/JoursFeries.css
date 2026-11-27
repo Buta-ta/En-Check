@@ -138,27 +138,6 @@
   background: var(--jf-nuit);
 }
 
-.jf-retour {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  flex: none;
-  padding: 0;
-  color: var(--jf-craie-douce);
-  background: var(--jf-panneau);
-  border: 1px solid var(--jf-ligne-forte);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
-}
-
-.jf-retour:hover {
-  color: var(--jf-craie);
-  background: var(--jf-panneau-2);
-  border-color: var(--jf-craie-douce);
-}
-
 .jf-titre-bloc {
   display: flex;
   flex-direction: column;
@@ -2074,7 +2053,9 @@
 
 .jf-entete {
   display: grid;
-  grid-template-columns: auto auto 1fr auto;
+  /*  Le sceau, le titre, les raccourcis, les mesures — quatre pistes. La
+      cinquième, à gauche, était celle du bouton retour, parti le 28/11. */
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: start;
   gap: 14px 16px;
   max-width: 1360px;
@@ -2083,23 +2064,6 @@
   border-bottom: 0;
   background: transparent;
   flex-wrap: nowrap;
-}
-
-.jf-retour {
-  width: 42px;
-  height: 42px;
-  color: var(--charte-encre);
-  background: var(--charte-surface);
-  border: var(--jf-trait);
-  border-radius: var(--jf-radius-capsule);
-  box-shadow: var(--jf-feutre-1);
-}
-.jf-retour:hover {
-  color: var(--charte-encre);
-  background: var(--charte-surface2);
-  border-color: var(--charte-encre);
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 0 var(--charte-encre);
 }
 
 /* le sceau du pied : le disque à double trait de la maquette */
@@ -2345,10 +2309,12 @@
   padding: clamp(16px, 2.4vw, 30px) clamp(16px, 2.5vw, 34px) clamp(30px, 4vw, 52px);
 }
 
+/*  La frise latérale est retirée (28/11) : le corps n'a plus qu'une colonne.
+    La grille à deux pistes réservait 150 à 190 px à une bande de repères qui
+    répétait les deux registres à côté d'eux. */
 .jf-corps {
   display: grid;
-  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
-  gap: clamp(14px, 2.4vw, 34px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
 }
 
@@ -2786,7 +2752,9 @@
   .jf-frise { position: static; }
 }
 @media (max-width: 700px) {
-  .jf-entete { grid-template-columns: auto auto 1fr; }
+  /*  Deux pistes : le sceau, puis le reste. La troisième était celle du
+      bouton retour, parti le 28/11. */
+  .jf-entete { grid-template-columns: auto minmax(0, 1fr); }
   .jf-entete-droite { grid-column: 1 / -1; justify-content: flex-start; }
   .jf-registre { grid-template-columns: minmax(0, 1fr); }
   .jf-registre::before, .jf-registre::after { display: none; }
@@ -2935,7 +2903,7 @@
 /*  La bande de titre respire : titre à gauche, sceaux au milieu, sélecteurs
      à droite. Sur une grande page, on garde les quatre sur une ligne. */
 .jf-entete {
-  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 26px;
   row-gap: 18px;
@@ -2947,7 +2915,7 @@
   .jf-sceaux .jf-mesure { width: 92px; max-width: 92px; height: 92px; }
 }
 @media (max-width: 1080px) {
-  .jf-entete { grid-template-columns: auto auto minmax(0, 1fr); }
+  .jf-entete { grid-template-columns: auto minmax(0, 1fr); }
   .jf-sceaux { grid-column: 1 / -1; order: 5; justify-content: flex-start; }
   .jf-sceaux-fil { display: none; }
 }
@@ -2960,7 +2928,7 @@
 /*  Le sélecteur d'entreprise reste à droite de la bande ; les sceaux
      prennent le rang qui reste, et le chevauchement disparaît. */
 .jf-entete {
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   column-gap: 22px;
 }
@@ -3048,13 +3016,12 @@
 @media (max-width: 900px) {
   .jf-entete {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     column-gap: 14px;
     row-gap: 14px;
   }
-  .jf-entete .jf-retour { grid-column: 1; grid-row: 1; }
-  .jf-entete > svg { grid-column: 2; grid-row: 1; }
+  .jf-entete > svg { grid-column: 1; grid-row: 1; }
   .jf-entete .jf-titre-bloc { grid-column: 1 / -1; grid-row: 2; }
   .jf-entete .jf-entete-droite { grid-column: 1 / -1; grid-row: 3; justify-content: flex-start; flex-wrap: wrap; }
   .jf-entete .jf-sceaux { grid-column: 1 / -1; grid-row: 4; }
@@ -3291,7 +3258,6 @@
 
 /*  L'état pressé : le feutre se rase, la couleur ne bouge pas. */
 .jf-page button:active:not(:disabled) { transform: translateY(1px); }
-.jf-page button.jf-retour:active:not(:disabled),
 .jf-page button.jf-icone-bouton:active:not(:disabled) { transform: translate(1px, 1px); }
 
 /* ═══ LES MODALES, RETRAVAILLÉES (image 1, 26/11) ══════════════════════════
@@ -3793,11 +3759,11 @@
 
      Deux retraits du 26/11 — « enlève les raccourcis », « enlève le bouton
      sombre/clair ». La géométrie de l'en-tête avait cinq colonnes pour le
-     sélecteur ET la bascule ; il n'en faut plus que quatre : le retour, le
-     sceau, le titre qui prend la place, le sélecteur, puis les sceaux. La
-     capsule du seuil, elle, ne porte plus que ses trois faits. */
+     sélecteur ET la bascule ; il n'en faut plus que quatre : le sceau, le
+     titre qui prend la place, le sélecteur, puis les sceaux. La capsule du
+     seuil, elle, ne porte plus que ses trois faits. */
 .jf-entete {
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   column-gap: 22px;
 }
@@ -3938,7 +3904,7 @@
 /*  Le seuil quitte la grille de l'en-tête : il vit dans son cadre, sous
      l'en-tête, et l'en-tête reprend ses quatre colonnes. */
 .jf-entete {
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   padding-bottom: 0;
 }
 .jf-entete .jf-seuil { grid-column: auto; }
@@ -4076,7 +4042,7 @@
 @media (max-width: 900px) {
   .jf-entete {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     row-gap: 12px;
     padding: 16px 14px 8px;
@@ -4141,19 +4107,23 @@
      VERTICALE, une lettre par ligne, sur 750 px de haut, et tout le reste de
      l'en-tête tombe en dessous.
 
-     La cause n'est pas le titre, c'est la grille de l'en-tête. Elle a cinq
-     colonnes `auto auto minmax(0,1fr) auto auto` : entre 900 et 1 200 px, le
-     sélecteur d'entreprise et les quatre sceaux occupent les quatre colonnes
-     `auto`, donc la colonne du titre tombe à ZÉRO. Un titre dans une colonne
-     de 0 px, avec `overflow-wrap: anywhere`, ne peut que se casser à chaque
-     caractère — il ne déborde pas, il se comprime, ce qui est bien pire.
+     La cause n'est pas le titre, c'est la grille de l'en-tête. Elle avait
+     cinq colonnes `auto auto minmax(0,1fr) auto auto` : entre 900 et 1 200 px,
+     le sélecteur d'entreprise et les quatre sceaux occupaient les quatre
+     colonnes `auto`, donc la colonne du titre tombait à ZÉRO. Un titre dans
+     une colonne de 0 px, avec `overflow-wrap: anywhere`, ne peut que se
+     casser à chaque caractère — il ne déborde pas, il se comprime, ce qui est
+     bien pire.
 
-     Le remède : le titre garde une largeur PLANCHER, et les quatorze `auto`
-     cèdent avant lui. Si le plancher ne tient pas, c'est l'en-tête entier qui
-     passe à la ligne (le titre prend alors toute la largeur), jamais le titre
-     qui s'effile. */
+     Le remède : le titre garde une largeur PLANCHER, et les `auto` cèdent
+     avant lui. Si le plancher ne tient pas, c'est l'en-tête entier qui passe
+     à la ligne (le titre prend alors toute la largeur), jamais le titre qui
+     s'effile.
+
+     Depuis le 28/11, le bouton retour a quitté la grille : quatre colonnes au
+     lieu de cinq, et le sceau ouvre le rang. */
 .jf-entete {
-  grid-template-columns: auto auto minmax(min-content, 1fr) auto auto;
+  grid-template-columns: auto minmax(min-content, 1fr) auto auto;
 }
 
 /*  En dessous de 1 200 px, les quatre sceaux ne tiennent plus à droite du
@@ -4161,11 +4131,11 @@
      toute la largeur de la page. On le fait AVANT que la grille ne se serre. */
 @media (max-width: 1200px) {
   .jf-entete {
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     row-gap: 14px;
   }
-  .jf-entete .jf-titre-bloc { grid-column: 3; }
-  .jf-entete .jf-entete-droite { grid-column: 4; }
+  .jf-entete .jf-titre-bloc { grid-column: 1 / -1; }
+  .jf-entete .jf-entete-droite { grid-column: 1 / -1; }
   .jf-entete .jf-sceaux {
     grid-column: 1 / -1;
     grid-row: 2;
@@ -4480,18 +4450,14 @@
      et seulement en media queries. Aucune règle ne vaut « par défaut » : la
      largeur décide, toujours. */
 
-/*  ── Le rang du haut : deux disques, deux tailles ────────────────────────
+/*  ── Le sceau du titre : une taille, un alignement ──────────────────────
  *
- *   `.jf-retour` portait `margin-top: 34px` et `.jf-entete > svg` portait
- *   `margin-top: 16px` — deux valeurs de l'ancienne mise en page, où le sceau
- *   vivait à côté du TITRE et devait s'aligner sur sa ligne de base. Ils ne
- *   sont plus côte à côte avec lui : ils forment leur propre rang. Ces marges
- *   ne servaient donc plus qu'à mettre le rang de travers et à coller les
- *   deux disques (sa capture du 28/11 : « le bouton flèche retour un peu
- *   plus à gauche »). On les annule ici, une fois, pour toutes les largeurs :
- *   l'alignement vient de `align-self: center`, la distance de `column-gap`.
- */
-.jf-page .jf-entete > .jf-retour,
+ *   `.jf-entete > svg` portait `margin-top: 16px` — une valeur de l'ancienne
+ *   mise en page, où le sceau vivait à côté du TITRE et devait s'aligner sur
+ *   sa ligne de base. Ce n'est plus le cas, et la marge ne servait plus qu'à
+ *   mettre le rang de travers. On l'annule ici, une fois, pour toutes les
+ *   largeurs : l'alignement vient de `align-self: center`, la distance de
+ *   `column-gap`. */
 .jf-page .jf-entete > .jf-sceau {
   margin-top: 0;
 }
@@ -4499,25 +4465,23 @@
 /*  ── Grand écran : tout sur une ligne ─────────────────────────────────── */
 @media (min-width: 1201px) {
   .jf-entete {
-    grid-template-columns: auto auto minmax(min-content, 1fr) auto auto;
+    grid-template-columns: auto minmax(min-content, 1fr) auto auto;
     align-items: center;
   }
-  .jf-entete > .jf-retour { grid-column: 1; grid-row: 1; }
-  .jf-entete > .jf-sceau { grid-column: 2; grid-row: 1; }
-  .jf-entete > .jf-titre-bloc { grid-column: 3; grid-row: 1; }
-  .jf-entete > .jf-entete-droite { grid-column: 4; grid-row: 1; }
-  .jf-entete > .jf-sceaux { grid-column: 5; grid-row: 1; }
+  .jf-entete > .jf-sceau { grid-column: 1; grid-row: 1; }
+  .jf-entete > .jf-titre-bloc { grid-column: 2; grid-row: 1; }
+  .jf-entete > .jf-entete-droite { grid-column: 3; grid-row: 1; }
+  .jf-entete > .jf-sceaux { grid-column: 4; grid-row: 1; }
 }
 
 /*  ── 900 à 1 200 px : le titre prend la largeur, les sceaux dessous ──── */
 @media (max-width: 1200px) {
   .jf-entete {
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     row-gap: 12px;
   }
-  .jf-entete > .jf-retour { grid-column: 1; grid-row: 1; }
-  .jf-entete > .jf-sceau { grid-column: 2; grid-row: 1; }
+  .jf-entete > .jf-sceau { grid-column: 1; grid-row: 1; }
   .jf-entete > .jf-titre-bloc {
     grid-column: 1 / -1;
     grid-row: 2;
@@ -4533,40 +4497,35 @@
   .jf-titre { font-size: clamp(26px, 5.2vw, 44px); }
 }
 
-/*  ── Sous 900 px : retour et sceau, puis titre, puis sceaux ─────────────
+/*  ── Sous 900 px : le sceau, puis le titre, puis les mesures ─────────────
  *
- *   Sa capture du 28/11 (image 1), fenêtre réduite : « le bouton flèche
- *   retour un peu plus à gauche », et « tu peux un peu espacer les éléments
- *   en haut ». Deux restes de l'ancienne mise en page en étaient la cause,
- *   et ils n'ont jamais été annulés :
+ *   Sa capture du 28/11 (image 1), fenêtre réduite : « tu peux un peu
+ *   espacer les éléments en haut ». Un reste de l'ancienne mise en page en
+ *   était la cause, jamais annulé :
  *
- *     · `.jf-retour` garde `margin-top: 34px` et `.jf-entete > svg` garde
- *       `margin-top: 16px` — des valeurs posées quand le sceau vivait à
- *       CÔTÉ du titre, pour les aligner sur sa ligne de base. Le retour et
- *       le sceau étaient donc décalés de travers, et le sceau, plus haut,
- *       semblait manger le bord gauche ;
- *     · la gouttière de colonne restait à 14 px alors que deux disques de
- *       42 et 62 px se touchent presque à cette distance.
+ *     · `.jf-entete > svg` gardait `margin-top: 16px` — une valeur posée
+ *       quand le sceau vivait à CÔTÉ du titre, pour l'aligner sur sa ligne
+ *       de base. Le sceau était donc décalé de travers et semblait manger le
+ *       bord gauche ;
+ *     · la gouttière de colonne restait à 14 px alors que le disque de 62 px
+ *       vient maintenant en tête de rang.
  *
- *   On annule les deux marges, on porte la gouttière à 18 px, et le retour
- *   s'aligne à gauche de la gouttière de page — comme le titre juste
- *   dessous, ce qui fait un vrai bord.
+ *   On annule la marge, on porte la gouttière à 18 px, et le sceau s'aligne
+ *   à gauche de la gouttière de page — comme le titre juste dessous, ce qui
+ *   fait un vrai bord.
+ *
+ *   Le bouton retour a quitté ce rang le 28/11 (« en fait, retirez le bouton
+ *   retour ») : la colonne qui lui était réservée est rendue au contenu.
  */
 @media (max-width: 900px) {
   .jf-entete {
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     column-gap: 18px;
     row-gap: 14px;
     padding: 18px 16px 12px;
   }
-  .jf-entete > .jf-retour {
-    grid-column: 1;
-    grid-row: 1;
-    align-self: center;
-    margin-top: 0;
-  }
   .jf-entete > .jf-sceau {
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 1;
     align-self: center;
     margin-top: 0;
@@ -4607,34 +4566,27 @@
   .jf-sceaux .jf-mesure { width: 100%; max-width: none; height: auto; aspect-ratio: 1; }
 }
 
-/* ═══ LE RETOUR TOMBE AU MÊME ENDROIT QUE SUR PAUSES (28/11) ══════════════
 
-     « Le bouton flèche retour n'est pas proportionnellement au même endroit
-     que dans la page Pauses par exemple. »
 
-     C'est vrai, et l'écart se mesurait. Les deux pages ne se tenaient pas
-     de la même façon :
+/* ═══ LA PAGE A UNE LARGEUR ET UNE GOUTTIÈRE, PAS DEUX (28/11) ════════════
+
+     Sa remarque du 28/11 : « le bouton retour n'est pas proportionnellement
+     au même endroit que dans la page Pauses ». L'écart venait de la
+     structure, pas du bouton :
 
        PAUSES        une seule enveloppe — `.pauses-v2-container` —
                      `width: min(100%, 1440px)` et
                      `padding: 0 clamp(16px, 2.5vw, 34px)`.
-                     L'enseigne du retour est DEDANS, à 35 px de son bord.
 
        JOURS FÉRIÉS  la coque faisait 1 360 px (80 px de moins), et
                      `.jf-entete` AJOUTAIT par-dessus sa propre gouttière,
                      différente à chaque palier : 34 px en grand, 16 px en
-                     dessous de 900, 10 px sous 480. Le retour ne partait
-                     donc jamais du même bord que sur Pauses, et l'écart
-                     changeait avec la largeur de la fenêtre.
+                     dessous de 900, 10 px sous 480.
 
-     On ne copie pas un nombre, on copie la STRUCTURE : la page a une
-     largeur, une gouttière, et c'est la coque qui les porte. L'en-tête et le
-     seuil, qui vivent dans cette coque, n'ajoutent plus les leurs — sinon
-     les deux gouttières s'additionnent et le retour repart à l'intérieur.
-
-     Le retour reprend aussi la taille de celui de Pauses : 44 px sous
-     1 030 px (la valeur de `.pauses-v2-planche .pauses-v2-back-btn`), 42 px
-     au-dessus. */
+     La coque porte maintenant la largeur et la gouttière de Pauses, et
+     l'en-tête n'en ajoute plus. Ce point reste vrai depuis que le bouton est
+     parti (28/11) : c'est lui qui fait tomber le sceau, le titre et les
+     mesures sur le même bord que le contenu des autres pages. */
 
 /*  La gouttière est celle de la coque : l'en-tête n'en ajoute pas. */
 .jf-page .jf-entete {
@@ -4642,31 +4594,9 @@
   padding-right: 0;
 }
 
-/*  Le seuil suivait la même pente : `.jf-seuil-bandeau` porte `margin: 0 30px`
-    (14 px en petit écran), donc il rentrait de 30 px de plus que le retour.
-    La bande vit désormais d'un bord à l'autre de la gouttière, comme sur
-    Pauses où le bandeau culturel n'a pas de marge latérale. */
-.jf-page .jf-seuil-bandeau {
-  margin-left: 0;
-  margin-right: 0;
-}
-
-/*  Même taille de cible que sur Pauses, aux mêmes paliers. */
-.jf-page .jf-entete > .jf-retour {
-  width: 42px;
-  height: 42px;
-}
-
-@media (max-width: 1030px) {
-  .jf-page .jf-entete > .jf-retour {
-    width: 44px;
-    height: 44px;
-  }
-}
-
 /*  Les paliers étroits redisaient la gouttière de l'en-tête (16 px, 14 px,
     10 px). Elle ne leur appartient plus : on la remet à zéro là où ils la
-     posaient, sans toucher à leur géométrie de grille. */
+    posaient, sans toucher à leur géométrie de grille. */
 @media (max-width: 900px) {
   .jf-page .jf-entete { padding-left: 0; padding-right: 0; }
 }

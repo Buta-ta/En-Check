@@ -105,13 +105,17 @@ describe('1. le bandeau suit la page, et c’est bien le Lesotho', () => {
     expect(BAND_CSS).toContain('.ec-cultural-bottom { height: 32px; }')
   })
 
-  it('la page et son chargement portent tous les deux le bandeau', () => {
-    //  Deux fois : le bandeau n'est plus une frise en haut de page, il
-    //  ENTOURE la bande du seuil — une fois dessus, une fois dessous,
-    //  le second retourné (26/11, image 4).
-    expect(PAGE.match(/<PageCulturalBand pathname="\/jours-feries" \/>/g)).toHaveLength(2)
-    expect(PAGE).toContain('<div className="jf-seuil-bandeau">')
-    expect(CSS).toContain('.jf-seuil-bandeau > .ec-cultural-band:last-child')
+  it('la bande du seuil est retirée de la page (28/11)', () => {
+    //  Sa demande du 28/11 : « enlève ce bloc », avec la capture de la
+    //  capsule entreprise / année / prochain. Le 26/11 l'avait fait entrer
+    //  dans un cadre de motif ; le cadre part avec ce qu'il entourait.
+    //
+    //  La page ne porte donc plus AUCUN `PageCulturalBand` : celui du
+    //  chargement reste, lui — sinon l'écran d'attente perdrait son motif.
+    expect(PAGE).not.toContain('<PageCulturalBand')
+    expect(PAGE).not.toContain('jf-seuil-bandeau')
+    expect(PAGE).not.toContain('className="jf-seuil"')
+
     const html = renderToStaticMarkup(<JoursFeriesLoading darkMode />)
     expect(html.match(/data-cultural-motif="lesotho"/g)).toHaveLength(2)
     expect(html).toContain('ec-cultural-bottom')
@@ -268,27 +272,23 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(CSS).toMatch(/\.jf-page \.jf-titre \{[^}]*hyphens: none;/)
     expect(CSS).toMatch(/\.jf-page \.jf-titre \{[^}]*min-width: min-content;/)
     //  2. la colonne du titre ne peut plus s'écraser : plancher de contenu.
-    expect(CSS).toContain('grid-template-columns: auto auto minmax(min-content, 1fr) auto auto;')
+    //  Quatre pistes depuis le 28/11 : le sceau, le titre, les raccourcis,
+    //  les mesures. La cinquième, à gauche, était celle du bouton retour.
+    expect(CSS).toContain('grid-template-columns: auto minmax(min-content, 1fr) auto auto;')
     //  3. sous 1 200 px, le titre prend une ligne à lui, pleine largeur.
     expect(CSS).toMatch(/@media \(max-width: 1200px\) \{[\s\S]*?\.jf-entete > \.jf-titre-bloc \{\s*grid-column: 1 \/ -1;/)
   })
 
   it('le rang du haut est droit : plus de marges héritées', () => {
-    //  Sa capture du 28/11, fenêtre réduite : « le bouton flèche retour un
-    //  peu plus à gauche, tu peux un peu espacer les éléments en haut ».
-    //  Deux marges de l'ancienne mise en page — quand le sceau vivait à CÔTÉ
-    //  du titre — n'avaient jamais été annulées : `margin-top: 34px` sur le
-    //  retour, `margin-top: 16px` sur le sceau. Elles désalignaient le rang.
-    const retour = CSS.match(/\.jf-retour \{([^}]*)\}/)
-    expect(retour).not.toBeNull()
-    expect(retour[1]).not.toMatch(/margin-top/)
+    //  Sa capture du 28/11, fenêtre réduite : « tu peux un peu espacer les
+    //  éléments en haut ». Une marge de l'ancienne mise en page — quand le
+    //  sceau vivait à CÔTÉ du titre — n'avait jamais été annulée :
+    //  `margin-top: 16px` sur le sceau. Elle désalignait le rang.
     const sceauSvg = CSS.match(/\.jf-entete > svg \{([^}]*)\}/)
     expect(sceauSvg).not.toBeNull()
     expect(sceauSvg[1]).not.toMatch(/margin-top/)
     //  …et la remise à zéro est écrite une fois, pour toutes les largeurs.
-    expect(CSS).toMatch(
-      /\.jf-page \.jf-entete > \.jf-retour,[\s\S]{0,120}\.jf-page \.jf-entete > \.jf-sceau \{\s*margin-top: 0;/
-    )
+    expect(CSS).toMatch(/\.jf-page \.jf-entete > \.jf-sceau \{\s*margin-top: 0;/)
   })
 
   it('les éléments du haut ne se touchent pas', () => {
@@ -299,22 +299,35 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(CSS).toMatch(/@media \(max-width: 560px\)[\s\S]*?gap: 16px 18px;/)
   })
 
-  it('le retour tombe au même endroit que sur Pauses', () => {
-    //  Sa remarque du 28/11 : « le bouton flèche retour n'est pas
-    //  proportionnellement au même endroit que dans la page Pauses ».
+  it('le bouton retour est retiré (28/11)', () => {
+    //  « En fait, retirez le bouton retour de Jours fériés. » Le rail de la
+    //  sidebar porte déjà le retour au tableau de bord ; la flèche en tête
+    //  de page en faisait un second, jamais au même endroit que les autres
+    //  pages — et c'est bien ce qui le gênait depuis le 28/11.
+    expect(PAGE).not.toContain('jf-retour')
+    expect(PAGE).not.toContain('<ArrowLeft')
+    expect(PAGE).not.toContain("navigate('/dashboard')")
+    expect(CSS).not.toContain('.jf-retour')
+
+    //  La première piste de la grille ne lui est plus réservée : c'est le
+    //  sceau qui ouvre le rang, à toutes les largeurs.
+    expect(CSS).not.toMatch(/grid-template-columns: auto auto minmax\(min-content, 1fr\) auto auto/)
+    expect(CSS).toMatch(/@media \(min-width: 1201px\)[\s\S]{0,300}?\.jf-entete > \.jf-sceau \{\s*grid-column: 1;/)
+  })
+
+  it('la page garde une seule largeur et une seule gouttière, comme Pauses', () => {
+    //  Sa remarque du 28/11 : « le bouton retour n'est pas proportionnellement
+    //  au même endroit que dans la page Pauses ». L'écart venait de la
+    //  structure : Pauses a UNE enveloppe (1 440 px, gouttière
+    //  clamp(16px, 2.5vw, 34px)), Jours fériés avait une coque plus étroite
+    //  (1 360 px) ET un en-tête qui ajoutait sa propre gouttière par-dessus.
     //
-    //  Les deux pages ne se tenaient pas de la même façon. Pauses a UNE
-    //  enveloppe (1 440 px, gouttière clamp(16px, 2.5vw, 34px)) et l'enseigne
-    //  du retour est dedans. Jours fériés avait une coque plus étroite
-    //  (1 360 px) ET un en-tête qui ajoutait sa propre gouttière par-dessus,
-    //  différente à chaque palier.
-    //
-    //  On ne copie pas un nombre, on copie la structure : la largeur et la
-    //  gouttière appartiennent à la coque, l'en-tête n'en ajoute pas.
+    //  Le bouton est parti depuis, mais la géométrie reste : c'est elle qui
+    //  fait tomber le sceau et le titre sur le même bord que les autres pages.
     expect(CSS).toMatch(/\.jf-coque \{\s*width: min\(1440px, 100%\);/)
     expect(CSS).toMatch(/\.jf-coque \{\s*width: min\(1440px, 100%\);[\s\S]{0,200}?padding: clamp\(16px, 2\.4vw, 30px\) clamp\(16px, 2\.5vw, 34px\)/)
 
-    //  …et l'en-tête ne rajoute pas la sienne par-dessus.
+    //  …et l'en-tête n'ajoute pas la sienne par-dessus.
     expect(CSS).toMatch(/\.jf-page \.jf-entete \{\s*padding-left: 0;\s*padding-right: 0;/)
 
     //  Aucun palier ne doit plus rétrécir la gouttière de la coque : ce sont
@@ -346,17 +359,19 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(CSS).not.toContain('--jf-radius-piece: 999px;')
   })
 
-  it('un repère ouvre la fiche de sa fête, il ne filtre pas', () => {
-    //  « Quand on clique sur un point ça doit nous diriger vers le jour férié
-    //  dédié » (26/11, image 3).
-    expect(PAGE).toContain('onChoisirRepère')
-    expect(PAGE).toContain('openEditModal(fete)')
-  })
+  it('la frise latérale est retirée de la page (28/11)', () => {
+    //  « Enlève aussi cette partie », avec « L'année en lisière / 59 repères —
+    //  un losange par jour férié » et ses douze mois.
+    //
+    //  Le composant, lui, reste : c'est une pièce autonome, testée plus bas.
+    //  Ce qui disparaît, c'est son montage dans la page — et le renvoi
+    //  `onChoisirRepère` qui n'avait plus d'appelant.
+    expect(PAGE).not.toContain('<JoursFeriesAnnee')
+    expect(PAGE).not.toContain('onChoisirRepère')
+    expect(PAGE).not.toContain('jf-frise')
 
-  it('l’entreprise montre son logo dans la bande du seuil', () => {
-    //  « Affiche l'image de l'entreprise aussi » (26/11, image 4).
-    expect(PAGE).toContain('jf-seuil-logo')
-    expect(PAGE).toContain('logo_url')
+    //  Et le corps n'a plus qu'une colonne : plus de piste réservée à la frise.
+    expect(CSS).not.toMatch(/\.jf-corps \{[^}]*grid-template-columns: minmax\(150px, 190px\)/)
   })
 
   it('les repères deviennent des boutons quand la page sait les ouvrir', () => {
@@ -581,14 +596,18 @@ describe('8. la page se monte et répond', () => {
     basculer.mockClear()
   })
 
-  it('la coque s’affiche avec son bandeau, son titre et ses mesures', () => {
+  it('la coque s’affiche avec son titre et ses mesures', () => {
     expect(hote.querySelector('.jf-page')).not.toBeNull()
-    expect(hote.querySelector('[data-cultural-motif="lesotho"]')).not.toBeNull()
     expect(hote.querySelector('h1').textContent).toContain('Jours fériés')
     expect(hote.querySelectorAll('.jf-mesure')).toHaveLength(4)
-    expect(hote.querySelector('.jf-annee')).not.toBeNull()
-    //  « Enlève les raccourcis » (26/11) : la capsule du seuil n'en porte plus.
-    expect(hote.querySelector('[data-testid="raccourcis-pages"]')).toBeNull()
+
+    //  Les deux retraits du 28/11, vus sur la page montée — pas seulement
+    //  dans le source : plus de bande de seuil, plus de frise latérale.
+    expect(hote.querySelector('.jf-seuil-bandeau')).toBeNull()
+    expect(hote.querySelector('.jf-annee')).toBeNull()
+    expect(hote.querySelector('.jf-frise')).toBeNull()
+    expect(hote.querySelector('[data-cultural-motif="lesotho"]')).toBeNull()
+
     //  « Ramène la sidebar et son rail dans cette page » (26/11).
     expect(hote.querySelector('.sb')).not.toBeNull()
   })
