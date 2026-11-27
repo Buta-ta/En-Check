@@ -73,6 +73,7 @@ vi.mock('../../services/holidayService', async (importOriginal) => {
 
 const PAGE = readFileSync('src/pages/JoursFeries.jsx', 'utf8')
 const CSS = readFileSync('src/pages/JoursFeries.css', 'utf8')
+const FRISE = readFileSync('src/components/JoursFeriesAnnee.jsx', 'utf8')
 const BAND_CSS = readFileSync('src/components/PageCulturalBand.css', 'utf8')
 
 const globalHolidays = [
@@ -177,8 +178,15 @@ describe('2. la lisière de l’année place chaque fête', () => {
     //  sélecteur `> svg` qui ne l'attrapait pas.
     expect(PAGE).toContain('className="jf-sceau"')
     expect(CSS).toContain('.jf-page .jf-entete > .jf-sceau {')
-    expect(CSS).toMatch(/\.jf-page \.jf-entete > \.jf-sceau \{[^}]*grid-column: 2;/)
-    expect(CSS).toMatch(/\.jf-page \.jf-entete > \.jf-titre-bloc \{ grid-column: 3;/)
+    //  …et il ne porte PLUS de placement : le 28/11, la capture montrait
+    //  encore le sceau et les quatre mesures par-dessus le titre. La cause
+    //  était une règle `grid-column` écrite hors media query (spécificité
+    //  0,3,0) qui battait les paliers (0,2,0), même placés après elle.
+    //  Le placement n'appartient plus qu'aux paliers, tout en bas du fichier.
+    const blocSceau = CSS.match(/\.jf-page \.jf-entete > \.jf-sceau \{([^}]*)\}/)
+    expect(blocSceau).not.toBeNull()
+    expect(blocSceau[1]).not.toMatch(/grid-column/)
+    expect(blocSceau[1]).not.toMatch(/grid-row/)
   })
 
   it('le sélecteur d’entreprise de l’en-tête est retiré', () => {
@@ -190,12 +198,59 @@ describe('2. la lisière de l’année place chaque fête', () => {
   it('la frise ne se chevauche ni en colonne ni en grille', () => {
     //  Colonne étroite : la cible de l'épingle tient dans la piste, et la
     //  marge de fin grandit avec elle au lieu d'être figée.
-    expect(CSS).toMatch(/\.jf-frise \.jf-repere \{ width: 16px; height: 16px; \}/)
-    expect(CSS).toContain('margin: 0 calc(10px + 6%) 0 0;')
-    //  Grille : les épingles quittent la position absolue et passent dans le
-    //  flux — c'est ce qui supprime toute superposition.
-    expect(CSS).toMatch(/@media \(max-width: 1080px\) \{[\s\S]*?\.jf-frise \.jf-repere \{\s*position: relative !important;/)
-    expect(CSS).toContain('grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));')
+    //  Une épingle est un élément de FLUX, à toutes les largeurs : c'est le
+    //  mois qui la range, et il passe à la ligne quand il est chargé. Plus
+    //  de position absolue à un pourcentage, donc plus de superposition.
+    expect(CSS).toMatch(/\.jf-frise \.jf-annee-piste > \.jf-repere[\s\S]*?position: relative;/)
+    expect(CSS).toMatch(/\.jf-frise \.jf-annee-piste \{\s*position: relative;\s*display: flex;\s*flex-wrap: wrap;/)
+    //  La piste ne réserve plus de marge pour la cible : elle n'en a plus
+    //  besoin, l'épingle ne sort pas du flux.
+    expect(CSS).not.toContain('margin: 0 calc(10px + 6%) 0 0;')
+    //  Une seule définition de bande : douze colonnes fixes = douze cellules
+    //  de 150 px, où douze épingles de janvier s'empilaient sur trois rangs.
+    const sectionsFrise = CSS.slice(CSS.indexOf("LA FRISE, RÉÉCRITE UNE FOIS POUR TOUTES"))
+    expect(sectionsFrise.match(/\.jf-frise \.jf-annee-bande \{/g)).toHaveLength(2)
+    expect(CSS).toContain('grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));')
+  })
+
+  it('le placement de l’en-tête n’est dit que par les paliers de largeur', () => {
+    //  La panne du 28/11, et c'est la même que celle du 27/11 sous une autre
+    //  forme : une règle de placement écrite UNE FOIS, hors media query, gagne
+    //  sur tous les paliers à cause de sa spécificité. Au-dessus de 1 200 px,
+    //  `.jf-page .jf-entete > .jf-sceau { grid-column: 2 }` valait (0,3,0) ;
+    //  la règle du palier `.jf-entete > .jf-sceau` ne vaut que (0,2,0) et
+    //  perdait, même écrite après. Résultat : sceau et mesures sur le titre.
+    //
+    //  Désormais, chaque palier parle de la même façon (`.jf-entete > …`),
+    //  et aucune règle de placement ne vit hors media query.
+    //  On retire les commentaires (le mot « @media » y figure parfois), puis
+    //  on retire le CONTENU de chaque bloc média : ce qui reste est le niveau 0.
+    const sansCommentaires = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+    const horsMedia = sansCommentaires.replace(
+      /@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g,
+      ''
+    )
+    const fautives = (horsMedia.match(/[^{}]+\{[^{}]*\}/g) || []).filter(
+      r => /\.jf-entete|\.jf-sceaux|\.jf-sceau\b|\.jf-titre-bloc/.test(r)
+        && /grid-(?:column|row):\s*\d/.test(r)
+    )
+    expect(fautives).toEqual([])
+    //  Les quatre paliers existent, et ils posent bien le titre sur sa ligne.
+    for (const palier of ['min-width: 1201px', 'max-width: 1200px', 'max-width: 900px', 'max-width: 560px']) {
+      expect(CSS).toContain(palier)
+    }
+    expect(CSS).toMatch(/@media \(max-width: 1200px\)[\s\S]*?\.jf-entete > \.jf-titre-bloc \{[\s\S]*?grid-row: 2;/)
+    expect(CSS).toMatch(/@media \(max-width: 1200px\)[\s\S]*?\.jf-entete > \.jf-sceaux \{[\s\S]*?grid-row: 3;/)
+  })
+
+  it('aucune épingle ne porte de décalage en ligne', () => {
+    //  Deuxième cause du 28/11 : le composant écrivait `style={{ left: X% }}`.
+    //  Sur une épingle devenue `position: relative`, ce pourcentage ne place
+    //  rien : il DÉCALE la pastille de X % de la largeur de la piste. Les
+    //  douze fêtes de janvier partaient donc à droite, par-dessus février.
+    //  C'est le composant qui trie, plus le CSS qui absolutise.
+    expect(FRISE).not.toContain('style: { left:')
+    expect(FRISE).toContain('.sort(')
   })
 
   it('le seuil reste une ligne sur grand écran et empile ses faits sur mobile', () => {
@@ -215,7 +270,7 @@ describe('2. la lisière de l’année place chaque fête', () => {
     //  2. la colonne du titre ne peut plus s'écraser : plancher de contenu.
     expect(CSS).toContain('grid-template-columns: auto auto minmax(min-content, 1fr) auto auto;')
     //  3. sous 1 200 px, le titre prend une ligne à lui, pleine largeur.
-    expect(CSS).toMatch(/@media \(max-width: 1200px\) \{[\s\S]*?\.jf-page \.jf-entete \.jf-titre-bloc \{\s*grid-column: 1 \/ -1;/)
+    expect(CSS).toMatch(/@media \(max-width: 1200px\) \{[\s\S]*?\.jf-entete > \.jf-titre-bloc \{\s*grid-column: 1 \/ -1;/)
   })
 
   it('le sous-titre est retiré, et la page tient sur petit écran', () => {

@@ -2393,21 +2393,7 @@
 
 /*  LA BANDE : une seule colonne, les douze mois les uns sous les autres,
     serrés à gauche ; le tissu ondule à droite, derrière les épingles. */
-.jf-frise .jf-annee-bande {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 6px 0 10px 0;
-  border-radius: var(--jf-radius-piece);
-  background:
-    radial-gradient(ellipse 60% 12% at 72% 8%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
-    radial-gradient(ellipse 62% 12% at 66% 22%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
-    radial-gradient(ellipse 64% 12% at 74% 38%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
-    radial-gradient(ellipse 60% 12% at 68% 54%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
-    radial-gradient(ellipse 66% 12% at 76% 70%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%),
-    radial-gradient(ellipse 60% 12% at 66% 86%, color-mix(in srgb, var(--charte-surface2) 82%, transparent) 0 70%, transparent 72%);
-}
+
 
 .jf-frise .jf-annee-mois {
   display: grid;
@@ -2975,9 +2961,9 @@
   align-items: center;
   column-gap: 22px;
 }
-.jf-entete .jf-entete-droite { grid-column: 4; }
-.jf-entete .jf-sceaux { grid-column: 5; }
-.jf-entete .jf-seuil { grid-column: 1 / -1; }
+/*  (Le placement de ces trois pièces est dit par les paliers de largeur,
+     tout en bas : écrit ici, hors media query, il gagnait sur tous les
+     paliers à cause de sa spécificité — c'est la panne du 28/11.) */
 
 /* ═══ LES PIÈCES COUSUES ═══════════════════════════════════════════════════
 
@@ -3812,10 +3798,7 @@
   align-items: center;
   column-gap: 22px;
 }
-.jf-entete .jf-titre-bloc { grid-column: 3; }
-.jf-entete .jf-entete-droite { grid-column: 4; justify-content: flex-end; }
-.jf-entete .jf-sceaux { grid-column: 5; }
-.jf-entete .jf-seuil { grid-column: 1 / -1; }
+.jf-entete .jf-entete-droite { justify-content: flex-end; }
 
 /*  La capsule du seuil : trois faits, largement espacés, et rien au bout. */
 .jf-seuil {
@@ -4081,13 +4064,7 @@
     devient une bande horizontale lisible. */
 @media (max-width: 1080px) {
   .jf-corps { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .jf-frise { position: static; }
-  .jf-frise .jf-annee-bande {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 4px 10px;
-  }
-  .jf-frise .jf-annee-mois { min-height: 24px; }
+  .jf-frise { position: static; }  .jf-frise .jf-annee-mois { min-height: 24px; }
   .jf-frise .jf-annee-legende { flex-direction: row; flex-wrap: wrap; gap: 10px 16px; }
 }
 
@@ -4119,9 +4096,7 @@
 /*  720 px — tout s'empile. Les pièces cousues passent à une par rangée,
     les fils de bâti disparaissent (ils n'auraient plus de traversée à
     faire), et les mois se rangent en trois colonnes. */
-@media (max-width: 720px) {
-  .jf-frise .jf-annee-bande { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .jf-registre { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 18px 0 12px; }
+@media (max-width: 720px) {  .jf-registre { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 18px 0 12px; }
   .jf-registre::before,
   .jf-registre::after { display: none; }
   .jf-jour { padding: 14px 14px 12px; border-radius: var(--jf-radius-piece); }
@@ -4150,9 +4125,7 @@
   .jf-sceaux .jf-mesure { width: 70px; max-width: 70px; height: 70px; }
   .jf-sceaux .jf-mesure-libelle { font-size: 5.8px; }
   .jf-sceaux .jf-mesure-valeur { font-size: 17px; }
-  .jf-sceaux .jf-mesure-valeur small { font-size: 5.8px; }
-  .jf-frise .jf-annee-bande { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .jf-entete { padding: 12px 10px 6px; }
+  .jf-sceaux .jf-mesure-valeur small { font-size: 5.8px; }  .jf-entete { padding: 12px 10px 6px; }
   .jf-coque { padding: 12px 10px 26px; }
   .jf-bouton { width: 100%; justify-content: center; }
   .jf-barre .jf-bouton { width: auto; }
@@ -4239,47 +4212,6 @@
   min-width: min-content;
 }
 
-/*  Sous 1 200 px, les quatre sceaux et le sélecteur ne cohabitent plus avec
-     le titre sur une seule ligne : le titre prend une ligne à lui, pleine
-     largeur, et les sceaux passent dessous. On ne laisse jamais la grille
-     arbitrer entre un titre et quatre disques. */
-@media (max-width: 1200px) {
-  .jf-page .jf-entete {
-    grid-template-columns: auto auto minmax(0, 1fr);
-    align-items: center;
-    row-gap: 12px;
-  }
-  .jf-page .jf-entete .jf-titre-bloc {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    width: 100%;
-  }
-  .jf-page .jf-entete .jf-entete-droite {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    justify-content: flex-end;
-  }
-  .jf-page .jf-entete .jf-sceaux {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    justify-content: flex-start;
-    padding: 0;
-  }
-  .jf-page .jf-titre { font-size: clamp(26px, 5.2vw, 44px); }
-}
-
-/*  Sous 900 px, le sélecteur descend sous le titre : plus rien à côté de lui. */
-@media (max-width: 900px) {
-  .jf-page .jf-entete .jf-entete-droite {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-content: flex-start;
-  }
-  .jf-page .jf-entete .jf-titre-bloc { grid-row: 1; }
-  .jf-page .jf-entete .jf-sceaux { grid-row: 3; }
-  .jf-page .jf-titre { font-size: clamp(24px, 7vw, 34px); }
-}
-
 /* ═══ LES QUATRE ANOMALIES DU 27/11 (image 1) ══════════════════════════════
 
      1. LE SCEAU TOMBE SUR LE TITRE. Les captures le montrent deux fois : le
@@ -4305,29 +4237,30 @@
      4. Le sélecteur d'entreprise de l'en-tête est retiré (image 2) — il
         doublonnait celui du rail. */
 
-/*  ── 1 · Le sceau ne peut plus recouvrir le titre ─────────────────────── */
+/*  ── 1 · L'en-tête : le placement appartient au palier, pas à ce bloc ────
+
+     C'est ici que je me suis trompé le 27/11, et sa capture du 28/11 le
+     montre : j'avais écrit le placement `.jf-page .jf-entete > .jf-sceau
+     { grid-column: 2 ; grid-row: 1 }` HORS media query. Deux classes de plus
+     que les règles des paliers, donc une spécificité (0,3,0) qui bat (0,2,0)
+     même quand celles-ci viennent après : sous 900 px, le sceau et les
+     quatre mesures restaient en ligne 1, dans les cellules du titre.
+
+     Ce bloc ne pose donc plus aucun placement. Il ne dit que ce qui vaut à
+     toutes les largeurs — l'alignement, la taille du sceau et le fait qu'il
+     ne se comprime pas. Les colonnes et les lignes sont dites une seule fois,
+     tout en bas, dans « LE PLACEMENT DE L'EN-TÊTE ». */
 .jf-page .jf-entete {
-  /* chaque élément reprend SA cellule : le retour en 1, le sceau en 2, le
-     titre en 3, le sélecteur en 4, les sceaux en 5 */
   grid-template-areas: none;
   align-items: start;
 }
-.jf-page .jf-entete > .jf-retour { grid-column: 1; grid-row: 1; }
 .jf-page .jf-entete > .jf-sceau {
-  grid-column: 2;
-  grid-row: 1;
   align-self: center;
   width: 62px;
   height: 62px;
   max-width: 62px;
+  flex: none;
 }
-.jf-page .jf-entete > .jf-titre-bloc { grid-column: 3; grid-row: 1; }
-.jf-page .jf-entete > .jf-sceaux { grid-column: 5; grid-row: 1; }
-.jf-page .jf-entete > .jf-entete-droite { grid-column: 4; grid-row: 1; }
-
-/*  Le sceau garde sa taille de la maquette mais ne pousse plus le titre :
-     c'est le TITRE qui définit la hauteur de la rangée. */
-.jf-page .jf-entete > .jf-sceau { flex: none; }
 .jf-page .jf-titre-bloc { padding-top: 0; }
 .jf-page .jf-eyebrow { line-height: 1.2; }
 .jf-page .jf-titre { line-height: 1.02; }
@@ -4375,7 +4308,6 @@
 
 /*  En colonne (grand écran), la piste garde de la place au-dessus et en
      dessous : les épingles de 24 px ne mordent plus sur le mois voisin. */
-.jf-frise .jf-annee-bande { padding: 8px 0 12px; }
 .jf-frise .jf-annee-mois { min-height: 34px; }
 .jf-frise .jf-annee-piste { height: 26px; }
 
@@ -4383,14 +4315,7 @@
      chaque mois devient une rangée qui range ses épingles en ligne, avec un
      retour à la ligne si le mois est chargé. Plus de superposition possible —
      c'est le flux qui place, pas un pourcentage. */
-@media (max-width: 1080px) {
-  .jf-frise .jf-annee-bande {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 10px 18px;
-    padding: 12px 0;
-  }
-  .jf-frise .jf-annee-mois {
+@media (max-width: 1080px) {  .jf-frise .jf-annee-mois {
     display: grid;
     grid-template-columns: 52px minmax(0, 1fr);
     align-items: center;
@@ -4422,77 +4347,204 @@
   .jf-frise .jf-repere::before { width: 10px; height: 10px; }
 }
 
-/* ═══ LA FRISE : LA CIBLE TACTILE NE DÉBORDE PLUS DE LA PISTE ══════════════
+/* ═══ LA FRISE, RÉÉCRITE UNE FOIS POUR TOUTES (28/11) ══════════════════════
 
-     Troisième passage sur le chevauchement. Les deux précédents réglaient la
-     superposition VERTICALE (mois qui se marchaient dessus) ; il restait
-     l'horizontale, et elle est arithmétique :
+     Ce que montrait sa capture — et pourquoi :
 
-       colonne de la frise : 150 à 190 px
-       nom du mois          : 52 px + 6 px de gouttière
-       piste restante       : 92 à 132 px
+     · au-delà de 1 080 px, la bande restait en `repeat(12, 1fr)` : douze
+       colonnes de ~150 px. La frise n'a jamais été faite pour cette largeur,
+       et les épingles se rangeaient en trois colonnes par mois ;
+     · les épingles portaient `style={{ left: X% }}` EN LIGNE, calculé sur le
+       jour. Sur une épingle `position: relative`, ce pourcentage ne place
+       rien : il DÉCALE la pastille de X % de la largeur de la piste. Douze
+       épingles de janvier partaient donc à droite, les unes sur février ;
+     · trois blocs de correction s'étaient empilés et se contredisaient.
 
-     Or une épingle faisait 24 px de large (la cible tactile) pour un point de
-     11 px. À 94 % d'un mois, son bord droit sortait de 6 px de la piste ; à
-     12 %, son bord gauche sortait d'1 px par la gauche — par-dessus le nom du
-     mois. Deux épingles voisines du même mois se recouvraient donc, et leurs
-     anneaux de focus encore plus.
+     Une seule règle désormais, et elle vaut à toutes les largeurs : les
+     épingles sont des éléments de FLUX, rangés par le mois, qui passent à la
+     ligne quand le mois est chargé. Le jour ne sert plus qu'à l'ordre — c'est
+     le composant qui trie, plus le CSS qui absolutise. Rien ne peut donc plus
+     recouvrir un mois voisin. */
 
-     Le point garde ses 11 px, mais la CIBLE se range dans la piste : 20 px de
-     large, elle ne dépasse plus. Et la marge de fin de piste laisse la place
-     au dernier point du mois. En grille (1 080 px et moins) la cible remonte à
-     24 px : là, les épingles sont dans le flux et ne peuvent rien recouvrir. */
+.jf-frise .jf-annee-bande {
+  display: grid;
+  /*  Une colonne par mois, mais jamais moins de 240 px : sur un écran large
+      on en tient quatre ou cinq par rangée, sur un téléphone une seule. */
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 6px 24px;
+  padding: 10px 0 14px;
+  background: none;
+}
+
+.jf-frise .jf-annee-mois {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 8px;
+  min-height: 0;
+  padding: 3px 0;
+}
+
+.jf-frise .jf-annee-mois-nom {
+  padding-top: 3px;
+  font-size: 9.5px;
+  line-height: 1.2;
+}
+
 .jf-frise .jf-annee-piste {
-  margin: 0 8px 0 0;
-  padding: 0;
-}
-.jf-frise .jf-repere {
-  width: 20px;
-  height: 20px;
-}
-.jf-frise .jf-annee-piste > .jf-repere:first-child { margin-left: -2px; }
-
-@media (max-width: 1080px) {
-  .jf-frise .jf-annee-piste { margin: 0; }
-  /*  dans le flux, la cible peut reprendre sa taille confortable */
-  .jf-frise .jf-repere { width: 24px; height: 24px; }
-  .jf-frise .jf-repere[data-prochain='oui'] { width: 28px; height: 28px; }
-}
-
-/*  La dernière épingle d'un mois est placée à 94 % : à 20 px de large, il lui
-     faut 10 px de marge à droite, plus 6 % de la piste. On les donne en
-     pourcentage, ce qui les fait grandir avec la piste au lieu de les figer —
-     et la première épingle rentre par la même occasion (elle sortait d'1 px à
-     gauche). */
-.jf-frise .jf-annee-piste {
-  margin: 0 calc(10px + 6%) 0 0;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1px;
+  height: auto;
+  min-height: 26px;
+  margin: 0 !important;
+  padding: 2px 0;
+  background: none;
   box-sizing: border-box;
 }
-.jf-frise .jf-annee-piste > .jf-repere:first-child { margin-left: 0; }
-.jf-frise .jf-annee-piste > .jf-repere:last-child { margin-right: 0; }
 
-@media (max-width: 1080px) {
-  .jf-frise .jf-annee-piste { margin: 0; }
+/*  Le filet du mois : il traverse la piste derrière les épingles. */
+.jf-frise .jf-annee-piste::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: color-mix(in srgb, var(--charte-encre) 20%, transparent);
+  z-index: 0;
 }
 
-/*  Dernier réglage, et le plus simple : dans la colonne étroite de la frise,
-     une cible de 20 px ne tient pas avec un point centré. La cible descend à
-     16 px — encore au-dessus du minimum de 12 px d'une zone tactile, et
-     surtout : elle ne sort plus de la piste, ni à gauche (12 %), ni à droite
-     (94 % + marge). Sur écran large la précision de la souris le permet ; en
-     grille, la cible remonte à 24 px puisque les épingles sont dans le flux. */
-.jf-frise .jf-repere { width: 16px; height: 16px; }
-.jf-frise .jf-repere[data-prochain='oui'] { width: 20px; height: 20px; }
-.jf-frise .jf-annee-mois { grid-template-columns: 48px minmax(0, 1fr); }
-
-@media (max-width: 1080px) {
-  .jf-frise .jf-annee-mois { grid-template-columns: 52px minmax(0, 1fr); }
+/*  L'épingle : un élément de flux, jamais décalée. Le composant n'écrit plus
+    `style={{ left: X% }}` en ligne — c'était lui qui décalait les pastilles
+    de X % de la largeur de la piste, douze points de janvier sur février. */
+.jf-frise .jf-annee-piste > .jf-repere,
+.jf-frise .jf-annee-piste > .jf-repere[data-travaille],
+.jf-frise .jf-annee-piste > .jf-repere[data-prochain] {
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  margin: 0;
+  transform: none;
+  width: 18px;
+  height: 18px;
+  z-index: 1;
 }
 
-/*  En grille, la cible remonte à 24 px : les épingles sont dans le flux, elles
-     ne peuvent rien recouvrir, et le doigt mérite la place. La règle est
-     répétée ici, après les deux autres, pour gagner sans ambiguïté. */
-@media (max-width: 1080px) {
-  .jf-frise .jf-annee-piste > .jf-repere { width: 24px; height: 24px; }
-  .jf-frise .jf-annee-piste > .jf-repere[data-prochain='oui'] { width: 28px; height: 28px; }
+.jf-frise .jf-annee-piste > .jf-repere::before {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+  box-shadow: 1px 1px 0 0 var(--charte-encre);
+}
+
+.jf-frise .jf-annee-piste > .jf-repere[data-prochain='oui'] {
+  width: 26px;
+  height: 26px;
+}
+
+.jf-frise .jf-annee-piste > .jf-repere[data-prochain='oui']::before {
+  width: 13px;
+  height: 13px;
+  box-shadow: 1.5px 1.5px 0 0 var(--charte-encre);
+}
+
+.jf-frise .jf-annee-piste > .jf-repere:hover,
+.jf-frise .jf-annee-piste > .jf-repere:focus-visible { z-index: 3; }
+
+/*  Sous 560 px : une seule colonne de mois, la cible un peu plus grande. */
+@media (max-width: 560px) {
+  .jf-frise .jf-annee-bande { grid-template-columns: minmax(0, 1fr); }
+  .jf-frise .jf-annee-mois { grid-template-columns: 50px minmax(0, 1fr); }
+  .jf-frise .jf-annee-piste > .jf-repere { width: 20px; height: 20px; }
+}
+
+/* ═══ LE PLACEMENT DE L'EN-TÊTE, UNE FOIS POUR TOUTES (28/11) ══════════════
+
+     L'anomalie de sa capture n'était pas un mauvais dessin : c'était un
+     CONFLIT D'ORDRE. Trois blocs de correction s'étaient empilés au fil des
+     captures, chacun posant `grid-column` sans savoir ce que le précédent
+     avait dit. Le dernier — le mien — posait `grid-column: 5 ; grid-row: 1`
+     sans media query : il écrasait tout, et sous 900 px le sceau du Lesotho,
+     le titre et les quatre mesures se retrouvaient dans les mêmes cellules.
+
+     Ici, le placement est écrit du plus étroit au plus large, une seule fois,
+     et seulement en media queries. Aucune règle ne vaut « par défaut » : la
+     largeur décide, toujours. */
+
+/*  ── Grand écran : tout sur une ligne ─────────────────────────────────── */
+@media (min-width: 1201px) {
+  .jf-entete {
+    grid-template-columns: auto auto minmax(min-content, 1fr) auto auto;
+    align-items: center;
+  }
+  .jf-entete > .jf-retour { grid-column: 1; grid-row: 1; }
+  .jf-entete > .jf-sceau { grid-column: 2; grid-row: 1; }
+  .jf-entete > .jf-titre-bloc { grid-column: 3; grid-row: 1; }
+  .jf-entete > .jf-entete-droite { grid-column: 4; grid-row: 1; }
+  .jf-entete > .jf-sceaux { grid-column: 5; grid-row: 1; }
+}
+
+/*  ── 900 à 1 200 px : le titre prend la largeur, les sceaux dessous ──── */
+@media (max-width: 1200px) {
+  .jf-entete {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    row-gap: 12px;
+  }
+  .jf-entete > .jf-retour { grid-column: 1; grid-row: 1; }
+  .jf-entete > .jf-sceau { grid-column: 2; grid-row: 1; }
+  .jf-entete > .jf-titre-bloc {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+  .jf-entete > .jf-sceaux {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-content: flex-start;
+    padding: 0;
+  }
+  .jf-entete > .jf-entete-droite { grid-column: 1 / -1; grid-row: 4; }
+  .jf-titre { font-size: clamp(26px, 5.2vw, 44px); }
+}
+
+/*  ── Sous 900 px : retour et sceau, puis titre, puis sceaux ───────────── */
+@media (max-width: 900px) {
+  .jf-entete {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    row-gap: 10px;
+    padding: 14px 12px 10px;
+  }
+  .jf-entete > .jf-retour { grid-column: 1; grid-row: 1; align-self: center; }
+  .jf-entete > .jf-sceau { grid-column: 2; grid-row: 1; align-self: center; }
+  .jf-entete > .jf-titre-bloc { grid-column: 1 / -1; grid-row: 2; }
+  .jf-entete > .jf-sceaux {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding: 0;
+  }
+  .jf-entete > .jf-entete-droite { display: none; }
+  .jf-titre { font-size: clamp(24px, 7vw, 34px); }
+}
+
+/*  ── Sous 560 px : les quatre mesures en grille de deux ──────────────── */
+@media (max-width: 560px) {
+  .jf-entete > .jf-sceau { width: 48px; height: 48px; max-width: 48px; }
+  /*  On ne redéclare pas la position : elle est déjà dite par le palier
+      900 px. En n'écrivant que la largeur, on gardait `grid-row: 3`. */
+  .jf-entete > .jf-sceaux { width: 100%; grid-row: 3; }
+  .jf-sceaux .jf-mesures {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+  .jf-sceaux .jf-mesure { width: 100%; max-width: none; height: auto; aspect-ratio: 1; }
 }

@@ -71,7 +71,13 @@ export default function JoursFeriesAnnee({
     })
   }
 
-  const parMois = MOIS.map((_, m) => reperes.filter(r => r.mois === m))
+  /*  Les épingles ne sont plus placées par un pourcentage : elles sont dans
+      le flux du mois. L'ordre du tableau EST donc l'ordre d'affichage — il
+      faut le trier par jour, sinon janvier afficherait les fêtes du pays
+      puis celles de l'entreprise, dans l'ordre où elles sont arrivées. */
+  const parMois = MOIS.map((_, m) =>
+    reperes.filter(r => r.mois === m).sort((a, b) => a.jour - b.jour || a.nom.localeCompare(b.nom, 'fr'))
+  )
   const total = reperes.length
 
   return (
@@ -111,7 +117,6 @@ export default function JoursFeriesAnnee({
                   'data-travaille': r.travaille ? 'oui' : 'non',
                   'data-prochain': estProchain ? 'oui' : 'non',
                   'data-actif-choix': repereActif === r.cle ? 'oui' : 'non',
-                  style: { left: `${Math.min(94, (r.jour / 31) * 100)}%` },
                   title: `${r.jour} ${MOIS_LONGS[m]} — ${r.nom}`,
                 }
 
