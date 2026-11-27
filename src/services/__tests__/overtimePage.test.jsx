@@ -8,10 +8,29 @@ import HeuresSupplementaires from '../../pages/HeuresSupplementaires'
 const mocks = vi.hoisted(() => ({
   calculate: vi.fn(),
   save: vi.fn(),
+  toggleTheme: vi.fn(),
   fail: false,
+  /*  LA LIGNE DE L'ENTREPRISE, telle que le rail la veut. Deux champs y sont
+        comptables et pas décoratifs : `logo_url` (sans lui, la pastille retombe
+        sur la lettre et l'aiguille ci-dessous n'a rien à lire) et
+        `module_heures_supplementaires` (la fabrique de sections du rail garde la
+        rubrique par ce drapeau). L'adresse est PUBLIQUE : `PhotoSignee` la laisse
+        telle quelle, donc le test peint l'image sans simposer un `storage`. */
+  entreprise: {
+    id: 'ent',
+    name: 'Usine Sokale',
+    code: 'SOK',
+    logo_url:
+      'https://exemple.supabase.co/storage/v1/object/public/photos/sokale.png',
+    module_heures_supplementaires: true,
+  },
 }))
 vi.mock('../../contexts/ThemeContext', () => ({
-  useTheme: () => ({ darkMode: false }),
+  //  `toggleTheme` est lu par la page pour BRANCHER la commande de la barre :
+  //  un mock qui ne rendrait que `darkMode` laisserait `surTheme` indéfini, et
+  //  le composant le remplacerait par son neutre — l'aiguille du thème ne
+  //  pourrait plus rien dire.
+  useTheme: () => ({ darkMode: false, toggleTheme: mocks.toggleTheme }),
 }))
 vi.mock('../../components/PageHeader', () => ({ default: () => null }))
 vi.mock('../holidayService', () => ({
@@ -43,19 +62,57 @@ vi.mock('../featureService', () => ({
     saveOvertimeSettings: mocks.save,
   },
 }))
+/*  LE PROJETEUR — pourquoi le harnais doit CONNAÎTRE la liste des colonnes.
+    Un faux `select: () => query` qui jette l'argument rend invisible la leçon
+    écrite dans la page Absences : « la requête ne DEMANDAIT PAS `logo_url` ».
+    Une mock qui renvoie de toute façon la ligne complète ne peut jamais être
+    contredit par un `select('id, name')` — et l'aiguille de l'image resterait
+    verte avec le défaut d'origine. Le harnais suit donc le contrat : `*` rend la
+    ligne telle quelle, une liste la réduit à ses colonnes. */
+function projection(colonnes, ligne) {
+  if (!ligne || !colonnes || colonnes.includes('*')) return ligne
+  const gardes = colonnes.split(',').map((c) => c.trim())
+  return Object.fromEntries(
+    Object.entries(ligne).filter(([champ]) => gardes.includes(champ)),
+  )
+}
+
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: (table) => {
+      /*  Les colonnes demandées vivent dans LA CHAÎNE, pas dans une variable de
+            module : deux requêtes en concurrence ne doivent pas se marcher sur la
+            liste, sinon le projecteur mentirait sur l'une des deux. */
+      let colonnesDemandees = ''
       const query = {
-        select: () => query,
+        select: (colonnes) => {
+          colonnesDemandees = colonnes
+          return query
+        },
         eq: () => query,
         in: () => query,
         gte: () => query,
         lte: () => query,
         order: () => query,
+        /*  `maybeSingle` est le terminal que la page emploie pour la ligne du
+            RAIL d'un compte non super (la politique d'accès ne lui laisse pas
+            lire la table entière). Un harnais qui ne connaît que `range` fait
+            planter la page sur `requete.eq(...).maybeSingle is not a function` :
+            le mock suit le contrat du composant, pas l'inverse. */
+        maybeSingle: async () =>
+          table === 'enterprises'
+            ? { error: null, data: projection(colonnesDemandees, mocks.entreprise) }
+            : { error: null, data: null },
+        single: async () =>
+          table === 'enterprises'
+            ? { error: null, data: projection(colonnesDemandees, mocks.entreprise) }
+            : { error: null, data: null },
         range: async () => ({
           error: mocks.fail ? new Error('offline') : null,
           data:
+            table === 'enterprises'
+              ? [projection(colonnesDemandees, mocks.entreprise)]
+              : (
             table === 'employees'
               ? [
                   {
@@ -89,7 +146,8 @@ vi.mock('../../lib/supabase', () => ({
                       check_time: '2026-10-23T18:00:00Z',
                     },
                   ]
-                : [],
+                : []
+            ),
         }),
       }
       return query
@@ -129,15 +187,28 @@ afterEach(async () => {
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
-async function mount() {
+/*  Le chemin d'entrée est une aiguille en soi : le rail allume sa rubrique en
+    comparant `item.path` au `pathname` du routeur. Monté à `/`, aucun item ne
+    s'allume — et un rail qui ne sait pas où il est n'est pas un rail. */
+async function mount(chemin = '/') {
   await act(async () =>
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[chemin]}>
         <HeuresSupplementaires />
       </MemoryRouter>,
     ),
   )
 }
+/*  Remonter sur une AUTRE adresse demande une RACINE neuve : React refuse
+    `render` sur un root démonté (« Cannot update an unmounted root »), et ce
+    n'est pas un caprice du harnais — c'est la garantie que deux rendus ne se
+    partagent pas l'arbre. Le conteneur, lui, reste le même. */
+async function remount(chemin) {
+  await act(async () => root.unmount())
+  root = createRoot(host)
+  await mount(chemin)
+}
+
 async function click(text) {
   const button = [...host.querySelectorAll('button')].find(
     (b) => b.textContent === text,
@@ -326,4 +397,81 @@ it('nomme une origine incertaine sans retirer l’alerte', async () => {
   } finally {
     FeatureService.getOvertimeSettingsAvecOrigine = initial
   }
+})
+
+/*  ──────────────────────────────────────────────────────────────────────────
+    LA BARRE ET SON RAIL — la demande du 27/11 : « ramène la sidebar + son rail
+    dans cette page, et n'oublie pas d'afficher les images des entreprises qui y
+    sont ». Trois aiguilles, et elles ne sont pas décoratives :
+
+      · la barre doit être ENFANT DIRECT de `.coque-admin` — `SidebarUnique.css`
+        pose le registre par-dessus la page avec `.coque-admin > .sb`. Un wrapper
+        de plus, et la barre redevient un flex-item qui ôte 254 px au `main` à
+        chaque dépliage (la faute du 08/11, écrite dans CoqueAdmin.jsx) ;
+      · la rubrique allumée se lit sur le CHEMIN du routeur, pas sur une classe
+        que le rail porte tout le temps : la même page montée ailleurs doit
+        allumer une autre rubrique, sinon l'aiguille ne verrouille rien ;
+      · « l'image de l'entreprise » est un fait de REQUÊTE, pas de maquette : la
+        pastille lit `logo_url`, et un `select('id, name')` laisse la lettre du
+        nom à l'écran sans jamais dire qu'il a manqué une colonne. Le harnais ne
+        fournit cette ligne que par `maybeSingle` — le terminal du compte
+        d'entreprise — donc supprimer la branche non super du chargement éteint
+        la bande et fait rougir ici, pas dans un commentaire.
+    ────────────────────────────────────────────────────────────────────────── */
+it('monte la barre et son rail autour de la page, allumés à sa rubrique', async () => {
+  await mount('/heures-supplementaires')
+  const barre = host.querySelector('.coque-admin > .sb')
+  expect(
+    barre,
+    'la barre n’est plus enfant direct de `.coque-admin` : le registre va de nouveau manger 254 px au lieu de passer par-dessus',
+  ).toBeTruthy()
+  expect(barre.querySelector('.sb-rail'), 'la barre est là, son rail a disparu').toBeTruthy()
+  expect(
+    [...barre.querySelectorAll('.sb-rail-item.is-actif')].map((b) => b.getAttribute('aria-label')),
+    'le rail ne sait pas sur quelle rubrique il est',
+  ).toEqual(['Paie'])
+
+  //  Et l'aiguille ci-dessus n'est pas une coutume : montée à une autre adresse,
+  //    la même barre doit allumer AUTRE chose.
+  await remount('/pointages')
+  expect(
+    [...host.querySelectorAll('.sb-rail-item.is-actif')].map((b) => b.getAttribute('aria-label')),
+  ).toEqual(['Temps de travail'])
+})
+
+it('peint l’IMAGE de l’entreprise dans la barre, pas sa lettre', async () => {
+  await mount('/heures-supplementaires')
+  const bande = host.querySelector('.sb-rail .se-bande')
+  expect(
+    bande,
+    'pas de bande d’entreprise dans le rail : la page ne monte plus ses entreprises pour ce rôle',
+  ).toBeTruthy()
+  const image = bande.querySelector('img')
+  expect(
+    image,
+    'la pastille retombe sur la lettre du nom : `logo_url` n’arrive pas jusqu’à la barre (la requête ne le demande pas, ou la liste est vide)',
+  ).toBeTruthy()
+  expect(image.getAttribute('src')).toContain(
+    '/storage/v1/object/public/photos/sokale.png',
+  )
+  expect(bande.querySelector('.se-bande-nom')?.textContent).toBe('Usine Sokale')
+})
+
+it('garde les étages du tiroir en ordre : corps scrollable entre l’en-tête et le pied', async () => {
+  await mount('/heures-supplementaires')
+  await click('Règles de calcul')
+  const tiroir = host.querySelector('dialog.ot-drawer')
+  expect(tiroir, 'le tiroir des règles ne s’est pas ouvert').toBeTruthy()
+  /*  L'ORDRE est le défaut du 27/11 : le pied est peint APRÈS le corps, donc un
+        corps qui déborde (sans `overflow-y`) se retrouve RAYÉ par le pied et la
+        bande du bas — le dernier réglage du tiroir devenait illisible et
+        hors d'écran. Rendre le pied ou la bande premier enfant ne se voit pas
+        à l'œil sur une capture de 600 px de haut ; ça se verrouille ici. */
+  expect([...tiroir.querySelectorAll(':scope > div')].map((d) => d.className)).toEqual([
+    'ec-cultural-band ec-cultural-top',
+    'ot-rules-header',
+    'ot-rules-body',
+    'ot-rules-footer',
+    'ec-cultural-band ec-cultural-bottom',
+  ])
 })

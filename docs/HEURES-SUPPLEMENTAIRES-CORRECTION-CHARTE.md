@@ -448,3 +448,190 @@ vert, racontait que tout allait bien. **Une mutation doit être comptée
   `disabled={... || !rows.length}` se retrouve ailleurs) : rien ici ne les a
   corrigées, et la loi « soit FAIT, soit DIT » ne vaut pour l'instant que sur
   celle-ci.
+
+---
+
+## La barre, son rail, et le tiroir qui peignait sur son pied — 27/11/2026 (fin de journée)
+
+> « il y a un défaut là (image1). Autre chose, ramène la sidebar + son rail dans
+> cette page, et n'oublie pas d'afficher les images des entreprises qui y sont »
+
+La capture fait 1280 × ~600 et montre le BAS du tiroir des règles : la règle
+d'encre du haut, `Annuler` et `Sauvegarder` collés l'un à l'autre, la bande
+aso-oke, PUIS — sous la bande — le champ « SEUIL HEBDOMADAIRE (HEURES) », la
+case « M'alerter au-delà de ce seuil » et leur note. Un tiroir dont le formulaire
+passe par-dessus son propre pied.
+
+### Le défaut, lu dans la feuille avant de l'être dans l'image
+
+Quatre déclarations, et la cinquième qui manquait :
+
+| écrit | effet |
+| --- | --- |
+| `.ot-drawer[open] { display: flex; flex-direction: column }` | le tiroir est une colonne de cinq étages : bande 28, en-tête, corps, pied, bande 12 |
+| `.ot-drawer > div { flex-shrink: 0 }` | aucun étage ne se laisse comprimer |
+| `.ot-drawer > .ot-rules-body { flex-shrink: 1; min-height: 0 }` | …sauf le corps, qui a le DROIT de rétrécire jusqu'à zéro |
+| `.ot-rules-body { overscroll-behavior: contain }` | la promesse d'un conteneur qui scrollait sans traîner la page derrière lui |
+| **rien** | le `overflow-y` qui fait la promesse. Il n'a jamais été écrit |
+
+Sans `overflow`, un corps trop haut ne scrolle pas : il **déborde**. Et le débordement
+d'un bloc peint AVANT ses frères est recouvert par eux — le pied et la bande du bas
+arrivent après lui dans le DOM. Bilan, à un écran de 800 px de haut (arithmétique des
+cotes déclarées : 800 − 28 − 12 − ~71 d'en-tête − ~57 de pied ≈ **631 px** de boîte
+pour ≈ **990 px** de contenu, quatre blocs cerclés, un `details`, huit champs) :
+**~360 px de formulaire peints par-dessus le pied et le bas de l'écran**, illisibles
+et hors d'atteinte — exactement la couture montrée par la capture. Le tiroir ne
+portait pas non plus `overflow`: le trop-plein pouvait déborder la boîte du `dialog`.
+
+Trois lignes écrites ensemble, et pas une de plus :
+
+- `.ot-drawer { overflow: hidden }` — la boîte borne ce qu'elle contient ;
+- `.ot-rules-body { overflow-y: auto }` — le corps devient visitable ;
+- `min-height: 0` resté où il était — sans lui, la colonne refuserait de rétrécire
+  et c'est le pied qui sortirait de l'écran.
+
+**Le second défaut de la même image**, et il n'a rien à voir avec le débordement :
+`.ot-rules-footer` ne portait `padding` QUE dans le bloc
+`@media (max-width: 650px)`. Sur un écran large, le pied n'avait donc aucune
+respiration — ses deux boutons touchaient la règle de trois du haut et les bords
+du tiroir, séparés l'un de l'autre par les ~3 px du blanc laissé entre deux balises
+JSX, quand la même page ouvre 8 px entre deux boutons ailleurs (`.ot-vide-gestes`).
+La respiration du pied est maintenant écrite **avec** celle de l'en-tête, dans une
+règle à deux sélecteurs (`.ot-rules-header, .ot-rules-footer`) : une cote, une fois,
+pour les deux étages qui se ressemblent.
+
+Ni l'un ni l'autre ne pouvaient être vus par `npm run charte` : il compte des
+valeurs dans des fichiers. Il ne lit ni la cascade, ni l'ordre de peinture, ni le
+fait qu'un `padding` écrit dans un `@media` ne vaut pas pour le reste du monde.
+
+### La barre et son rail, au patron de la maison — pas à sa copie
+
+`CoqueAdmin` + `SidebarUnique` + `sectionsNavAdmin`, comme Pauses, Retards,
+Absences et Jours fériés. Trois raisons de passer par la coque, toutes écrites dans
+`CoqueAdmin.css` et rappelées ici parce qu'elles sont des pièges déjà payés :
+
+1. la coque définit les `--sidebar-*` que la barre lit pour peindre sa carte — sans
+   elles, la barre est transparente et le clic « ne fait rien » (panne du 24/11) ;
+2. `SidebarUnique.css` pose le registre `.coque-admin > .sb`, en ENFANT DIRECT : un
+   wrapper de plus, et la barre redevient un flex-item qui ôte 254 px au `main` à
+   chaque dépliage (faute du 08/11) ;
+3. `.coque-admin-page { flex: 1 1 auto; min-width: 0 }` : sans le `min-width: 0`,
+   une grille large remonte en `min-content` et c'est LA PAGE qui défile au lieu du
+   rail. Cette page a une table de huit colonnes — elle était dedans.
+
+Le rail n'a rien eu à déclarer : la rubrique « Heures supplémentaires » figure déjà
+dans la fabrique (`sectionsNavAdmin.js`, gardée par `module_heures_supplementaires`)
+et `SidebarUnique` allume la rubrique en comparant `item.path` au `pathname`. Elle
+s'allume donc sur **Paie**, et n'importe où ailleurs.
+
+### Les images des entreprises, qui sont une affaire de REQUÊTE
+
+La pastille du rail (`SelecteurEntreprise`) lit `logo_url` et le fait signer par
+`PhotoSignee` ; sans la colonne, elle retombe sur la lettre du nom **sans jamais
+dire qu'elle n'a rien reçu**. Deux corrections, toutes deux lues à la page Absences
+(où la même leçon est écrite en commentaire) :
+
+- `loadEntreprises` tournait **seulement** pour le `super_admin`. Un compte
+  d'entreprise avait donc `entreprises = []` : pas de bande, pas de pastille, pas
+  d'image. La requête tourne maintenant pour tout le monde, bornée par le rôle :
+  la liste pour le super admin, **sa propre ligne** pour un compte d'entreprise
+  (`maybeSingle()`, parce que la politique d'accès ne lui laisse pas lire la table
+  entière) ;
+- l'entreprise active du rail retombe sur cette unique ligne (`entreprises[0]`),
+  parce que le filtre de l'en-tête, lui, reste à `null` pour ce rôle.
+
+Et le harnais de test a dû suivre : son faux `supabase` ignorait l'argument de
+`select()` et rendait la ligne complète quoi qu'on demande — un
+`select('id, name')` restait donc VERT avec le défaut d'origine. Le mock honore
+désormais la liste des colonnes (un `projecteur` : `*` rend tout, une liste réduit).
+Mesuré dans les deux sens : avant le projecteur, la mutation `select('*')` restreint à `select('id, name')` ne faisait pas rougir ; après, elle rougit.
+
+### Le thème, et ce que le verrou du 26/12 défendait vraiment
+
+La barre apporte sa commande de thème, la page doit donc lire `useTheme()`. Le
+verrou « ni raccourcis ni bouton de thème » de la phase précédente l'interdisait —
+`expect(nu(PAGE)).not.toMatch(/useTheme\s*\(/)`. Relu, ce n'est pas ce qu'il avait à
+dire : ce qui était défendu, c'était **un second thème entretenu par la page** (sa
+classe `.ot-dark`, son ancre `encheck.theme`), pas le fait de lire le thème global.
+L'aiguille est réécrite pour défendre cela, et elle garde crocs :
+
+- `.ot-dark`, `data-theme=` posé par la page, `encheck.theme`, « Mode sombre » / « Mode clair » :
+  toujours absents ;
+- `useTheme(` **compté à 1** : deux lectures, c'est le second thème qui revient ;
+- pas de `<button … onClick={toggleTheme}` dans la page : la commande vit dans la
+  barre, et une page qui rend sa propre bascule la rend sans la charte.
+
+### Ce que les tests verrouillent (quatre `it` de plus, un harnais)
+
+| aiguille | ce qu'elle interdit |
+| --- | --- |
+| `.coque-admin > .sb` présent, et sa rubrique allumée = `['Paie']` ; remonté à `/pointages`, `['Temps de travail']` | la barre rendue hors de la coque ; un rail qui afficherait `is-actif` par habitude plutôt que par le chemin |
+| `.sb-rail .se-bande img` dont le `src` contient `/storage/v1/object/public/photos/…`, + le nom « Usine Sokale » | la lettre du nom à la place de l'image ; le `select` amputé ; la branche non-super supprimée (la bande disparaît) |
+| les étages du tiroir, tableau EXACT `['ec-cultural-band ec-cultural-top', 'ot-rules-header', 'ot-rules-body', 'ot-rules-footer', 'ec-cultural-band ec-cultural-bottom']` | un pied déplacé avant le corps, un étage ajouté, une bande qui change de place |
+| feuille : `overflow-y: auto` + `overscroll-behavior: contain` sur le corps, `min-height: 0` sur la règle du tiroir, `overflow: hidden` sur la boîte, aucun `height`/`max-height` inventé ; et le `padding` du pied lu **avant le premier `@media`**, avec son `gap: var(--charte-espace-2)` et une seule bordure | le retour du demi-conteneur ; une hauteur « bricolée » ; un pied habillé seulement pour le téléphone |
+
+**Treize mutations exercées, douze rougeurs, un vert assumé.** Chacune a été
+vérifiée ATTEIGNANTE avant d'être crue (le motif cherché doit être compté à un, ou
+la mutation ne mute rien) :
+
+| mutation | ce qui a rougi |
+| --- | --- |
+| `overflow-y: auto` ôté du corps | l'aiguille de feuille |
+| `overflow: hidden` ôté de la boîte | l'aiguille de feuille |
+| `min-height: 0` ôté de `.ot-drawer > .ot-rules-body` | l'aiguille de feuille |
+| pied rendu AVANT le corps | l'aiguille des étages (tableau exact) |
+| `entreprises={[]}` passé à la barre | l'image de l'entreprise (plus de bande) |
+| la branche non-super de `loadEntreprises` supprimée | la bande d'entreprise, donc la rubrique |
+| `select('*')` restreint à `select('id, name')` | **vert d'abord** — le harnais ignorait les colonnes — puis rouge une fois le projecteur posé |
+| `CoqueAdmin` ôtée (page rendue nue) | l'aiguille de la coque |
+| rail forcé à s'allumer PARTOUT (mutation passagère de `SidebarUnique`) | la seconde moitié de l'aiguille de rubrique |
+| le `padding` du pied retiré de la règle partagée (l'état d'avant) | l'aiguille du pied, lue avant le premier `@media` |
+| le `gap` du pied retiré | la même aiguille |
+| un `<span>` ajouté entre `.coque-admin` et la barre | l'aiguille de l'enfant direct — c'est exactement la faute du 08/11, et elle rougit |
+| la cote du pied déplacée DANS le `@media (max-width: 650px)` | **rien, et c'est voulu** : la loi porte sur la respiration de base, pas sur la cote mobile — le dire vaut mieux qu'une aiguille de plus qui se satisferait elle-même |
+
+Enfin, deux harnais manquaient et ont fait eux-mêmes le bruit : sans `maybeSingle`
+dans le faux `supabase`, neuf tests explosaient en
+`TypeError: requete.eq(...).maybeSingle is not a function` ; et `mount()` ne peut pas
+rendre deux fois sur le même root démonté (« Cannot update an unmounted root ») —
+d'où `remount(chemin)`, qui recrée la racine dans le même conteneur.
+
+### Portes
+
+- `npx vitest run src/services/__tests__/overtime*` : **5 fichiers / 47 tests verts**.
+- `npx vitest run` complet : **202 fichiers / 2895 tests verts**.
+- `npx eslint --config eslint.gate.config.js src` : **0 erreur**, les 6 warnings
+  préexistants (fichiers non touchés).
+- `npm run charte` : **identique à la base**, mesuré en rejouant le contrôle après
+  `git stash` — 67 tailles · 42 marges · 27 rayons · 4442 couleurs en dur dans 180
+  fichiers. (Le +1 de couleurs depuis la phase précédente vient de #398, pas
+  d'ici : la feuille de cette page reste à 4 tailles en jetons, 0 couleur hors
+  couche d'alias, 0 rayon hors liste, 0 flou, 0 dégradé : les lignes ajoutées sont
+  deux `overflow`, un `gap` en jeton, et une règle à deux sélecteurs qui ne fait
+  que rassembler des cotes déjà écrites ailleurs dans la feuille.)
+- Aucun fichier partagé touché en définitive : `CoqueAdmin`, `SidebarUnique`,
+  `SelecteurEntreprise`, `sectionsNavAdmin` sont lus, pas modifiés. La onzième
+  rougeur a pourtant été cherchée EN `SidebarUnique` (le rail forcé à s'allumer
+  partout, pour prouver que l'aiguille de rubrique n'est pas une habitude) : la
+  mutation a été annulée dans la minute et le fichier vérifié `diff -q` contre
+  `origin/main` — silencieux, donc identique.
+
+### Ouvert, à ne pas vendre comme fait
+
+- **Les points de rupture de la feuille lisent le VIEWPORT, plus la colonne.** La
+  page est maintenant bordée d'une barre de 254 px : à un écran de 900 px, sa
+  colonne fait ~646 px alors que la règle des 850 px ne s'est pas encore ouverte.
+  Ce commerce est celui de TOUTES les pages de la coque (Jours fériés, Pauses,
+  Absences) ; la sortie propre est une requête de conteneur, et ce n'est pas cette
+  page qui la décide.
+- Aucun navigateur ici : la hauteur du tiroir, la boîte de 631 px et les ~990 px de
+  contenu sont de l'arithmétique de cotes déclarées ; la scrollabilité du corps et
+  la respiration du pied sont verrouillées comme DÉCLARATIONS, pas comme pixels
+  peints.
+- Un compte d'entreprise ne peut pas changer d'entreprise depuis le rail (une seule
+  ligne, `multi = false`) : c'est la loi du composant partagé, pas un oubli de la
+  page.
+- La rubrique du rail s'éteint si la ligne de l'entreprise ne porte pas
+  `module_heures_supplementaires`, alors que la page, elle, s'ouvre sur son propre
+  garde (`FeatureService`). Deux portes, deux lectures différentes du même
+  drapeau : c'est aussi le comportement d'Absences et de Jours fériés.

@@ -5,6 +5,25 @@ import { OvertimeLoadingScreen } from '../components/OvertimeExperience'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
+/*  LA SIDEBAR ET SON RAIL — sa demande du 27/11 : « ramène la sidebar + son rail
+    dans cette page, et n'oublie pas d'afficher les images des entreprises qui y
+    sont ». Le patron n'est pas recopié : `CoqueAdmin` + `SidebarUnique` +
+    `sectionsNavAdmin`, la même fabrique que Planning, Employés, Pauses, Retards,
+    Absences et Jours fériés. La rubrique « Heures supplémentaires » y figure déjà
+    (`sectionsNavAdmin.js`, ligne 73, gardée par `module_heures_supplementaires`),
+    donc le rail s'allume ici tout seul.
+
+    ⚠️ Le thème. Cette page a perdu SON bouton sombre/clair le 26/12 (« enlever
+    les raccourcis, le bouton sombre/clair »), et le verrou qui le dit est dans
+    `overtimeBrandAlignment.test.js`. Ce qui était défendu n'était pas de changer
+    de thème : c'était d'entretenir UN SECOND thème à côté du global — une classe
+    `.ot-dark` locale et son ancre `encheck.theme`. `useTheme()` n'est donc lu ici
+    que pour BRANCHER la commande de la barre, jamais pour habiller la page : la
+    page ne pose ni `data-theme`, ni classe, ni écriture de localStorage. */
+import CoqueAdmin from '../components/coque/CoqueAdmin'
+import SidebarUnique from '../components/SidebarUnique'
+import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
+import { useTheme } from '../contexts/ThemeContext'
 import PageCulturalBand from '../components/PageCulturalBand'
 import OvertimeDashboard, {
   OvertimeRulesDrawer,
@@ -32,6 +51,9 @@ export default function HeuresSupplementaires() {
       `.ot-dark` à entretenir à côté — deux thèmes l'un sur l'autre, c'est celui
       qui gagne par accident. */
   const requestId = useRef(0)
+  /*  Le thème vient de la racine de l'application (`[data-theme='dark']`,
+      tokens.css) : cette page ne l'habille pas, elle le transmet à la barre. */
+  const { darkMode, toggleTheme } = useTheme()
   const [loadError, setLoadError] = useState('')
   const [admin, setAdmin] = useState(null)
   const [entreprises, setEntreprises] = useState([])
@@ -72,9 +94,13 @@ export default function HeuresSupplementaires() {
     const parsedAdmin = JSON.parse(adminData)
     setAdmin(parsedAdmin)
 
-    if (parsedAdmin.role === 'super_admin') {
-      loadEntreprises(parsedAdmin)
-    } else {
+    /*  La requête des entreprises tourne pour TOUT LE MONDE depuis ce chapitre :
+        le rail a besoin de l'entreprise active — sa pastille d'image et son nom —
+        même quand le compte n'en voit qu'une. C'est `loadEntreprises` qui borne la
+        requête au rôle, parce qu'un compte d'entreprise ne peut pas lire la table
+        entière (politique d'accès), pas un `if` qui l'en prive silencieusement. */
+    loadEntreprises(parsedAdmin)
+    if (parsedAdmin.role !== 'super_admin') {
       const activeId =
         parsedAdmin.selectedEnterprise?.id || parsedAdmin.enterprise_id
       setSelectedEntrepriseId(activeId)
@@ -145,14 +171,29 @@ export default function HeuresSupplementaires() {
   ])
 
   const loadEntreprises = async (adminData) => {
+    /*  « N'oublie pas d'afficher les images des entreprises qui y sont. » — la
+        leçon est déjà écrite dans la page Absences, et elle coûte cher à
+        rediscover : la pastille du rail (`SelecteurEntreprise`) lit `logo_url` et
+        le fait signer par `PhotoSignee`. Une requête qui ne demande PAS la colonne
+        laisse la lettre du nom à l'écran, et on croit le logo perdu alors qu'il
+        n'a jamais été demandé. `select('*')` la rapporte.
+
+        Deux branches, un seul objet d'état : la liste pour le super_admin (le
+        filtre « Toutes les entreprises » de l'en-tête la lit aussi), SA ligne
+        pour un compte d'entreprise — `maybeSingle()` parce que la politique
+        d'accès ne lui laisse pas lire la table entière, et qu'une liste vide ici
+        éteindrait la pastille du rail sans un mot. */
+    const requete = supabase.from('enterprises').select('*')
     if (adminData.role === 'super_admin') {
-      const { data } = await supabase
-        .from('enterprises')
-        .select('*')
-        .eq('is_active', true)
-        .order('name')
+      const { data } = await requete.eq('is_active', true).order('name')
       setEntreprises(data || [])
+      return
     }
+    const propre =
+      adminData.selectedEnterprise?.id || adminData.enterprise_id
+    if (!propre) return
+    const { data } = await requete.eq('id', propre).maybeSingle()
+    setEntreprises(data ? [data] : [])
   }
 
   const loadOvertimeData = async () => {
@@ -478,7 +519,76 @@ export default function HeuresSupplementaires() {
     return null
   }, [hasAccess, settingsForm.weekly_threshold, settingsForm.alerte_hebdo_activee, provenance])
 
+  /* ═══ LA BARRE ET SON RAIL — la demande du 27/11 ═══
+      Une seule fabrique de sections pour toutes les pages de l'admin : cette
+      page ne se décrit pas une navigation, elle la demande. La rubrique
+      « Heures supplémentaires » y figure déjà (`sectionsNavAdmin.js`), gardée
+      par `module_heures_supplementaires` — le rail s'allume donc ici tout seul,
+      et le jour où la liste change, cette page suit sans y toucher.
+
+      `moduleActif` : pour le super_admin, tout est montré — la page voisine
+      s'ouvre par SA propre porte, pas par un grisonnement décidé ici. Pour un
+      compte d'entreprise, c'est la ligne lue en base qui décide. */
+  const sectionsNav = sectionsNavAdmin({
+    admin,
+    moduleActif: (champ) => {
+      if (admin?.role === 'super_admin') return true
+      const propre = admin?.selectedEnterprise?.id || admin?.enterprise_id
+      const ligne = entreprises.find((e) => e.id === propre)
+      return Boolean(ligne?.[champ])
+    },
+  })
+  const nomAdmin =
+    `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() ||
+    admin?.name ||
+    admin?.email ||
+    'Administrateur'
+  /*  L'entreprise que la pastille du rail doit montrer. Pour un compte
+      d'entreprise, la liste n'a qu'une ligne et le filtre de l'en-tête reste à
+      `null` : on retombe donc sur cette ligne, sinon la pastille s'éteindrait
+      sans un mot (la leçon est la même qu'à la page Absences). */
+  const entrepriseActive =
+    entreprises.find((e) => e.id === selectedEntrepriseId) ||
+    (admin?.role !== 'super_admin' ? entreprises[0] : null) ||
+    null
+
+  /*  Le rail change d'entreprise comme le filtre de l'en-tête : la même
+      séquence, pas un second chemin — un `requestId` qui ne s'incrémenterait pas
+      ici laisserait la réponse en retard de la période précédente écrire sur la
+      nouvelle. Le tiroir des règles se referme avec le changement : ses champs
+      portent les réglages de l'entreprise que l'on quitte. */
+  const surEntreprise = (choix) => {
+    const id = typeof choix === 'string' ? choix : choix?.id || null
+    if (id === selectedEntrepriseId) return
+    requestId.current++
+    setOvertimeData([])
+    setLoading(true)
+    setSelectedEntrepriseId(id)
+    setShowSettingsModal(false)
+  }
+
   return (
+    <CoqueAdmin
+      sidebar={
+        <SidebarUnique
+          sections={sectionsNav}
+          nomAdmin={nomAdmin}
+          initialeAdmin={
+            (admin?.first_name || nomAdmin || 'A').charAt(0).toUpperCase()
+          }
+          darkMode={darkMode}
+          surTheme={toggleTheme}
+          surDeconnexion={() => {
+            localStorage.removeItem('admin')
+            localStorage.removeItem('last_enterprise_id')
+            navigate('/login')
+          }}
+          entreprises={entreprises}
+          entrepriseActive={entrepriseActive}
+          surEntreprise={surEntreprise}
+        />
+      }
+    >
     <div className="ot-page">
       <PageHeader title="Heures supplémentaires" />
       <PageCulturalBand pathname="/heures-supplementaires" />
@@ -825,5 +935,6 @@ export default function HeuresSupplementaires() {
         </OvertimeRulesDrawer>
       )}
     </div>
+    </CoqueAdmin>
   )
 }

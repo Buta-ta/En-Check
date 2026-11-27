@@ -164,12 +164,70 @@ it('ne porte plus ni raccourcis ni bouton de thème, et donc plus de second thè
   expect(NAV).not.toMatch(/\buseNavigate\b/)
   expect(NAV).not.toMatch(/encheck\.theme|Mode sombre|Mode clair/)
   expect(PAGE).not.toMatch(/<OvertimeNavigation|\bOvertimeNavigation\b(?!,)/)
-  expect(nu(PAGE)).not.toMatch(/useTheme\s*\(/)
-  expect(nu(PAGE)).not.toMatch(/\btoggleTheme\b/)
+  //  CE QUE LE VERROU DÉFEND, DIT AUTREMENT LE 27/11. Ce n'était pas « cette page ne doit
+  //  rien savoir du thème » : c'était « cette page n'entient pas UN SECOND
+  //  thème à côté du global ». La barre et son rail sont revenus ce jour-là, et
+  //  la commande de thème vit DANS la barre — la page la branche, elle ne
+  //  l'habille pas. Sont donc toujours défendus : la classe propre, l'attribut
+  //  posé par la page, l'ancre de localStorage et un bouton de thème rendu par
+  //  la page. Est permis, et compté : UN seul `useTheme()`, lu pour les props de
+  //  `SidebarUnique`.
+  expect(nu(PAGE)).toMatch(/surTheme=\{toggleTheme\}/)
+  expect(
+    (nu(PAGE).match(/useTheme\s*\(/g) || []).length,
+    'deux lectures du thème dans la page : le second thème est de retour',
+  ).toBe(1)
+  expect(nu(PAGE)).not.toMatch(/<button[^>]*onClick=\{toggleTheme\}/)
+  expect(nu(PAGE)).not.toMatch(/data-theme=/)
+  expect(nu(PAGE)).not.toMatch(/encheck\.theme|Mode sombre|Mode clair/)
   // la racine de la page n'a plus de classe de thème : elle est `ot-page`, seule
   expect(PAGE).toMatch(/className="ot-page"/)
   expect(nu(PAGE)).not.toMatch(/['"`]ot-dark/)
   expect(corps).not.toMatch(/\.ot-dark\b/)
+})
+
+/*  LE TIROIR SE RELIT PAR SES ÉTAGES, et une règle ne vaut que si elle est
+    ANCRÉE EN DÉBUT DE LIGNE : `nu.indexOf('.ot-rules-body')` retombe sur
+    `.ot-drawer > .ot-rules-body`, qui est un AUTRE bloc (le `min-height: 0` et
+    le `flex-shrink`), et l'aiguille y lirait le faux en silence. */
+function etage(nu, selecteur) {
+  const m = nu.match(new RegExp('(?:^|\\n)' + selecteur.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}'))
+  return m ? m[1] : null
+}
+
+it('laisse le corps du tiroir scroller, et son trop-plein ne peint pas sur le pied', () => {
+  const corps = etage(nuCSS, '.ot-rules-body')
+  expect(corps, 'le bloc .ot-rules-body a disparu de la feuille').toBeTruthy()
+  expect(corps).toMatch(/overflow-y:\s*auto/)
+  //  les trois moitiés d'un conteneur qui scrollent, écrites ensemble : la
+  //    promesse (`overscroll-behavior`), le fait (`overflow-y`) et le droit de
+  //    rétrécir dans la colonne flex (`min-height: 0`, sur l'autre sélecteur).
+  expect(corps).toMatch(/overscroll-behavior:\s*contain/)
+  expect(etage(nuCSS, '.ot-drawer > .ot-rules-body')).toMatch(/min-height:\s*0/)
+  expect(etage(nuCSS, '.ot-drawer')).toMatch(/overflow:\s*hidden/)
+  //  pas de cote de hauteur inventée pour « arranger » le débordement : le
+  //    tiroir fait la hauteur de l'écran, son corps fait le reste.
+  expect(corps).not.toMatch(/max-height|height:/)
+
+  /*  ET LE PIED DU TIROIR RESPIRE SUR ÉCRAN LARGE. La lecture doit être bornée
+        AVANT le premier `@media`, sans quoi le `padding` du bloc de 650 px
+        satisferait l'aiguille à la place de celui du haut : c'est exactement le
+        défaut qui était à l'écran — le pied n'était habillé que pour le
+        téléphone, et ses deux boutons touchaient la règle de trois. */
+  const avantMedia = nuCSS.slice(0, nuCSS.indexOf('@media'))
+  const piedBase = [...avantMedia.matchAll(/\.ot-rules-footer\s*\{([^}]*)\}/g)]
+    .map((m) => m[1])
+    .join('\n')
+  expect(
+    piedBase,
+    'le pied du tiroir ne porte pas de respiration hors `@media` : sur écran large, ses boutons collent la règle du haut',
+  ).toBeTruthy()
+  expect(piedBase).toMatch(/padding:\s*var\(--charte-espace-4\) var\(--charte-espace-5\)/)
+  //  8 px entre les deux boutons, le trou de la rangée de gestes d'un état vide.
+  expect(piedBase).toMatch(/gap:\s*var\(--charte-espace-2\)/)
+  //  une bordure par bord : le pied ferme par le haut, il ne se cercle pas.
+  expect(piedBase).toMatch(/border-top:\s*var\(--ot-regle\)/)
+  expect(piedBase).not.toMatch(/border-bottom|border-left|border-right|border:/)
 })
 
 /*  le CORPS d'une règle, pour pouvoir dire qu'il NE contient pas telle
