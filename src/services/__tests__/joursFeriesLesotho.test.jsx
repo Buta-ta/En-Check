@@ -171,6 +171,38 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(html).toContain('jf-annee-suite')
   })
 
+  it('le sceau du titre a sa propre classe et sa propre cellule', () => {
+    //  La panne du 27/11 : le médaillon du Lesotho tombait AU MILIEU de
+    //  « Jours fériés ». Le sceau était un `svg` sans classe, visé par un
+    //  sélecteur `> svg` qui ne l'attrapait pas.
+    expect(PAGE).toContain('className="jf-sceau"')
+    expect(CSS).toContain('.jf-page .jf-entete > .jf-sceau {')
+    expect(CSS).toMatch(/\.jf-page \.jf-entete > \.jf-sceau \{[^}]*grid-column: 2;/)
+    expect(CSS).toMatch(/\.jf-page \.jf-entete > \.jf-titre-bloc \{ grid-column: 3;/)
+  })
+
+  it('le sélecteur d’entreprise de l’en-tête est retiré', () => {
+    //  « Enlève ce bouton sélecteur » (27/11, image 2) — le rail le porte.
+    expect(PAGE).not.toContain('jf-entreprise')
+    expect(PAGE).not.toContain('Entreprise dont on règle les jours fériés')
+  })
+
+  it('la frise ne se chevauche ni en colonne ni en grille', () => {
+    //  Colonne étroite : la cible de l'épingle tient dans la piste, et la
+    //  marge de fin grandit avec elle au lieu d'être figée.
+    expect(CSS).toMatch(/\.jf-frise \.jf-repere \{ width: 16px; height: 16px; \}/)
+    expect(CSS).toContain('margin: 0 calc(10px + 6%) 0 0;')
+    //  Grille : les épingles quittent la position absolue et passent dans le
+    //  flux — c'est ce qui supprime toute superposition.
+    expect(CSS).toMatch(/@media \(max-width: 1080px\) \{[\s\S]*?\.jf-frise \.jf-repere \{\s*position: relative !important;/)
+    expect(CSS).toContain('grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));')
+  })
+
+  it('le seuil reste une ligne sur grand écran et empile ses faits sur mobile', () => {
+    expect(CSS).toMatch(/\.jf-page \.jf-seuil-gauche \{\s*display: flex;\s*flex-direction: row;/)
+    expect(CSS).toMatch(/@media \(max-width: 720px\) \{[\s\S]*?\.jf-page \.jf-seuil-gauche \{\s*display: flex;\s*flex-direction: column;/)
+  })
+
   it('le titre ne se coupe jamais lettre à lettre', () => {
     //  La panne du 27/11 : entre 900 et 1 200 px, la colonne du titre tombait
     //  à min-content — une lettre — et « Jours fériés » s'écrivait à la
