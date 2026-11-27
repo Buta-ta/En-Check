@@ -2345,10 +2345,12 @@
   padding: clamp(16px, 2.4vw, 30px) clamp(16px, 2.5vw, 34px) clamp(30px, 4vw, 52px);
 }
 
+/*  La frise latérale est retirée (28/11) : le corps n'a plus qu'une colonne.
+    La grille à deux pistes réservait 150 à 190 px à une bande de repères qui
+    répétait les deux registres à côté d'eux. */
 .jf-corps {
   display: grid;
-  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
-  gap: clamp(14px, 2.4vw, 34px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
 }
 

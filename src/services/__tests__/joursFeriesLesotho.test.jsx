@@ -105,13 +105,17 @@ describe('1. le bandeau suit la page, et c’est bien le Lesotho', () => {
     expect(BAND_CSS).toContain('.ec-cultural-bottom { height: 32px; }')
   })
 
-  it('la page et son chargement portent tous les deux le bandeau', () => {
-    //  Deux fois : le bandeau n'est plus une frise en haut de page, il
-    //  ENTOURE la bande du seuil — une fois dessus, une fois dessous,
-    //  le second retourné (26/11, image 4).
-    expect(PAGE.match(/<PageCulturalBand pathname="\/jours-feries" \/>/g)).toHaveLength(2)
-    expect(PAGE).toContain('<div className="jf-seuil-bandeau">')
-    expect(CSS).toContain('.jf-seuil-bandeau > .ec-cultural-band:last-child')
+  it('la bande du seuil est retirée de la page (28/11)', () => {
+    //  Sa demande du 28/11 : « enlève ce bloc », avec la capture de la
+    //  capsule entreprise / année / prochain. Le 26/11 l'avait fait entrer
+    //  dans un cadre de motif ; le cadre part avec ce qu'il entourait.
+    //
+    //  La page ne porte donc plus AUCUN `PageCulturalBand` : celui du
+    //  chargement reste, lui — sinon l'écran d'attente perdrait son motif.
+    expect(PAGE).not.toContain('<PageCulturalBand')
+    expect(PAGE).not.toContain('jf-seuil-bandeau')
+    expect(PAGE).not.toContain('className="jf-seuil"')
+
     const html = renderToStaticMarkup(<JoursFeriesLoading darkMode />)
     expect(html.match(/data-cultural-motif="lesotho"/g)).toHaveLength(2)
     expect(html).toContain('ec-cultural-bottom')
@@ -346,17 +350,19 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(CSS).not.toContain('--jf-radius-piece: 999px;')
   })
 
-  it('un repère ouvre la fiche de sa fête, il ne filtre pas', () => {
-    //  « Quand on clique sur un point ça doit nous diriger vers le jour férié
-    //  dédié » (26/11, image 3).
-    expect(PAGE).toContain('onChoisirRepère')
-    expect(PAGE).toContain('openEditModal(fete)')
-  })
+  it('la frise latérale est retirée de la page (28/11)', () => {
+    //  « Enlève aussi cette partie », avec « L'année en lisière / 59 repères —
+    //  un losange par jour férié » et ses douze mois.
+    //
+    //  Le composant, lui, reste : c'est une pièce autonome, testée plus bas.
+    //  Ce qui disparaît, c'est son montage dans la page — et le renvoi
+    //  `onChoisirRepère` qui n'avait plus d'appelant.
+    expect(PAGE).not.toContain('<JoursFeriesAnnee')
+    expect(PAGE).not.toContain('onChoisirRepère')
+    expect(PAGE).not.toContain('jf-frise')
 
-  it('l’entreprise montre son logo dans la bande du seuil', () => {
-    //  « Affiche l'image de l'entreprise aussi » (26/11, image 4).
-    expect(PAGE).toContain('jf-seuil-logo')
-    expect(PAGE).toContain('logo_url')
+    //  Et le corps n'a plus qu'une colonne : plus de piste réservée à la frise.
+    expect(CSS).not.toMatch(/\.jf-corps \{[^}]*grid-template-columns: minmax\(150px, 190px\)/)
   })
 
   it('les repères deviennent des boutons quand la page sait les ouvrir', () => {
@@ -581,14 +587,18 @@ describe('8. la page se monte et répond', () => {
     basculer.mockClear()
   })
 
-  it('la coque s’affiche avec son bandeau, son titre et ses mesures', () => {
+  it('la coque s’affiche avec son titre et ses mesures', () => {
     expect(hote.querySelector('.jf-page')).not.toBeNull()
-    expect(hote.querySelector('[data-cultural-motif="lesotho"]')).not.toBeNull()
     expect(hote.querySelector('h1').textContent).toContain('Jours fériés')
     expect(hote.querySelectorAll('.jf-mesure')).toHaveLength(4)
-    expect(hote.querySelector('.jf-annee')).not.toBeNull()
-    //  « Enlève les raccourcis » (26/11) : la capsule du seuil n'en porte plus.
-    expect(hote.querySelector('[data-testid="raccourcis-pages"]')).toBeNull()
+
+    //  Les deux retraits du 28/11, vus sur la page montée — pas seulement
+    //  dans le source : plus de bande de seuil, plus de frise latérale.
+    expect(hote.querySelector('.jf-seuil-bandeau')).toBeNull()
+    expect(hote.querySelector('.jf-annee')).toBeNull()
+    expect(hote.querySelector('.jf-frise')).toBeNull()
+    expect(hote.querySelector('[data-cultural-motif="lesotho"]')).toBeNull()
+
     //  « Ramène la sidebar et son rail dans cette page » (26/11).
     expect(hote.querySelector('.sb')).not.toBeNull()
   })
