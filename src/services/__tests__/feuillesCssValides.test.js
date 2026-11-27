@@ -101,7 +101,23 @@ describe('Les feuilles de style se lisent d’un bout à l’autre', () => {
     expect(enPanne).toEqual([])
   })
 
-  it('3. le commentaire de la panne est réparé, pas contourné', () => {
+  it('3. un commentaire ne mange jamais la fin de la feuille', () => {
+    //  Deuxième forme de la même panne, trouvée dans le même fichier : un
+    //  commentaire ouvert et jamais fermé. Le lexer le signale, mais il faut
+    //  aussi vérifier que la dernière règle du fichier est bien HORS d'un
+    //  commentaire — sinon les dernières règles n'existent plus.
+    const enPanne = fichiers.filter((f) => {
+      const css = readFileSync(f, 'utf8')
+      const dernierFerme = css.lastIndexOf('*/')
+      const dernierOuvert = css.lastIndexOf('/*')
+      // un commentaire encore ouvert à la fin : il est ouvert après la
+      // dernière fermeture, et rien ne le referme
+      return dernierOuvert > dernierFerme
+    })
+    expect(enPanne.map((f) => path.relative(ROOT, f))).toEqual([])
+  })
+
+  it('4. le commentaire de la panne est réparé, pas contourné', () => {
     //  On nomme la phrase fautive : elle ne doit exister qu'UNE fois, dans
     //  un commentaire correctement ouvert et fermé.
     const heures = readFileSync(path.join(ROOT, 'src/pages/HeuresSupplementaires.css'), 'utf8')

@@ -1223,7 +1223,7 @@
         règle du corps gagne déjà celle de l'enveloppe (`.ot-drawer >
         .ot-rules-body`, deux classes, contre `.ot-drawer > div`, une classe et un
         type) — un `!important` posé là pour « au cas où » serait une dette qui
-        ment sur une règle inexistante.
+        ment sur une règle inexistante. */
   .ot-drawer > .ot-rules-body {
     padding: var(--charte-espace-4);
   }
