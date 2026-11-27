@@ -355,22 +355,24 @@ nommées.
 ### Ce qui est tombé
 
 **Le bouton sombre/clair.** La page entretenait un second thème à côté du
-global : une classe `.rw-clair` posée par l'écran, et treize couleurs réécrites
-pour lui répondre. C'est exactement ce que le verrou `overtimeBrandAlignment`
-défend depuis le contrat de temps, et la formulation de la loi n'est pas
-« la page ignore le thème » mais « la page n'en tient pas un deuxième » : une
-classe locale, un `data-theme=` posé par l'écran, l'ancre `encheck.theme`, les
-mots « Mode sombre/clair », un `<button onClick={toggleTheme}` — interdits. Le
-thème se règle dans le rail, la page obéit aux jetons, et `[data-theme='dark']`
-de `tokens.css` retourne l'échelle à la racine. Le bouton carré de l'en-tête,
-lui, est resté : il porte le rechargement et s'appelle maintenant `.rw-cadre`
-(il s'appelait `.rw-bascule` parce qu'il portait aussi la bascule).
+global : une classe `.rw-clair` posée par l'écran, et onze règles qui
+réécrivaient l'échelle pour lui répondre — cinq dans la page, six dans son
+chargeur, trente-deux déclarations au total. C'est exactement ce que le verrou
+`overtimeBrandAlignment` défend depuis le contrat de temps, et la formulation
+de la loi n'est pas « la page ignore le thème » mais « la page n'en tient pas
+un deuxième » : une classe locale, un `data-theme=` posé par l'écran, l'ancre
+`encheck.theme`, les mots « Mode sombre/clair », un `<button
+onClick={toggleTheme}` — interdits. Le thème se règle dans le rail, la page
+obéit aux jetons, et `[data-theme='dark']` de `tokens.css` retourne l'échelle à
+la racine. Le bouton carré de l'en-tête, lui, est resté : il porte le
+rechargement et s'appelle maintenant `.rw-cadre` (il s'appelait `.rw-bascule`
+parce qu'il portait aussi la bascule).
 
 **Le bandeau de raccourcis.** `<RaccourcisPages>` vivait dans le seuil, sous
-l'en-tête, et redisait la barre latérale. La bande, son import et ses huit
+l'en-tête, et redisait la barre latérale. La bande, son import et ses dix
 règles CSS sont supprimés ; le seuil a cessé de promettre des « accès rapides »
-qu'il ne montre plus — son `aria-label` dit maintenant
-« Entreprise, devise, période ».
+qu'il ne montre plus — son `aria-label` dit maintenant « Entreprise, devise,
+période ».
 
 Deux choses ont été **gardées** contre une lecture trop littérale de « enlever
 les raccourcis » : le ⌘S / Ctrl+S de la barre d'assemblage et son badge
@@ -382,16 +384,15 @@ et ils en ont un ici (`raccourci.current = vue === 'contrats' ? enregistrerTout 
 
 `Remunerations.css` ne contient plus une seule couleur écrite : 66 lignes de
 littéraux (hex, `rgba`, un `radial-gradient`, un `backdrop-filter`) sont
-devenues trente et un alias dans le bloc commun de la page : dix-huit de
+devenues trente et un alias dans le bloc commun de la page — dix-huit de
 couleur (`--rw-nuit`, `--rw-ocre`, `--rw-alerte`…), tous lus dans `--charte-*`
-ou mélangés depuis lui ; un de trait ; douze mesures nommées (`--rw-cadre`,
-`--rw-sceau`, `--rw-reserve`…). S'y ajoutent les deux du motif,
-`--rw-bogolan-trait` et `--rw-bogolan-plein` : trente-trois jetons, zéro
-littéral. Les seuls chiffres qui restent dans la feuille sont ces mesures, et
-chacune dit ce qu'elle mesure. La règle tenue : *un
-jeton de page qui serait une couleur est la charte au second degré*. Deux niveaux de texte
-« pâle » sont des mélanges colorimétriques du jeton (`color-mix`), jamais des
-`opacity` — un texte délayé laisse voir la ligne à travers lui.
+ou mélangés depuis lui, un de trait, douze mesures nommées (`--rw-cadre`,
+`--rw-sceau`, `--rw-reserve`…) — plus les deux du motif, `--rw-bogolan-trait`
+et `--rw-bogolan-plein` : trente-trois jetons, zéro littéral, et les seuls
+chiffres qui restent disent tous ce qu'ils mesurent. La règle tenue : *un jeton
+de page qui serait une couleur est la charte au second degré*. Les deux niveaux
+de texte « pâle » sont des mélanges colorimétriques du jeton (`color-mix`),
+jamais des `opacity` — un texte délayé laisse voir la ligne à travers lui.
 
 Le cuivre a deux métiers que la page confondait sous un seul nom :
 
@@ -431,8 +432,8 @@ refonte, rejoué sur les jetons du kit au lieu de six hex soigneusement choisis.
 | les liserés de gauche (seuil, période, constats) | 2 ou 3 px au choix | `--rw-filet` = 3 px, partout |
 | les cinq ombres portées | `0 16px 34px`, `0 26px 60px`… | `var(--charte-ombre-dure)`, flou nul, sur les panneaux portés seulement |
 | les rayons | 13 valeurs (1,5 · 3 · 4 · 5 · 7 · 9 · 10 · 14 · 50%…) | les cinq du kit (0 · 6 · 8 · 12 · 999) + le rond du bouton-poussoir |
-| les tailles | 19 crans de 8 à 25 px | quatre (micro · corps · titre · bouton) |
-| les pas | 44 `padding` distincts, 20 `gap` | les sept de l'échelle, arrondis au plus proche |
+| les tailles | 19 déclarations, 14 crans de 5 à 28 px | 4 (micro · corps · titre · bouton) |
+| les pas | 44 `padding` distincts, 20 `gap` | 25 et 8, composés des sept pas de l'échelle (et des zéros) |
 | la couture sous le bandeau | bande de 9 px, pointillé de 1 px, `opacity .75` | trois pixels de règle, un point de cuivre tous les huit |
 | les pastilles de filtre et les deux vues | actives = anneau de cuivre de deux pixels autour d'un mot cuivre | actives = **remplies** (un pan de boue, texte blanc cassé) : phase 60, *soit FAIT soit DIT* |
 | la case de montant | 7 px, `1px` + `border-bottom: 2px` | 6 px, 2 px d'encre et une **règle de trois** en pied |
@@ -442,12 +443,14 @@ refonte, rejoué sur les jetons du kit au lieu de six hex soigneusement choisis.
 | la barre d'assemblage, sur téléphone | pilule flottante à 12 px des bords | rayon d'une carte, d'un bord à l'autre |
 | le bas de la coque | `104px` nu | `--rw-reserve`, nommé : c'est la hauteur de la barre collée |
 
-Deux défauts de la feuille ont été rebouchés au passage, parce que « retravailler
-les formes » n'interdit pas de cesser de se contredire : `@keyframes rw-monter`
-était déclaré deux fois (la seconde dans le bloc téléphone) et les deux
-`@media (max-width: 520px)` n'en font plus qu'un. Le repli
-`prefers-reduced-motion` couvre maintenant les seize objets qui bougent, pas
-huit — les huit autres étaient passés entre les mailles.
+Deux défauts de la feuille ont été rebouchés au passage, parce que «
+retravailler les formes » n'interdit pas de cesser de se contredire :
+`@keyframes rw-monter` était déclaré deux fois (la seconde dans le bloc
+téléphone) et les deux `@media (max-width: 520px)` n'en font plus qu'un. Le
+repli `prefers-reduced-motion` nommait treize objets, il en nomme vingt et un :
+les huit passages qui bougeaient encore entre les mailles (la vue active, le
+mois cliquable, les puces du champ, les items de la modale, le passe du
+chargeur) sont coupés ; les cinq objets qui dessinent l'étaient déjà.
 
 ### Le chargeur et le motif, décolérés
 
