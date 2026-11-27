@@ -421,11 +421,19 @@ export default function HeuresSupplementaires() {
       ...rows.map((r) => r.map(csvCell).join(',')),
     ].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
+    link.href = url
     link.download = `heures_sup_${dates[0]}_${dates.at(-1)}.csv`
+    /*  L'ancre est AJOUTÉE au document avant le clic, puis retirée. Une ancre
+          détachée ne déclenche le téléchargement que selon le navigateur — et un
+          bouton qui « ne fait rien » est exactement le reproche reçu ce matin.
+          Ce point n'est PAS verrouillé par un test : il n'y a pas de navigateur
+          dans ce dépôt, et `URL.createObjectURL` n'existe pas en jsdom. */
+    document.body.append(link)
     link.click()
-    setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   //  ⚠️ G7 / V-B3 : l'écran affiche des heures et un seuil. S'il ne peut pas
@@ -487,7 +495,8 @@ export default function HeuresSupplementaires() {
               La gestion des heures supplémentaires nécessite l’activation du
               module correspondant.
             </p>
-            <button onClick={() => navigate('/pointages')}>
+            {/*  UNE seule pleine sur cet écran : ici, c'est le seul geste. */}
+            <button className="ch-btn-pleine" onClick={() => navigate('/pointages')}>
               Retour aux pointages
             </button>
           </section>
@@ -546,7 +555,7 @@ export default function HeuresSupplementaires() {
               aria-label="Fermer les règles"
               disabled={savingSettings}
               onClick={() => setShowSettingsModal(false)}
-              className="ot-pince"
+              className="ch-btn-contour ot-carre"
             >
               <X size={18} aria-hidden="true" />
             </button>
@@ -799,11 +808,16 @@ export default function HeuresSupplementaires() {
             <button
               disabled={savingSettings}
               onClick={() => setShowSettingsModal(false)}
-              className="ot-btn-contour"
+              className="ch-btn-contour"
             >
               Annuler
             </button>
-            <button onClick={handleSaveSettings} disabled={savingSettings}>
+            {/*  LA PLEINE DE L'ÉCRAN est ici : c'est le seul geste qui écrit. */}
+            <button
+              className="ch-btn-pleine"
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+            >
               <Save size={16} />
               {savingSettings ? 'Sauvegarde...' : 'Sauvegarder'}
             </button>

@@ -10,6 +10,9 @@ import {
   Users,
   Timer,
   Search,
+  SearchX,
+  CalendarClock,
+  Inbox,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -95,6 +98,52 @@ export default function OvertimeDashboard({
   onExport,
 }) {
   const [search, setSearch] = useState('')
+  /*  UN AVIS, PAS UN MESSAGE D'ERREUR. Deux boutons de cet écran savaient déjà
+        se rendre indisponibles (`disabled`) et c'est exactement ce que le
+        fondateur a signalé le 27/11 : « les boutons Exporter CSV et Règles de
+        calcul ne sont pas fonctionnels ». Ils l'étaient : le clic était avalé
+        sans un mot. Un bouton inerte n'apprend rien ; ici il reste VIVANT et il
+        répond — le motif est écrit, la raison aussi, et le focus part vers la
+        commande qui débloque. Le `disabled` ne garde que sa justification
+        légitime : ce qui est en train d'arriver (chargement, erreur réseau). */
+  const [avis, setAvis] = useState(null)
+  const selecteur = (id) => document.getElementById(id)
+  const viser = (id) => {
+    selecteur(id)?.focus()
+  }
+  /*  l'avis meurt avec la situation qui l'a fait naître : changer de période,
+        d'entreprise ou de vue le rend faux, donc il part. */
+  useEffect(() => setAvis(null), [enterpriseId, selectedDate, mode])
+  const exporter = () => {
+    if (!rows.length) {
+      setAvis({
+        motif: 'Rien à exporter',
+        raison:
+          'Aucun pointage clôturé sur la période affichée : le fichier n’aurait que ses colonnes.',
+      })
+      viser('ot-filtre-date')
+      return
+    }
+    setAvis(null)
+    onExport()
+  }
+  const regles = () => {
+    /*  Le refus ne vaut que là où le sélecteur existe : un admin d'une seule
+        entreprise n'a jamais « Toutes » à déselectionner — son entreprise est
+        collée à son compte. Le refuser là serait envoyer un clic vers un champ
+        que l'écran ne montre pas. */
+    if (enterpriseId === 'all' && isSuperAdmin) {
+      setAvis({
+        motif: 'Une entreprise à la fois',
+        raison:
+          'Les seuils et les taux s’enregistrent par entreprise : choisissez-en une, puis rouvrez ces réglages.',
+      })
+      viser('ot-filtre-entreprise')
+      return
+    }
+    setAvis(null)
+    onSettings()
+  }
   const employees = overtimeEmployees(rows)
   const visible = employees.filter(({ employee: e }) =>
     `${e.first_name} ${e.last_name} ${e.matricule || ''}`
@@ -124,21 +173,30 @@ export default function OvertimeDashboard({
           <p>Comprendre les dépassements, maîtriser les majorations.</p>
         </div>
         <div className="ot-actions">
+          {/*  LES DEUX BOUTONS DE L'ÉCRAN sont au CONTOUR du kit, pas à sa
+                PLEINE : la charte ne donne qu'une pleine par écran — « la seule
+                action principale » — et ici l'action principale est à
+                l'intérieur du tiroir (Sauvegarder). Deux pleines côte à côte
+                voulaient dire deux fois « clique-moi en premier ». */}
           <button
-            disabled={loading || !!error || !rows.length}
-            onClick={onExport}
+            className="ch-btn-contour"
+            disabled={loading || !!error}
+            onClick={exporter}
           >
-            <Download size={17} />
+            <Download size={17} aria-hidden="true" />
             Exporter CSV
           </button>
           {canEdit && (
-            <button
-              onClick={onSettings}
-              disabled={enterpriseId === 'all' && isSuperAdmin}
-            >
-              <Settings size={17} />
+            <button className="ch-btn-contour" onClick={regles}>
+              <Settings size={17} aria-hidden="true" />
               Règles de calcul
             </button>
+          )}
+          {avis && (
+            <p className="ot-controle-indisponible ot-avis" role="status">
+              <strong className="ot-controle-mot">{avis.motif}</strong>
+              <span>{avis.raison}</span>
+            </p>
           )}
         </div>
       </header>
@@ -150,6 +208,7 @@ export default function OvertimeDashboard({
           <label>
             Entreprise
             <select
+              id="ot-filtre-entreprise"
               value={enterpriseId}
               onChange={(e) => setEnterprise(e.target.value)}
             >
@@ -165,10 +224,15 @@ export default function OvertimeDashboard({
         <div>
           <span className="ot-label">Période</span>
           <div className="ot-period">
-            <button aria-label="Période précédente" onClick={() => shift(-1)}>
-              <ChevronLeft size={18} />
+            <button
+              className="ch-btn-contour ot-carre"
+              aria-label="Période précédente"
+              onClick={() => shift(-1)}
+            >
+              <ChevronLeft size={18} aria-hidden="true" />
             </button>
             <input
+              id="ot-filtre-date"
               aria-label="Date de référence"
               type="date"
               value={selectedDate}
@@ -177,8 +241,12 @@ export default function OvertimeDashboard({
                   setDate(e.target.value)
               }}
             />
-            <button aria-label="Période suivante" onClick={() => shift(1)}>
-              <ChevronRight size={18} />
+            <button
+              className="ch-btn-contour ot-carre"
+              aria-label="Période suivante"
+              onClick={() => shift(1)}
+            >
+              <ChevronRight size={18} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -216,7 +284,12 @@ export default function OvertimeDashboard({
       ) : error ? (
         <div className="ot-state" role="alert">
           <p>{error}</p>
-          <button onClick={retry}>Réessayer</button>
+          {/*  l'erreur réseau est le seul écran où « Réessayer » EST l'action
+                principale : c'est là, et nulle part ailleurs, que la pleine du
+                kit se pose sur cette page. */}
+          <button className="ch-btn-pleine" onClick={retry}>
+            Réessayer
+          </button>
         </div>
       ) : (
         <>
@@ -272,8 +345,34 @@ export default function OvertimeDashboard({
                   </div>
                 </div>
               ) : (
-                <div className="ot-chart-empty">
-                  Aucune heure supplémentaire sur cette période.
+                /*  L'ÉTAT VIDE DU GRAPHE. Avant : une phrase de 11 px perdue
+                      dans les 205 px du trou. Un trou n'explique rien — et ici
+                      le silence veut dire deux choses opposées : « personne n'a
+                      pointé » ou « tout le monde est resté sous le seuil ». La
+                      page sait lequel, elle le dit, avec le nombre qu'elle a
+                      déjà calculé. Le bloc garde la cote du graphe (le trou ne
+                      bouge pas d'un pixel quand les données arrivent) et prend
+                      la figure du lavis + règle d'encre, PAS une carte cerclée
+                      dans une carte cerclée. */
+                <div className="ot-vide ot-vide-creux" role="status">
+                  <span className="ot-coin">
+                    <Inbox size={20} aria-hidden="true" />
+                  </span>
+                  <div className="ot-vide-texte">
+                    <p className="ot-vide-titre">
+                      Aucune heure supplémentaire sur cette période.
+                    </p>
+                    <p className="ot-vide-cause">
+                      <strong className="ot-vide-nombre">
+                        {duration(totalWorked)}
+                      </strong>{' '}
+                      travaillées sur{' '}
+                      <strong className="ot-vide-nombre">{dates.length}</strong>{' '}
+                      journée{dates.length > 1 ? 's' : ''} examinée
+                      {dates.length > 1 ? 's' : ''} · aucune ne dépasse le seuil
+                      du planning.
+                    </p>
+                  </div>
                 </div>
               )}
             </section>
@@ -294,18 +393,79 @@ export default function OvertimeDashboard({
                 />
               </label>
             </div>
-            <div className="ot-table-head" aria-hidden="true">
-              <span>Employé</span>
-              <span>Heures travaillées</span>
-              <span>Heures supplémentaires</span>
-              <span>Majoration / détail</span>
-            </div>
+            {visible.length > 0 && (
+              <div className="ot-table-head" aria-hidden="true">
+                <span>Employé</span>
+                <span>Heures travaillées</span>
+                <span>Heures supplémentaires</span>
+                <span>Majoration / détail</span>
+              </div>
+            )}
+            {/*  LES DEUX VIDES DE LA LISTE ne sont pas le même fait, et ils ne
+                    se lisent plus de la même façon : « personne n'a pointé »
+                    mène à la période, « aucun nom ne correspond » mène à la
+                    recherche. Le geste est donc DIFFÉRENT sous chaque phrase —
+                    c'est ça, l'UI d'un état vide : une cause et une sortie, pas
+                    un adjectif de plus. Les deux chiffres viennent des données
+                    déjà chargées, rien n'est simulé. */}
             {!visible.length && (
-              <p className="ot-state">
-                {employees.length
-                  ? 'Aucun employé ne correspond à la recherche.'
-                  : 'Aucun pointage clôturé sur cette période.'}
-              </p>
+              <div className="ot-vide" role="status">
+                <span className="ot-coin">
+                  {employees.length ? (
+                    <SearchX size={20} aria-hidden="true" />
+                  ) : (
+                    <CalendarClock size={20} aria-hidden="true" />
+                  )}
+                </span>
+                <div className="ot-vide-texte">
+                  <p className="ot-vide-titre">
+                    {employees.length
+                      ? 'Aucun employé ne correspond à la recherche.'
+                      : 'Aucun pointage clôturé sur cette période.'}
+                  </p>
+                  <p className="ot-vide-cause">
+                    {employees.length ? (
+                      <>
+                        <strong className="ot-vide-nombre">
+                          {employees.length}
+                        </strong>{' '}
+                        employé{employees.length > 1 ? 's' : ''} ont des heures
+                        sur la période · le filtre lit le nom et le matricule.
+                      </>
+                    ) : (
+                      <>
+                        {dates.length > 1
+                          ? `Du ${dates[0]} au ${dates.at(-1)}`
+                          : `Journée du ${selectedDate}`}{' '}
+                        ·{' '}
+                        <strong className="ot-vide-nombre">
+                          {dates.length}
+                        </strong>{' '}
+                        journée{dates.length > 1 ? 's' : ''} examinée
+                        {dates.length > 1 ? 's' : ''} · seuls les couples entrée
+                        et sortie clôturés comptent.
+                      </>
+                    )}
+                  </p>
+                  <div className="ot-vide-gestes">
+                    {employees.length ? (
+                      <button
+                        className="ch-btn-contour"
+                        onClick={() => setSearch('')}
+                      >
+                        Effacer la recherche
+                      </button>
+                    ) : (
+                      <button
+                        className="ch-btn-contour"
+                        onClick={() => shift(-1)}
+                      >
+                        Période précédente
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
             {visible.map((r) => (
               <details key={r.employee.id} className="ot-employee">
