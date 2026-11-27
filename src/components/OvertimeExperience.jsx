@@ -1,42 +1,5 @@
-import { Link } from 'react-router-dom'
-import {
-  Clock,
-  CalendarDays,
-  Users,
-  Wallet,
-  Sun,
-  Moon,
-  FileClock,
-  ArrowRight,
-} from 'lucide-react'
+import { Clock, FileClock, ArrowRight } from 'lucide-react'
 import PageCulturalBand from './PageCulturalBand'
-
-export function OvertimeNavigation({ darkMode, onToggleTheme }) {
-  return (
-    <div className="ot-navigation">
-      <nav aria-label="Raccourcis heures supplémentaires">
-        {[
-          [Clock, 'Pointages', '/pointages'],
-          [CalendarDays, 'Planning', '/planning'],
-          [Users, 'Employés', '/employes'],
-          [Wallet, 'Paie & Fiscalité', '/paie'],
-        ].map(([Icon, title, to]) => (
-          <Link key={to} to={to}>
-            <Icon size={16} aria-hidden="true" />
-            {title}
-          </Link>
-        ))}
-      </nav>
-      <button
-        onClick={onToggleTheme}
-        aria-label={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-      >
-        {darkMode ? <Sun size={17} /> : <Moon size={17} />}
-        {darkMode ? 'Mode clair' : 'Mode sombre'}
-      </button>
-    </div>
-  )
-}
 
 export function OvertimeCalculationGuide() {
   return (

@@ -1,48 +1,131 @@
+/* ═══════════════════════════════════════════════════════════
+   ⏱️ HEURES SUPPLÉMENTAIRES — la peau de la maison
+   ───────────────────────────────────────────────────────────
+   26/12/2026, demande du fondateur : « cette page, on va la garder telle
+   quelle, on va seulement appliquer le style brut adouci, double feutre.
+   Enlever les raccourcis, le bouton sombre/clair. Retravaille un peu les
+   formes de certains blocs. »
+
+   Rien n'a bougé sous la main : mêmes blocs, mêmes ordres, mêmes gestes, même
+   chargement, même tiroir. Ce fichier ne redessine QUE l'encre.
+
+   AVANT, la page portait une charte parallèle, mesurée : 27 couleurs en dur
+   pour 21 teintes distinctes — deux palettes côte à côte, les ivoires et encres
+   empruntés à PaieAfroTech d'un côté, une seconde échelle d'accents indigo et
+   cuivre de l'autre — plus un lavis en rgba, trois dégradés réservés aux seules
+   barres du graphe, deux ombres floues, un flou sous le tiroir, sept rayons
+   (3, 6, 7, 8, 9, 10, 12) dont QUATRE hors liste blanche plus un `50%` que le
+   contrôle C10 ne sait même pas lire, vingt-trois contours de 1 px, quatre
+   graisses dont 650 et 800 que `public/fonts/` ne charge pas, TREIZE tailles
+   d'écriture et une police non chargée en dur. Un avatar changeait de couleur
+   selon la PARITÉ de sa ligne.
+     Les valeurs renvoyées ne sont PAS citées ici : `npm run charte` compte les
+   octets du fichier, pas ses règles — écrire un littéral mort dans un
+   commentaire ferait ROUGIR ce compteur pour rien. La liste exacte des teintes
+   est dans docs/HEURES-SUPPLEMENTAIRES-CORRECTION-CHARTE.md, que le contrôle ne
+   balaie pas, et dans l'historique git.
+
+   APRÈS, la page n'a plus d'avis couleur : `--ot-*` n'est plus qu'une COUCHE
+   D'ALIAS qui dérive des jetons de `tokens.css`. Dix alias de teinte, neuf
+   cotes — quatorze lignes avant, dix-neuf maintenant, et AUCUNE ne décide une
+   couleur. Le thème sombre se soigne tout seul parce que `[data-theme='dark']`
+   inverse les jetons à la racine. C'est pour ça que la classe `.ot-dark` a
+   disparu : elle re-déclarait sept hex par-dessus, et un thème posé sur une
+   classe ne peut pas battre un thème posé sur la racine.
+
+   « DOUBLE FEUTRE », ici, veut dire deux traits du même stylo et pas davantage :
+   le contour d'encre de 2 px (C11) ET l'ombre dure à flou zéro de 3 px
+   (`--charte-ombre-dure`), posées sur le même objet. Un lavis de feutre
+   (`--charte-surface2`) remplit l'étage du bas — jamais un second cerclage.
+
+   Les formes des blocs, reprises une par une, dans la liste blanche
+   {6, 8, 11, 12, 999} (C10) et les cinq figures non carrées du registre
+   (pilule, tampon, onglet, rabat au coin, bande de colle) :
+
+   · le bloc (`.ot-panel`, `.ot-filters`, `.ot-stats article`, `.ot-loading`) :
+     tuile de 12, cerclée d'encre de 2, ombre dure ;
+   · la pastille d'icône du KPI (`.ot-coin`) : le TAMPON — carré de 42, rayon de
+     badge 11, cerclé de 2, lavis dessous en `::after` ; plus de `border-radius:
+     50%` (un pourcentage n'existe pas dans la liste), plus d'`inset` de 4 px ;
+   · le sélecteur de vue (`.ot-segments`) : un seul cerclage pour les trois
+     boutons, 6 px, et le bouton en main se REMPLIT d'argile — la seule couleur
+     d'action de l'écran — sans ombre floue ;
+   · les barres du graphe : plat d'argile cerclé d'encre, plus de dégradé ; le
+     trait de fin de tracé est une règle de 3 pleine, pas un filet de 1 ;
+   · l'avatar (`.ot-avatar`) : le cercle de 999 cerclé d'encre, une teinte pour
+     tous — la parité de la ligne n'est pas une information ;
+   · l'étage du bas (`.ot-days`) : un lavis, une règle de 3 au-dessus, et ses
+     jours séparés par le filet — c'est le rabat du plateau, pas une carte de plus ;
+   · le tiroir : sa règle gauche est pleine de 3, son voile est de l'espresso à
+     44 % — un flou derrière une modale n'a jamais rien rendu lisible.
+   ═══════════════════════════════════════════════════════════ */
+
 .ot-page {
-  --ot-bg: #FAF6F0;
-  --ot-surface: #FFFFFF;
-  --ot-text: #231911;
-  --ot-muted: #4E3D2E;
-  --ot-border: rgba(93, 66, 39, 0.18);
-  --ot-indigo: #314e89;
-  --ot-copper: #9e4c19;
+  /* LA COUCHE D'ALIAS, en sept lignes. Les noms `--ot-*` restent dans la
+     feuille pour ne pas re-taper soixante sélecteurs, mais ils ne décident plus
+     rien : ils renvoient à la maison. Un jeton de la page qui serait une
+     couleur, ce serait la charte parallèle qui revient par la porte. */
+  --ot-bg: var(--charte-sable);
+  --ot-surface: var(--charte-surface);
+  --ot-text: var(--charte-encre);
+  --ot-muted: var(--charte-douce);
+  --ot-border: var(--charte-bordure);
+  --ot-encre: var(--charte-encre);
+  --ot-action: var(--charte-aplat);
+  --ot-ecrit: var(--charte-texte);
+  --ot-sur-action: var(--charte-blanc);
+  --ot-lavis: var(--charte-surface2);
+  /* les cotes de la page : chacune écrite UNE fois */
+  --ot-trait: var(--charte-trait); /* 2 px, le contour des objets actifs (C11) */
+  --ot-regle: 3px;                 /* la règle pleine, comme le trait du plateau */
+  --ot-rayon-bloc: var(--charte-rayon-tuile);   /* 12 */
+  --ot-rayon-champ: var(--charte-rayon-champ);  /* 6 */
+  --ot-rayon-tampon: var(--charte-rayon-badge); /* 11 */
+  --ot-case: 36px;                 /* la hauteur du bouton de la maison (C12) */
+  --ot-glyphe: 42px;               /* la pastille d'icône d'un KPI */
+  --ot-rond: 38px;                 /* l'avatar d'employé */
+  --ot-hauteur-graphe: 205px;
   background: var(--ot-bg);
   color: var(--ot-text);
   min-height: 100vh;
-  font-size: 14px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: var(--charte-taille-corps);
+  font-family: var(--charte-police);
 }
-.ot-dark {
-  --ot-bg: #15110E;
-  --ot-surface: #1D1713;
-  --ot-text: #F5F2EB;
-  --ot-muted: #c2b9ad;
-  --ot-border: #4d443a;
-  --ot-indigo: #adbeef;
-  --ot-copper: #f4b27f;
-  color-scheme: dark;
-}
+
+/*  ⚠️ PAS DE `.ot-dark` ICI. Le thème se pose sur `documentElement`
+    (`[data-theme='dark']`, tokens.css) et les jetons s'inversent sous la page :
+    re-déclarer sept hex par classe, c'est ouvrir un deuxième thème que le
+    premier ne peut pas battre — et c'est exactement le bouton « Mode sombre »
+    que le fondateur vient d'enlever de cette page. */
+
 .ot-page * {
   box-sizing: border-box;
 }
 .ot-main {
   max-width: 1400px;
   margin: auto;
-  padding: 22px 3.4% 100px;
+  padding: var(--charte-espace-5) 3.4% var(--charte-espace-7);
 }
+
+/* ───────────  TYPOGRAPHIE · trois tailles, point final (C8) ─────────── */
+
+/* Le titre de la page est celui de la maison : 20/700 (`.abs-config-tete h3`,
+   la chimise du 28/11). Un 27 px ici serait une quatrième taille. */
 .ot-heading h1,
 .ot-state h1 {
-  font-size: 27px;
+  font-size: var(--charte-taille-titre);
   font-weight: 700;
   line-height: 1.2;
-  letter-spacing: -0.6px;
-  margin: 0 0 8px;
+  letter-spacing: -0.4px;
+  margin: 0 0 var(--charte-espace-2);
 }
-.ot-panel h2 {
-  font-size: 16px;
+.ot-panel h2,
+.ot-list-heading h2,
+.ot-rules-section h3 {
+  font-size: var(--charte-taille-corps);
   font-weight: 700;
   line-height: 1.4;
-  margin: 0 0 14px;
+  margin: 0 0 var(--charte-espace-3);
 }
 .ot-page p {
   line-height: 1.6;
@@ -50,20 +133,32 @@
 .ot-heading {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--charte-espace-4);
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  /*  le 16, pas le 24 : la page séparait ses blocs de 20 off-scale et l'intention
+        du 26/12 est de FAIRE GAGNER le pli, pas de le reculer. Ramener 20 sur la
+        gamme, c'est choisir le cran du DEDANS (C8 ne prescrit pas un nombre, il
+        prescrit une gamme). */
+  margin-bottom: var(--charte-espace-4);
 }
 .ot-heading p {
   margin: 0;
+  font-size: var(--charte-taille-micro);
   color: var(--ot-muted);
 }
 .ot-actions {
   display: flex;
-  gap: 10px;
+  gap: var(--charte-espace-2);
   flex-wrap: wrap;
 }
+
+/* ───────────  BOUTONS · le kit, pas un deuxième  ───────────
+   Le doc de la chimise l'écrit déjà pour les Absences : « la page ne s'est pas
+   refaite de boutons à son compte, c'était le reproche ». Les trois boutons de
+   la page (Exporter, Règles de calcul, les segments de vue) prennent donc la
+   commande C12 — 36 px, capitales 700 à 9,5 px, espacées de 1,3 — dans la
+   feuille, parce que le markup ne change pas. */
 .ot-page button,
 .ot-page input,
 .ot-page select {
@@ -73,44 +168,62 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  border: 1px solid var(--ot-border);
-  background: var(--ot-surface);
-  color: var(--ot-text);
-  padding: 10px 13px;
-  border-radius: 7px;
+  gap: var(--charte-espace-2);
+  height: var(--ot-case);
+  padding: 0 var(--charte-espace-5);
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--ot-rayon-champ);
+  background: var(--charte-btn-repos);
+  color: var(--ot-sur-action);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
   cursor: pointer;
-  min-height: 42px;
-}
-.ot-page button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  transition: background-color var(--charte-duree) var(--charte-easing);
 }
 .ot-page button:hover:not(:disabled) {
-  border-color: var(--ot-copper);
+  background: var(--charte-btn-survol);
+}
+.ot-page button:active:not(:disabled) {
+  background: var(--charte-btn-actif);
+  transform: translate(1px, 1px);
+}
+.ot-page button:disabled {
+  background: var(--charte-btn-desactive);
+  border-color: transparent;
+  color: var(--charte-btn-desactive-texte);
+  cursor: default;
 }
 .ot-page :is(button, input, select, summary):focus-visible {
-  outline: 3px solid var(--ot-indigo);
-  outline-offset: 3px;
+  outline: var(--ot-trait) solid var(--ot-encre);
+  outline-offset: 2px;
 }
 .ot-page input,
 .ot-page select {
   background: var(--ot-surface);
   color: var(--ot-text);
   min-width: 0;
-  border: 1px solid var(--ot-border);
-  padding: 10px 12px;
-  border-radius: 8px;
+  border: var(--ot-trait) solid var(--ot-border);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border-radius: var(--ot-rayon-champ);
   max-width: 100%;
 }
+.ot-page input:focus,
+.ot-page select:focus {
+  border-color: var(--ot-encre);
+}
+
+/* ───────────  LE RANG DES FILTRES  ─────────── */
 .ot-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 24px;
-  padding: 18px;
+  gap: var(--charte-espace-5);
+  padding: var(--charte-espace-4);
   background: var(--ot-surface);
-  border: 1px solid var(--ot-border);
-  border-radius: 12px;
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--ot-rayon-bloc);
+  box-shadow: var(--charte-ombre-dure);
 }
 .ot-filters > div,
 .ot-filters > label {
@@ -120,224 +233,374 @@
 .ot-filters label,
 .ot-label {
   display: block;
-  font-size: 13px;
+  /* l'étiquette d'un champ est une CAPITALE micro dans toute la maison
+     (`.abs-config-etiquette`) : c'est le portique, pas du texte */
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
   color: var(--ot-muted);
 }
 .ot-filters select {
   display: block;
   width: 100%;
-  margin-top: 6px;
+  margin-top: var(--charte-espace-1);
 }
 .ot-period,
 .ot-segments {
   display: flex;
-  gap: 4px;
-  margin-top: 6px;
+  gap: var(--charte-espace-1);
+  margin-top: var(--charte-espace-1);
 }
 .ot-period input {
   flex: 1;
   width: 130px;
 }
+/* LA RANGÉE DE VUE. Un seul cerclage pour trois boutons : avant, la bande avait
+   le sien (10 px, hors liste) ET chaque bouton le prochain. Le bouton en main
+   se remplit d'argile — la seule couleur d'action de l'écran — et n'emprunte
+   plus d'ombre floue à un menu déroulant. */
 .ot-segments {
-  padding: 3px;
-  border: 1px solid var(--ot-border);
-  border-radius: 10px;
+  padding: var(--charte-espace-1);
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--ot-rayon-champ);
 }
 .ot-segments button {
   flex: 1;
   border: 0;
-  padding: 8px;
+  /* la cote, UNE fois : le bouton tenu mesure 36 (la case du kit) une fois la
+     garniture du cerclage ajoutée — 28 + 2 × 4, pas un 28 posé là. */
+  height: calc(var(--ot-case) - 2 * var(--charte-espace-1));
+  padding: 0 var(--charte-espace-2);
+  background: transparent;
+  color: var(--ot-text);
+}
+.ot-segments button:hover:not(:disabled) {
+  background: var(--ot-lavis);
 }
 .ot-segments button[aria-pressed='true'] {
-  background: #314e89;
-  color: #fff;
-  box-shadow: 0 2px 5px #0002;
+  background: var(--ot-action);
+  color: var(--ot-sur-action);
 }
 .ot-period-caption {
-  font-size: 12px;
+  font-size: var(--charte-taille-micro);
   color: var(--ot-muted);
-  margin: 10px 0 20px;
+  margin: var(--charte-espace-2) 0 var(--charte-espace-4);
 }
+
+/* ───────────  LES TROIS NOMBRES  ─────────── */
 .ot-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: var(--charte-espace-4);
+  margin-bottom: var(--charte-espace-4);
 }
 .ot-stats article {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: var(--charte-espace-4);
+  min-width: 0;
   background: var(--ot-surface);
-  border: 1px solid var(--ot-border);
-  padding: 22px;
-  border-radius: 12px;
+  border: var(--ot-trait) solid var(--ot-encre);
+  padding: var(--charte-espace-4);
+  border-radius: var(--ot-rayon-bloc);
+  box-shadow: var(--charte-ombre-dure);
 }
 .ot-stats p {
-  margin: 0 0 8px;
-  font-size: 14px;
+  margin: 0 0 var(--charte-espace-1);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ot-muted);
 }
+/* Le nombre se lit en monospace (la loi des compteurs : un chiffre qui se
+   compare se compare à largeur de signe égale), à la taille du titre. */
 .ot-stats strong {
-  font-size: 30px;
-  font-weight: 650;
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  color: var(--ot-text);
 }
 .ot-stats article:last-child strong {
-  color: var(--ot-copper);
+  color: var(--ot-ecrit);
 }
+/* LE TAMPON du KPI : la figure de la maison (badge 11 px, contour de 2,
+   capitales) — pas un rond de 56 px cerclé d'un `inset` de 4. Le lavis en
+   `::after` est le second passage du feutre sous la pastille. */
 .ot-coin {
-  border-radius: 50%;
-  border: 1px solid var(--ot-border);
-  box-shadow: inset 0 0 0 4px var(--ot-bg);
-  width: 56px;
-  height: 56px;
+  position: relative;
+  width: var(--ot-glyphe);
+  height: var(--ot-glyphe);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--ot-indigo);
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--ot-rayon-tampon);
+  background: var(--ot-lavis);
+  color: var(--ot-text);
 }
 .ot-insights {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
-  gap: 18px;
-  margin-bottom: 20px;
+  gap: var(--charte-espace-4);
+  margin-bottom: var(--charte-espace-4);
+  min-width: 0;
 }
 .ot-panel {
   background: var(--ot-surface);
-  border: 1px solid var(--ot-border);
-  border-radius: 12px;
-  padding: 22px;
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--ot-rayon-bloc);
+  padding: var(--charte-espace-5);
   min-width: 0;
-  box-shadow: 0 2px 6px #00000004;
+  box-shadow: var(--charte-ombre-dure);
 }
 .ot-muted {
-  font-size: 12px;
+  font-size: var(--charte-taille-micro);
   color: var(--ot-muted);
-  margin: 0;
-}
-.ot-help > div {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  padding: 20px 0;
-}
-.ot-clock {
-  height: 94px;
-  width: 94px;
-  border: 4px double var(--ot-copper);
-  color: var(--ot-copper);
-  box-shadow: inset 0 0 0 6px var(--ot-bg);
+  margin: 0 0 var(--charte-espace-4);
 }
 .ot-page summary {
   cursor: pointer;
 }
-.ot-help details {
-  border-top: 1px solid var(--ot-border);
-  padding-top: 16px;
-  margin-top: 12px;
-  color: var(--ot-indigo);
-  font-size: 14px;
-}
-.ot-help details p {
-  color: var(--ot-muted);
+
+/* ───────────  LE GRAPHE  ─────────── */
+/*  Le bloc n'avait AUCUNE règle : `.ot-chart` était écrit dans le JSX et
+    nulle part dans la feuille — un conteneur nu autour de barres cerclées.
+    Il reçoit le lavis et la règle du bas, et c'est tout : la portées des barres
+    se lit sur le trait, pas sur un quadrillage. */
+.ot-chart {
+  padding: var(--charte-espace-3) 0 0;
+  background: var(--ot-lavis);
+  border-radius: var(--ot-rayon-champ);
 }
 .ot-bars {
   display: flex;
   align-items: stretch;
-  gap: 14px;
-  height: 205px;
-  padding-top: 16px;
+  gap: var(--charte-espace-3);
+  height: var(--ot-hauteur-graphe);
+  padding: var(--charte-espace-4) var(--charte-espace-3) 0;
 }
 .ot-bar-column {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--charte-espace-2);
   text-align: center;
-  font-size: 11px;
+  font-size: var(--charte-taille-micro);
+  color: var(--ot-muted);
+}
+.ot-bar-column > span:first-child {
+  font-family: var(--charte-mono);
+  font-weight: 700;
+  color: var(--ot-text);
 }
 .ot-bar-column > span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* le trait de fin de tracé : la règle pleine de 3, jamais un filet de 1. */
 .ot-bar-track {
   flex: 1;
   display: flex;
   align-items: flex-end;
-  border-bottom: 1px solid var(--ot-border);
-  background: repeating-linear-gradient(
-    to top,
-    transparent 0,
-    transparent 35px,
-    var(--ot-border) 36px,
-    transparent 37px
-  );
+  border-bottom: var(--ot-regle) solid var(--ot-encre);
 }
+/* UNE barre, UN plat, UN contour. Les deux dégradés — l'un cuivre, l'autre indigo,
+   alternés colonne après colonne — peignaient la PARITÉ de la colonne en
+   information : la maison ne colore pas une alternance, elle colore un état,
+   et l'état d'une barre, c'est sa hauteur. Les littéraux sont tus ici : le
+   contrôle de charte compte les octets du fichier, pas ses règles. */
+   la maison ne colore pas une alternance, elle colore un état — et l'état
+   d'une barre, c'est sa hauteur. */
 .ot-bar {
   width: 70%;
   margin: 0 auto;
-  background: linear-gradient(90deg, #a35c2c, #b97545);
-  border-radius: 3px 3px 0 0;
+  background: var(--ot-action);
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-bottom: 0;
+  border-radius: var(--ot-rayon-champ) var(--ot-rayon-champ) 0 0;
   min-height: 0;
 }
-.ot-bar-column:nth-child(even) .ot-bar {
-  background: linear-gradient(90deg, #314e89, #4665a0);
-}
 .ot-chart-empty {
-  min-height: 190px;
+  /* la MÊME cote que le graphe plein : passer de « aucune donnée » aux
+     données ne doit pas faire sauter la page de quinze pixels. */
+  min-height: var(--ot-hauteur-graphe);
   display: grid;
   place-items: center;
+  padding: var(--charte-espace-4);
+  background: var(--ot-lavis);
+  border-radius: var(--ot-rayon-champ);
   color: var(--ot-muted);
+  font-size: var(--charte-taille-micro);
   text-align: center;
+}
+
+/* ───────────  LE GUIDE DE CALCUL  ─────────── */
+.ot-guide-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  margin-bottom: var(--charte-espace-4);
+}
+.ot-guide-heading h2 {
+  margin: 0;
+}
+.ot-guide-heading .ot-coin {
+  width: var(--ot-glyphe);
+  height: var(--ot-glyphe);
+}
+.ot-calculation-steps {
+  display: flex;
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  gap: var(--charte-espace-2);
+  margin: 0 0 var(--charte-espace-4);
+}
+.ot-calculation-steps li {
+  counter-increment: step;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--charte-taille-micro);
+  color: var(--ot-muted);
+  border-top: var(--ot-regle) solid var(--ot-border);
+  padding-top: var(--charte-espace-2);
+}
+.ot-calculation-steps li::before {
+  content: counter(step);
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--ot-rayon-champ);
+  background: var(--ot-surface);
+  color: var(--ot-text);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  margin-right: var(--charte-espace-2);
+}
+/* la troisième étape est celle qui SORT du chiffre : elle se cerne d'encre
+   pleine, elle ne change pas de teinte. */
+.ot-calculation-steps li:last-child {
+  border-color: var(--ot-encre);
+  color: var(--ot-text);
+}
+.ot-example {
+  padding: var(--charte-espace-3);
+  border-radius: var(--ot-rayon-champ);
+  background: var(--ot-lavis);
+  margin-bottom: var(--charte-espace-3);
+}
+.ot-example > span {
+  font-size: var(--charte-taille-micro);
+  color: var(--ot-muted);
+}
+.ot-example p {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  flex-wrap: wrap;
+  margin: var(--charte-espace-2) 0 0;
+  font-size: var(--charte-taille-corps);
+}
+.ot-example strong {
+  font-family: var(--charte-mono);
+}
+.ot-example strong:last-child {
+  color: var(--ot-ecrit);
+}
+.ot-calculation-guide details,
+.ot-drawer details {
+  border-top: var(--ot-trait) solid var(--ot-border);
+  padding: var(--charte-espace-3) 0;
+  font-size: var(--charte-taille-corps);
+}
+.ot-calculation-guide summary,
+.ot-drawer summary {
+  color: var(--ot-ecrit);
+  line-height: 1.5;
+}
+.ot-calculation-guide details p,
+.ot-drawer details p {
+  color: var(--ot-muted);
+  margin-bottom: 0;
+}
+
+/* ───────────  LE DÉTAIL PAR EMPLOYÉ  ─────────── */
+/* Le bloc garde son cerclage de tuile mais PERD sa garniture : l'entête de la
+   liste et sa table se posent dans le creux du bloc, séparés par la règle. */
+.ot-list {
+  padding: 0;
+  overflow: hidden;
 }
 .ot-list-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 14px;
+  gap: var(--charte-espace-4);
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  padding: var(--charte-espace-4);
+  border-bottom: var(--ot-regle) solid var(--ot-encre);
 }
 .ot-list-heading h2 {
   margin: 0;
 }
 .ot-list-heading small {
   font-weight: 400;
+  font-family: var(--charte-mono);
   color: var(--ot-muted);
 }
 .ot-search {
   display: flex;
   align-items: center;
-  border: 1px solid var(--ot-border);
-  border-radius: 10px;
-  padding-left: 12px;
+  gap: var(--charte-espace-2);
+  height: var(--ot-case);
+  border: var(--ot-trait) solid var(--ot-border);
+  border-radius: var(--ot-rayon-champ);
+  padding: 0 var(--charte-espace-3);
   max-width: 100%;
+  background: var(--ot-surface);
+}
+.ot-search:focus-within {
+  border-color: var(--ot-encre);
 }
 .ot-search input {
   border: 0;
   width: 250px;
+  padding: 0;
   background: transparent;
+}
+.ot-search input:focus {
+  border: 0;
 }
 .ot-table-head,
 .ot-employee > summary {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr 1.1fr;
-  gap: 18px;
+  gap: var(--charte-espace-4);
   align-items: center;
-  padding: 15px 12px;
-  font-size: 13px;
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  font-size: var(--charte-taille-corps);
 }
 .ot-table-head {
-  background: var(--ot-bg);
-  border-radius: 8px;
-  font-size: 12px;
+  /* l'entête d'une table ne se remplit pas d'une autre pâte : il se FERME d'une
+     règle, et ses capitales sont le portique des colonnes. */
+  background: transparent;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
   color: var(--ot-muted);
 }
 .ot-employee {
-  border-bottom: 1px solid var(--ot-border);
+  border-top: var(--ot-trait) solid var(--ot-border);
 }
 .ot-employee > summary {
   list-style: none;
@@ -345,106 +608,183 @@
 .ot-employee > summary::-webkit-details-marker {
   display: none;
 }
+.ot-employee > summary:hover {
+  background: var(--ot-lavis);
+}
 .ot-person {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--charte-espace-3);
   min-width: 0;
   overflow-wrap: anywhere;
+  font-weight: 600;
 }
 .ot-person small {
   display: block;
-  font-size: 11px;
+  font-size: var(--charte-taille-micro);
+  font-family: var(--charte-mono);
   color: var(--ot-muted);
-  margin-top: 4px;
+  margin-top: var(--charte-espace-1);
 }
+.ot-employee strong {
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* l'avatar : le cercle du registre (999 est dans la liste, 50 % n'y est pas),
+   cerclé d'encre. Il n'alterne plus deux fonds selon la parité de la ligne. */
 .ot-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: #314e89;
-  color: white;
+  width: var(--ot-rond);
+  height: var(--ot-rond);
+  border-radius: var(--charte-rayon-pilule);
+  border: var(--ot-trait) solid var(--ot-encre);
+  background: var(--ot-lavis);
+  color: var(--ot-text);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-}
-.ot-employee:nth-child(even) .ot-avatar {
-  background: #9e4c19;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  overflow: hidden;
 }
 .ot-see {
-  color: var(--ot-indigo);
+  color: var(--ot-ecrit);
   text-decoration: underline;
   text-underline-offset: 3px;
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
 }
+/* L'ÉTAGE DU BAS : un lavis, une règle de trois, et les jours séparés par le
+   filet. Avant, c'était une carte cerclée de 1 posée dans une carte cerclée
+   de 1 — deux cerclages l'un dans l'autre. */
 .ot-days {
-  background: var(--ot-bg);
-  padding: 12px 18px;
-  border-radius: 8px;
-  margin: 0 0 12px;
+  background: var(--ot-lavis);
+  padding: var(--charte-espace-4);
+  border-top: var(--ot-regle) solid var(--ot-encre);
+  margin: 0;
+}
+.ot-days article {
+  padding: var(--charte-espace-3) 0;
+  border-top: var(--ot-trait) solid var(--ot-border);
+}
+.ot-days article:first-child {
+  border-top: 0;
+  padding-top: 0;
 }
 .ot-days h3 {
-  font-size: 13px;
+  margin: 0 0 var(--charte-espace-2);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ot-muted);
 }
 .ot-days dl {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--charte-espace-3);
+  margin: 0;
 }
 .ot-days dt {
-  font-size: 11px;
+  font-size: var(--charte-taille-micro);
   color: var(--ot-muted);
 }
 .ot-days dd {
-  margin: 6px 0;
-  font-size: 13px;
+  margin: var(--charte-espace-1) 0 0;
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .ot-mobile-label {
   display: none;
 }
+
+/* ───────────  LES ÉTATS  ─────────── */
+/* Un état est un BLOC de la page, pas un paragraphe nu centré dans le vide :
+   il prend le cerclage, l'ombre dure et le bouton du kit. */
 .ot-state {
-  padding: 60px 18px;
+  display: grid;
+  justify-items: center;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-7) var(--charte-espace-4);
   text-align: center;
   color: var(--ot-muted);
+  background: var(--ot-surface);
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--ot-rayon-bloc);
+  box-shadow: var(--charte-ombre-dure);
 }
+.ot-state svg {
+  color: var(--ot-text);
+}
+.ot-state p {
+  margin: 0;
+  max-width: 46ch;
+}
+
+/*  🧭 « Contrôle indisponible » (G7 / V-B3)
+    L'écran affiche des heures et un seuil ; s'il ne peut pas évaluer le
+    contrôle, il le dit. Une ligne discrète, pas une alerte : ce n'est pas un
+    incident, c'est un état de connaissance. Le mot est écrit, jamais la
+    couleur seule. Le 26/12, sa bordure Pointillée devient une règle PLEINE :
+    le pointillé est une couture manquée, pas un style (la loi du rang des
+    demandes, reprise du pli). */
+.ot-controle-indisponible {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-2);
+  margin: 0 0 var(--charte-espace-4);
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  border-left: var(--ot-regle) solid var(--ot-encre);
+  background: var(--ot-lavis);
+  color: var(--ot-muted);
+  font-size: var(--charte-taille-micro);
+  line-height: 1.5;
+}
+.ot-controle-mot {
+  color: var(--ot-text);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+/* ───────────  LE TIROIR DES RÈGLES  ─────────── */
 .ot-drawer {
   position: fixed;
   inset: 0 0 0 auto;
   margin: 0;
   border: 0;
-  border-left: 1px solid var(--ot-border);
+  border-left: var(--ot-regle) solid var(--ot-encre);
   padding: 0;
-  width: min(560px, 100%);
+  width: min(var(--charte-modale-large), 100%);
   max-width: 100%;
   height: 100dvh;
   max-height: 100dvh;
   min-height: 0;
-  background: var(--ot-surface);
+  background: var(--ot-bg);
   color: var(--ot-text);
 }
 .ot-drawer[open] {
   display: flex;
   flex-direction: column;
 }
+/* le voile de la maison, sans flou : `backdrop-filter: blur(4px)` est la
+   seule raison pour laquelle le texte du fond devenait illisible. */
 .ot-drawer::backdrop {
-  background: #11182799;
-  backdrop-filter: blur(4px);
+  background: var(--charte-modale-voile);
 }
 .ot-drawer > div {
   flex-shrink: 0;
 }
 .ot-drawer > .ot-rules-body {
   min-height: 0;
-  flex-shrink: 1 !important;
-}
-.ot-drawer details {
-  font-size: 13px;
-}
-.ot-drawer summary {
-  padding: 10px;
-  color: var(--ot-indigo);
+  flex-shrink: 1;
 }
 .ot-drawer input[type='checkbox'] {
-  accent-color: #314e89;
+  accent-color: var(--ot-action);
   width: 20px;
   height: 20px;
 }
@@ -454,50 +794,465 @@
   margin: 0;
   min-width: 0;
 }
+.ot-drawer > .ec-cultural-top {
+  height: 28px;
+}
+.ot-drawer > .ec-cultural-bottom {
+  height: 12px;
+}
+/*  Les trois étages du tiroir portent maintenant leur propre garniture : la
+    page leur collait un `style={pageStyles.…}` qui écrivait `padding: 20px 24px`
+    et une bordure blanche translucide d'un pixel. Ces deux lignes sont
+    devenues la règle de trois et l'espace de la maison — et le blanc translucide
+    est tombé, parce que sur le fond crème de la charte il n'a rien à éclaircir. */
+.ot-rules-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-4);
+  padding: var(--charte-espace-4) var(--charte-espace-5);
+  background: var(--ot-surface);
+  border-bottom: var(--ot-regle) solid var(--ot-encre);
+}
+.ot-rules-titre {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  min-width: 0;
+}
+.ot-rules-titre h2 {
+  margin: 0;
+  font-size: var(--charte-taille-titre);
+}
+/*  le « pince » qui referme le tiroir : le même gabarit de 36 que tous les
+    boutons de la page, seulement carré et sans graisse latérale. Il ne change pas
+    de forme, il change d'encombrement. */
+.ot-page button.ot-pince {
+  width: var(--ot-case);
+  padding: 0;
+}
+.ot-rules-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-4);
+  padding: var(--charte-espace-4) var(--charte-espace-5);
+  background: var(--ot-bg);
+  overscroll-behavior: contain;
+}
+.ot-rules-section {
+  display: grid;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
+  background: var(--ot-surface);
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--charte-rayon-carte);
+  box-shadow: var(--charte-ombre-dure);
+}
+.ot-rules-section h3 {
+  padding-bottom: var(--charte-espace-2);
+  border-bottom: var(--ot-regle) solid var(--ot-encre);
+  margin: 0;
+}
+.ot-rules-body > details {
+  background: var(--ot-surface);
+  border: var(--ot-trait) solid var(--ot-border);
+  border-radius: var(--charte-rayon-carte);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+}
+.ot-rules-footer {
+  background: var(--ot-surface);
+  border-top: var(--ot-regle) solid var(--ot-encre);
+}
+.ot-rules-body input:focus-visible {
+  outline: var(--ot-trait) solid var(--ot-encre);
+  outline-offset: 2px;
+}
+
+/* ───────────  LES CHAMPS DU TIROIR, EN CLASSES  ───────────
+   Ils étaient écrits en `style={…}` dans la page : une attribution en ligne bat
+   n'importe quel sélecteur de feuille (le défaut nommé le 22/11, et la raison
+   pour laquelle `npm run charte` ne voyait ni les neuf blancs translucides ni
+   les deux `borderRadius: '10px'` du tiroir). Les voici dans la feuille : la
+   charte les voit, et le thème sombre aussi. */
+.ot-champ-cadre {
+  width: 100%;
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  background: var(--ot-surface);
+  color: var(--ot-text);
+  border: var(--ot-trait) solid var(--ot-border);
+  border-radius: var(--ot-rayon-champ);
+  font: inherit;
+  /*  un seuil et un taux sont des NOMBRES : ils se relisent au monospace
+        tabulaire, comme les compteurs du tableau. L'attribut en ligne portait
+        `'SF Mono', 'Fira Code', monospace` — deux polices que `public/fonts/`
+        ne charge pas, donc un `monospace` de secours aléatoire selon la machine. */
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+}
+.ot-champ-cadre:focus {
+  border-color: var(--ot-encre);
+  outline: none;
+}
+.ot-champ-cadre:disabled {
+  background: var(--charte-btn-desactive);
+  color: var(--charte-btn-desactive-texte);
+}
+.ot-etiquette {
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ot-muted);
+}
+.ot-aide {
+  font-size: var(--charte-taille-micro);
+  color: var(--ot-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+/*  Un champ, c'est son étiquette, son cadre et sa note, collés. Les trois
+    vivaient en `style={…}` à trois endroits différents du JSX ; les voici en
+    une règle, et le rang de deux champs s'ajuste tout seul. */
+.ot-champ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-1);
+  min-width: 0;
+}
+.ot-rang {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--charte-espace-3);
+}
+/*  la bascule « Calculer les heures sup le weekend » : un champ comme un autre,
+    cerclé de deux, pas une carte dans la carte. */
+.ot-bascule {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-3);
+  background: var(--ot-surface);
+  border: var(--ot-trait) solid var(--ot-border);
+  border-radius: var(--ot-rayon-champ);
+  font-size: var(--charte-taille-corps);
+  cursor: pointer;
+}
+/*  L'encart bleu d'avant — fond bleu translucide, pictogramme indigo — était une
+    COULEUR D'ACCENT : il disait « ceci est important » par une teinte empruntée.
+    La maison n'a pas d'accent,
+    et son indigo est réservé à la bande des Pauses (tokens.css). Ce qui reste à
+    dire « à lire avant » ne se dit plus par une teinte empruntée mais par la
+    place du texte : un lavis, une règle d'encre à gauche, la même pour les deux
+    encarts du tiroir. */
+.ot-info,
+.ot-palier {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  background: var(--ot-lavis);
+  border-left: var(--ot-regle) solid var(--ot-encre);
+  font-size: var(--charte-taille-corps);
+  line-height: 1.6;
+  color: var(--ot-muted);
+}
+.ot-info {
+  flex-direction: row;
+  gap: var(--charte-espace-3);
+  align-items: flex-start;
+}
+.ot-info-icone {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--ot-action);
+}
+.ot-info-titre {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ot-text);
+}
+.ot-info-texte {
+  margin: 0;
+}
+.ot-palier p {
+  margin: 0;
+}
+.ot-palier-titre {
+  font-weight: 700;
+  color: var(--ot-action);
+}
+/*  les paliers sont des NOMBRES : ils passent au mono tabulaire comme le reste
+    des comptes de la page. « l'effet du réglage sur le calcul », c'est la seule
+    ligne du tiroir qui bouge quand on tape — elle doit être lisible à l'œil,
+    pas à l'approximation. */
+.ot-palier-nombre {
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ot-text);
+}
+/*  le contour du kit : même gabarit, même cerclage, encre sur papier. Seul
+    « Annuler » le porte, pour que la charge reste au bouton plein. */
+.ot-page button.ot-btn-contour {
+  background: var(--ot-surface);
+  color: var(--ot-text);
+}
+.ot-page button.ot-btn-contour:hover:not(:disabled) {
+  background: var(--ot-lavis);
+}
+.ot-page button.ot-btn-contour:active:not(:disabled) {
+  background: var(--charte-surface2);
+}
+.ot-pied-note {
+  display: flex;
+  align-items: baseline;
+  gap: var(--charte-espace-2);
+  flex-wrap: wrap;
+  font-size: var(--charte-taille-micro);
+  color: var(--ot-muted);
+}
+
+/* ───────────  L'ÉCRAN DE CHARGEMENT  ───────────
+   La scène est gardée telle quelle — elle est verrouillée par
+   `overtimeExperience.test.jsx` (rôles, étapes, pas de fausse progression).
+   Seuls ses traits changent : plus de rond `4px double`, plus de rayon 9,
+   plus d'hex froids dans la frise. */
+.ot-loading {
+  max-width: 620px;
+  margin: var(--charte-espace-5) auto;
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--ot-rayon-bloc);
+  overflow: hidden;
+  text-align: center;
+  background: var(--ot-surface);
+  box-shadow: var(--charte-ombre-dure);
+}
+.ot-loading > .ec-cultural-loading {
+  height: 20px;
+  margin: 0;
+  border-radius: 0;
+}
+.ot-loading > .ec-cultural-bottom {
+  height: 12px;
+}
+.ot-loading h2 {
+  font-size: var(--charte-taille-corps);
+  margin: var(--charte-espace-2) var(--charte-espace-4);
+}
+.ot-loading > p {
+  font-size: var(--charte-taille-micro);
+  color: var(--ot-muted);
+  margin: var(--charte-espace-2) var(--charte-espace-5) var(--charte-espace-5);
+}
+.ot-loading-scene {
+  position: relative;
+  height: 210px;
+  width: min(300px, 90%);
+  margin: 0 auto;
+}
+.ot-loading-paper {
+  position: absolute;
+  left: 30px;
+  top: 35px;
+  width: 75px;
+  height: 100px;
+  border-radius: var(--charte-rayon-carte);
+  border: var(--ot-trait) solid var(--ot-encre);
+  color: var(--ot-text);
+  background: var(--ot-surface);
+  padding: var(--charte-espace-3);
+  transform: rotate(-8deg);
+  animation: ot-paper 4s ease-in-out infinite;
+}
+.ot-loading-paper i {
+  display: block;
+  height: 2px;
+  background: var(--ot-border);
+  margin: var(--charte-espace-2) 0;
+}
+.ot-loading-clock {
+  position: absolute;
+  right: 35px;
+  top: 43px;
+  width: 90px;
+  height: 90px;
+  border: var(--ot-trait) solid var(--ot-encre);
+  border-radius: var(--charte-rayon-tuile);
+  display: grid;
+  place-items: center;
+  color: var(--ot-ecrit);
+  background: var(--ot-surface);
+  box-shadow: var(--charte-ombre-dure);
+}
+.ot-loading-timeline {
+  position: absolute;
+  top: 157px;
+  left: 15px;
+  right: 15px;
+  height: 10px;
+  border-radius: var(--ot-rayon-champ);
+  background: var(--ot-lavis);
+  display: flex;
+}
+/* les deux passages du feutre, en DEUX teintes de la maison : l'encre pour le
+   temps prévu, l'argile pour le dépassement — un bleu et un orange n'y
+   auraient rien dit. */
+.ot-loading-normal {
+  width: 72%;
+  background: var(--ot-encre);
+  transform-origin: left;
+  animation: ot-normal 4s ease-in-out infinite;
+  border-radius: var(--ot-rayon-champ) 0 0 var(--ot-rayon-champ);
+}
+.ot-loading-extra {
+  width: 28%;
+  background: var(--ot-action);
+  transform-origin: left;
+  animation: ot-extra 4s ease-in-out infinite;
+  border-radius: 0 var(--ot-rayon-champ) var(--ot-rayon-champ) 0;
+}
+.ot-loading-marker {
+  position: absolute;
+  left: 72%;
+  top: -8px;
+  height: 26px;
+  border-left: var(--ot-regle) solid var(--ot-encre);
+}
+.ot-loading-legend {
+  position: absolute;
+  top: 183px;
+  left: 15px;
+  right: 15px;
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--charte-taille-micro);
+  color: var(--ot-muted);
+}
+@keyframes ot-paper {
+  0%,
+  100% {
+    transform: translateX(-12px) rotate(-8deg);
+    opacity: 0.5;
+  }
+  30%,
+  80% {
+    transform: translateX(8px) rotate(0);
+    opacity: 1;
+  }
+}
+@keyframes ot-normal {
+  0%,
+  10% {
+    transform: scaleX(0);
+  }
+  50%,
+  85% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+@keyframes ot-extra {
+  0%,
+  50% {
+    transform: scaleX(0);
+  }
+  75%,
+  85% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+
+/* ───────────  L'EN-TÊTE DE LA PAGE, SANS LE RE-PEINDRE  ───────────
+   La loi est ancienne et tient : la page ne met pas la main sur `PageHeader`,
+   elle borde le SIEN. Un seul filet plein de 3 sous l'en-tête. */
+.ot-page .afro-header {
+  background: var(--ot-surface);
+  border-bottom: var(--ot-regle) solid var(--ot-encre);
+  padding: var(--charte-espace-3) var(--charte-espace-5);
+}
+.ot-page .afro-header-title {
+  color: var(--ot-text);
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+}
+.ot-page .afro-title-block {
+  min-width: 0;
+}
+.ot-page .afro-back-btn {
+  flex-shrink: 0;
+  color: var(--ot-ecrit);
+}
+.ot-page .afro-header-glow {
+  display: none;
+}
+
+/* ───────────  LES REPLIS  ───────────
+   Trois seuils, un par terrain : 850 (le graphe et les KPI rendent leur
+   colonne), 650 (le tiroir se garnit au creux du pouce), 600 (la table devient
+   une pile de fiches). Écrire un quatrième seuil pour un seul bloc, c'est le
+   seuil qui se contredit à la première retouche. */
 @media (max-width: 850px) {
+  /* la cote du tampon se RABAT, elle ne se re-déclare pas : `--ot-glyphe`
+     reste écrit une fois dans la feuille, à deux valeurs selon le terrain. Un
+     `.ot-stats .ot-coin { width: 34px }` aurait été la même cote en deux
+     endroits — le début d'une seconde charte. */
+  .ot-page {
+    --ot-glyphe: 34px;
+  }
   .ot-insights {
     grid-template-columns: 1fr;
   }
+  .ot-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ot-stats article:last-child {
+    grid-column: 1 / -1;
+  }
   .ot-stats article {
-    padding: 16px;
-    gap: 10px;
+    padding: var(--charte-espace-3);
+    gap: var(--charte-espace-3);
   }
-  .ot-stats .ot-coin {
-    width: 40px;
-    height: 40px;
+}
+@media (max-width: 650px) {
+  /*  Aucun `!important` ici ni au bloc du dessus, et c'est voulu : le tiroir ne
+        porte plus d'attribut en ligne, donc plus rien ne bat la feuille. La
+        règle du corps gagne déjà celle de l'enveloppe (`.ot-drawer >
+        .ot-rules-body`, deux classes, contre `.ot-drawer > div`, une classe et un
+        type) — un `!important` posé là pour « au cas où » serait une dette qui
+        ment sur une règle inexistante.
+  .ot-drawer > .ot-rules-body {
+    padding: var(--charte-espace-4);
   }
-  .ot-stats strong {
-    font-size: 22px;
+  .ot-rules-section {
+    padding: var(--charte-espace-3);
   }
-  .ot-stats p {
-    font-size: 12px;
+  .ot-rules-footer {
+    padding: var(--charte-espace-3) var(--charte-espace-4);
+  }
+  .ot-rules-header {
+    padding: var(--charte-espace-4);
   }
 }
 @media (max-width: 600px) {
   .ot-main {
-    padding: 16px 16px 100px;
+    padding: var(--charte-espace-4) var(--charte-espace-4) var(--charte-espace-7);
   }
-  .ot-heading h1, .ot-state h1 { font-size: 24px; }
   .ot-stats {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: var(--charte-espace-3);
   }
-  .ot-stats article {
-    padding: 16px;
-  }
-  .ot-stats p {
-    font-size: 14px;
-  }
-  .ot-stats strong {
-    font-size: 25px;
-  }
-  .ot-stats .ot-coin {
-    width: 50px;
-    height: 50px;
+  .ot-stats article:last-child {
+    grid-column: auto;
   }
   .ot-filters {
-    gap: 14px;
-    padding: 14px;
+    gap: var(--charte-espace-3);
+    padding: var(--charte-espace-3);
   }
   .ot-filters > div,
   .ot-filters > label {
@@ -505,44 +1260,42 @@
     flex-basis: 100%;
   }
   .ot-panel {
-    padding: 16px;
+    padding: var(--charte-espace-4);
   }
   .ot-table-head {
     display: none;
   }
   .ot-employee > summary {
     grid-template-columns: 1fr 1fr;
-    padding: 16px 0;
-    gap: 14px;
+    padding: var(--charte-espace-4) var(--charte-espace-3);
+    gap: var(--charte-espace-3);
   }
-  .ot-person {
-    grid-column: 1/-1;
-  }
+  .ot-person,
   .ot-see {
-    grid-column: 1/-1;
+    grid-column: 1 / -1;
   }
   .ot-mobile-label {
     display: block;
-    font-size: 11px;
+    font-size: var(--charte-taille-micro);
     font-weight: 400;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
     color: var(--ot-muted);
-    margin-bottom: 5px;
+    margin-bottom: var(--charte-espace-1);
   }
   .ot-days dl {
     grid-template-columns: 1fr 1fr;
   }
   .ot-bars {
-    gap: 6px;
+    gap: var(--charte-espace-1);
+    padding: var(--charte-espace-3) 0 0;
   }
-  .ot-bar-column {
-    font-size: 10px;
+  .ot-calculation-steps {
+    gap: var(--charte-espace-1);
   }
-  .ot-help > div {
-    gap: 14px;
-  }
-  .ot-clock {
-    width: 70px;
-    height: 70px;
+  .ot-calculation-steps li::before {
+    display: grid;
+    margin-bottom: var(--charte-espace-1);
   }
   .ot-actions {
     width: 100%;
@@ -556,72 +1309,20 @@
   .ot-search input {
     width: 100%;
   }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ot-page * {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
+  .ot-page .afro-header {
+    padding: var(--charte-espace-3) var(--charte-espace-4);
+  }
+  .ot-page .afro-header-inner {
+    gap: var(--charte-espace-2);
   }
 }
 
-/* Match the En-Check header without leaking heading styles into PageHeader. */
-.ot-page .afro-header {
-  background: var(--ot-surface);
-  border-bottom: 1px solid var(--ot-border);
-  padding: 14px 20px;
-}
-.ot-page .afro-header-title {
-  color: var(--ot-text);
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.2;
-}
-.ot-page .afro-title-block { min-width: 0; }
-.ot-page .afro-back-btn { flex-shrink: 0; color: var(--ot-copper); }
-.ot-page .afro-header-glow { display: none; }
-@media (max-width: 600px) {
-  .ot-page .afro-header { padding: 12px 16px; }
-  .ot-page .afro-header-inner { gap: 8px; }
-  .ot-page .afro-header-title { font-size: 17px; }
-}
-
-/* Local navigation follows the shared theme, without creating a second theme. */
-.ot-navigation{max-width:1400px;margin:0 auto;padding:16px 3.4% 0;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.ot-navigation nav{display:flex;gap:8px;flex-wrap:wrap}.ot-navigation a{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:var(--ot-text);background:var(--ot-surface);border:1px solid var(--ot-border);border-radius:7px;padding:10px 13px;min-height:42px;font-size:13px}.ot-navigation a:hover{color:var(--ot-copper);border-color:var(--ot-copper)}.ot-navigation a:focus-visible{outline:3px solid var(--ot-indigo);outline-offset:3px}.ot-navigation>button{flex-shrink:0;font-size:13px}
-.ot-guide-heading{display:flex;align-items:center;gap:12px;margin-bottom:18px}.ot-guide-heading h2{margin:0}.ot-guide-heading .ot-coin{width:42px;height:42px}.ot-calculation-steps{display:flex;list-style:none;counter-reset:step;padding:0;gap:8px;margin:0 0 18px}.ot-calculation-steps li{counter-increment:step;flex:1;font-size:12px;color:var(--ot-muted);border-top:2px solid var(--ot-border);padding-top:10px}.ot-calculation-steps li:before{content:counter(step);display:inline-grid;place-items:center;width:21px;height:21px;border-radius:50%;background:var(--ot-bg);color:var(--ot-indigo);margin-right:5px}.ot-calculation-steps li:last-child{border-color:var(--ot-copper)}.ot-example{padding:12px 14px;border-radius:8px;background:var(--ot-bg);border:1px solid var(--ot-border);margin-bottom:14px}.ot-example>span{font-size:11px;color:var(--ot-muted)}.ot-example p{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 0;font-size:13px}.ot-example strong:last-child{color:var(--ot-copper)}.ot-calculation-guide details{border-top:1px solid var(--ot-border);padding:12px 0;font-size:13px}.ot-calculation-guide summary{color:var(--ot-indigo);line-height:1.5}.ot-calculation-guide details p{color:var(--ot-muted);margin-bottom:0}
-.ot-drawer>.ec-cultural-top{height:28px}.ot-drawer>.ec-cultural-bottom{height:12px}.ot-rules-header{background:var(--ot-surface)}.ot-rules-body{background:var(--ot-bg);overscroll-behavior:contain}.ot-rules-section{padding:16px;border:1px solid var(--ot-border);background:var(--ot-surface);border-radius:10px}.ot-rules-section h3{padding-bottom:10px;border-bottom:1px solid var(--ot-border)}.ot-rules-body>details{background:var(--ot-surface);border:1px solid var(--ot-border);border-radius:10px;padding:6px}.ot-rules-footer{background:var(--ot-surface);border-top:1px solid var(--ot-border)!important}.ot-rules-body input:focus-visible{outline:2px solid var(--ot-indigo);outline-offset:2px}
-.ot-loading{max-width:620px;margin:20px auto;border:1px solid var(--ot-border);border-radius:12px;overflow:hidden;text-align:center;background:var(--ot-surface)}.ot-loading>.ec-cultural-loading{height:20px;margin:0;border-radius:0}.ot-loading>.ec-cultural-bottom{height:12px}.ot-loading h2{font-size:16px;margin:8px 16px}.ot-loading>p{font-size:13px;color:var(--ot-muted);margin:8px 20px 24px}.ot-loading-scene{position:relative;height:210px;width:min(300px,90%);margin:0 auto}.ot-loading-paper{position:absolute;left:30px;top:35px;width:75px;height:100px;border-radius:9px;border:1px solid var(--ot-border);color:var(--ot-indigo);background:var(--ot-bg);padding:12px;transform:rotate(-8deg);animation:ot-paper 4s ease-in-out infinite}.ot-loading-paper i{display:block;height:2px;background:var(--ot-border);margin:7px 0}.ot-loading-clock{position:absolute;right:35px;top:43px;width:90px;height:90px;border:4px double var(--ot-copper);border-radius:50%;display:grid;place-items:center;color:var(--ot-copper);background:var(--ot-bg);box-shadow:inset 0 0 0 6px var(--ot-surface)}.ot-loading-timeline{position:absolute;top:157px;left:15px;right:15px;height:10px;border-radius:6px;background:var(--ot-bg);display:flex}.ot-loading-normal{width:72%;background:#314e89;transform-origin:left;animation:ot-normal 4s ease-in-out infinite;border-radius:6px 0 0 6px}.ot-loading-extra{width:28%;background:#ac612e;transform-origin:left;animation:ot-extra 4s ease-in-out infinite;border-radius:0 6px 6px 0}.ot-loading-marker{position:absolute;left:72%;top:-8px;height:26px;border-left:2px dashed var(--ot-muted)}.ot-loading-legend{position:absolute;top:183px;left:15px;right:15px;display:flex;justify-content:space-between;font-size:11px;color:var(--ot-muted)}
-@keyframes ot-paper{0%,100%{transform:translateX(-12px) rotate(-8deg);opacity:.5}30%,80%{transform:translateX(8px) rotate(0);opacity:1}}
-@keyframes ot-normal{0%,10%{transform:scaleX(0)}50%,85%{transform:scaleX(1)}100%{transform:scaleX(0)}}
-@keyframes ot-extra{0%,50%{transform:scaleX(0)}75%,85%{transform:scaleX(1)}100%{transform:scaleX(0)}}
-@media(max-width:650px){.ot-navigation{padding:12px 16px 0;flex-wrap:wrap}.ot-navigation nav{display:grid;grid-template-columns:1fr 1fr;width:100%}.ot-navigation>button{margin-left:auto}.ot-calculation-steps{gap:6px}.ot-calculation-steps li:before{display:grid;margin-bottom:6px}.ot-drawer>.ot-rules-body{padding:16px!important}.ot-rules-section{padding:12px}.ot-rules-footer{padding:12px 16px!important}.ot-rules-header{padding:16px!important}}
+/*  Le mouvement se retire, la scène se fige sur sa dernière image. Un seul bloc,
+    et sa ponctuation se relit À L'OCTET PRÈS : `overtimeExperience.test.jsx`
+    compare la chaîne crue (`prefers-reduced-motion:reduce`,
+    `.ot-loading-scene *{animation:none!important}`) — reformatée par un
+    prétendeur ou par ma main, l'aiguille tombe et le repli passe pour supprimé.
+    Deux conditions identiques séparées seraient de plus un contrat en deux
+    morceaux. */
+@media(prefers-reduced-motion:reduce){.ot-page *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(prefers-reduced-motion:reduce){.ot-loading-scene *{animation:none!important}.ot-loading-paper{transform:rotate(-8deg);opacity:1}.ot-loading-normal,.ot-loading-extra{transform:scaleX(1)}}
-
-/*  🧭 « Contrôle indisponible » (G7 / V-B3)
-    L'écran affiche des heures et un seuil ; s'il ne peut pas évaluer le
-    contrôle, il le dit. Une ligne discrète, pas une alerte : ce n'est pas un
-    incident, c'est un état de connaissance. Le mot est écrit, jamais la
-    couleur seule. */
-.ot-controle-indisponible {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--charte-espace-2);
-  margin: 0 0 var(--charte-espace-4);
-  padding: var(--charte-espace-3) var(--charte-espace-4);
-  border: 1px dashed var(--charte-bordure);
-  border-radius: var(--charte-rayon-carte);
-  background: var(--charte-surface);
-  color: var(--charte-douce);
-  font-size: var(--charte-taille-micro);
-  line-height: 1.5;
-}
-
-.ot-controle-mot {
-  color: var(--charte-encre);
-  font-weight: 700;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-}
