@@ -205,3 +205,185 @@ l'arrivée des données).
   une couche d'alias `--ot-*` : tolérée parce qu'elle ne fait que dériver,
   contrôlée pour ça. Elle disparaîtra quand la page écrira les jetons
   directement, si un jour quelqu'un re-tape soixante sélecteurs.
+
+---
+
+## Boutons répondeurs et états vides — 27/11/2026
+
+> **Note d'horodatage.** Le chapitre ci-dessus s'intitule « Peau du 26/12/2026 » ;
+> son cachet git est `2026-11-27T10:56Z`. Le 26/12 est une erreur d'horloge
+> recopiée dans les titres, pas un jour de travail distinct : les deux chapitres
+> sont du même jour, le 27/11. Le libellé est gardé tel quel parce que la
+> feuille et deux tests le citent — corriger l'étiquette aurait fait bouger du
+> verrouillé pour une date.
+
+**La demande, telle quelle.** « Stylise un peu plus ces textes, rajoute une UI :
+“Aucun pointage clôturé sur cette période.” / “Aucune heure supplémentaire sur
+cette période.” — les boutons “exporter cvs et Règles de calcul” ne sont pas
+fonctionnels. » Capture à l'appui : les deux boutons en beige, sans cerclage.
+
+### Le diagnostic, mesuré avant de toucher
+
+Les deux boutons n'étaient pas cassés : ils étaient **muettement désactivés**.
+
+| bouton | sa garde | ce que le clic faisait |
+| --- | --- | --- |
+| Exporter CSV | `disabled={loading \|\| !!error \|\| !rows.length}` | rien — la période du fondateur ne contenait **aucun pointage clôturé**, donc `!rows.length` était vrai |
+| Règles de calcul | `disabled={enterpriseId === 'all' && isSuperAdmin}` | rien — « Toutes les entreprises » est un choix qui n'a pas de règles |
+
+Et la capture portait la preuve : `#EADCC7` + `#6B4A32` + bordure transparente
+sont exactement le couple `--charte-btn-desactive` / `--charte-btn-desactive-texte`
+du kit (tokens.css) sur un `.ch-btn-contour`. Ce n'était pas un style raté,
+c'était l'état désactivé — mais un état désactivé qui n'explique rien se vit
+comme une panne. Le `title` n'aurait rien arrangé : personne ne survole un
+bouton qu'on lui a dit d'utiliser.
+
+### La loi neuve : un bouton de cet écran soit FAIT, soit DIT
+
+- `disabled` ne garde qu'**une** justification — ce que l'utilisateur ne peut
+  pas changer en cliquant : le chargement en cours et l'erreur réseau. Les deux
+  restent désactivés, et c'est tout.
+- Les deux refus deviennent un **avis** : `<p class="ot-avis" role="status">`,
+  écrit avec les deux classes déjà employées par « Contrôle indisponible »
+  (`.ot-controle-indisponible` + `.ot-controle-mot`) — un seul motif visuel pour
+  « la page ne peut pas, et voici ce qu'elle attend ». Un test bloqueait une
+  troisième manière de dire non.
+- Le refus **déplace le focus** sur la commande qui débloque : le champ de
+  période (`#ot-filtre-date`) pour l'export, le sélecteur d'entreprise
+  (`#ot-filtre-entreprise`) pour les réglages. Les deux ids sont neufs, posés
+  sur les deux champs qui existent déjà.
+- L'avis **meurt avec la situation** (`useEffect` sur `enterpriseId`,
+  `selectedDate`, `mode`) : pas de chronomètre, pas besoin d'un second clic pour
+  s'en débarrasser.
+- Il est posé **sous** les boutons, `flex-basis: 100%` : la rangée d'actions ne
+  bouge pas latéralement, l'en-tête ne grandit que quand il y a quelque chose à
+  dire.
+- Le refus « Toutes les entreprises » ne vaut que **si le sélecteur existe**
+  (`&& isSuperAdmin`) : un admin d'une seule entreprise n'a jamais « Toutes » à
+  déselectionner — le refuser là l'aurait envoyé vers un champ que l'écran ne
+  montre pas.
+
+### Les deux vides, devenus des états
+
+Chaque phrase reçoit trois lignes, et chacune est un fait que la page tenait déjà :
+
+| | avant | après |
+| --- | --- | --- |
+| le mot | `<p class="ot-state">` (11 px centré dans une carte cerclée) ou un texte nu dans le trou du graphe | **titre** 14/700 — la phrase d'avant, mot pour mot — puis **cause**, puis **geste** |
+| la cause | aucune | liste : `Du 2026-10-01 au 2026-10-31 · 31 journées examinées · seuls les couples entrée et sortie clôturés comptent.` graphe : `0s travaillées sur 31 journées examinées · aucune ne dépasse le seuil du planning.` recherche : `2 employés ont des heures sur la période · le filtre lit le nom et le matricule.` |
+| le geste | aucun | « Période précédente » (liste, appel `shift(-1)`, la MÊME fonction que la flèche du filtre) ou « Effacer la recherche » (recherche, `setSearch('')`) |
+| la forme | `.ot-state` = surface + cerclage de 2 + ombre dure + rayon de tuile, posé **dans** un panneau déjà cerclé | `.ot-vide` = lavis `--charte-surface2` + règle d'encre de 3 à gauche, **zéro** `box-shadow`, **zéro** `border-radius`, **zéro** cadre complet — une carte dans une carte, c'est ce que la reprise du 26/12 venait d'enlever du `.ot-list` |
+| les nombres | — | `--charte-mono` tabulaire, comme le reste des comptes de la page |
+| la place | trou du graphe : `min-height: var(--ot-hauteur-graphe)` était déjà là, donc **0 de changement**. Liste : la carte faisait ≈96 px (70 de contenu + 2×12 de respiration + 2 de cerclage) **plus 34 px de tête de table** = ≈130 px ; le bloc nouveau en fait ≈118 si la cause tient sur une ligne, ≈131 si elle en prend deux |
+
+Le trou du graphe garde sa cote (`min-height: var(--ot-hauteur-graphe)`, écrite une
+seule fois) : **un bloc ne grandit pas avec son texte**, et l'arrivée des données
+ne fait pas sauter la page.
+
+Sur la liste, il faut être honnête : le bloc **grandit**, il dit trois choses au
+lieu d'une. Ce qui ne change pas, c'est le **défilement de la page** — la loi du
+fondateur — et il est payé par deux retraits : les 34 px de tête de table, qui ne
+sont plus rendus sans lignes, et le fait que rien n'est enveloppé dans une carte
+de plus. Autrement dit : +44 px de sens, −34 px de chrome, aucun contenant
+supplémentaire. Ces chiffres sont l'arithmétique des cotes déclarées, pas une
+mesure — il n'y a pas de navigateur dans ce dépôt.
+
+### Les boutons passent au kit, et une casse silencieuse avec
+
+Le 26/12, la feuille n'avait pas pris les classes du kit : elle en avait
+**recopié les cotes** dans `.ot-page button { … }` — même rendu, deux lois, et
+la seconde devient fausse le jour où le kit bouge. Le markup portant enfin
+`ch-btn-pleine` / `ch-btn-contour`, la copie est supprimée (la feuille perd son
+bloc `:hover` / `:active` / `:disabled` de boutons). Trois conséquences, mesurées :
+
+1. **Une pleine par écran** : la charte dit « la seule action principale ». Deux
+   pleines côte à côte (Exporter + Règles) voulaient dire deux fois « clique-moi
+   en premier ». Les deux passent au **contour** ; la pleine ne reste que sur ce
+   qui écrit — « Sauvegarder » du tiroir — et sur l'écran d'erreur réseau, où
+   « Réessayer » est l'unique geste.
+2. **Le piège de cascade** que personne ne voyait : `.ot-page button, .ot-page
+   input, .ot-page select { font: inherit }` posé sur la page **bat**
+   `.ch-btn-pleine { font-size: 9,5px }`, parce qu'une classe + un type
+   (0,1,1) est plus spécifique qu'une classe seule (0,1,0). Le `font: inherit`
+   écrasait donc les capitales du kit — et `npm run charte` ne peut pas le voir,
+   il lit des fichiers, pas le cascade. La règle n'atteint plus les boutons ; les
+   trois segments de vue, qui ne sont PAS des boutons du kit (un sélecteur n'est
+   pas une action), portent leur typographie eux-mêmes.
+3. **La même casse pour les champs du tiroir** : `.ot-page input` (0,1,1) battait
+   `.ot-champ-cadre` (0,1,0) et tuait son `font-family: var(--charte-mono)`. Les
+   trois règles du champ sont écrites `.ot-page .ot-champ-cadre` (0,2,0) — c'est
+   pour ça que la feuille préfixe ses champs, et ce n'est pas de la verbosité.
+
+### Ce que les tests verrouillent
+
+- `overtimeBoutonsRepondeurs.test.jsx` (7 `it`, fichier neuf) : le refus d'export **écrit
+  son motif**, `onExport` n'est pas appelé, `document.activeElement` est le champ
+  de période ; idem pour les règles et le sélecteur ; les deux gestes sont
+  appelés dès que la condition est réunie ; l'avis disparaît au changement
+  d'entreprise ; le bouton **reste** désactivé en chargement et en erreur ; les
+  deux vides portent leur cause chiffrée (31 deux fois — le graphe et la liste
+  examinent la MÊME période), leur rôle `status`, leur geste, et la tête de table
+  ne se montre plus dans le vide ; « Période précédente » appelle `setDate` avec
+  `2026-09-01` — le même `shift(-1)` que la flèche, pas un second calcul.
+- `overtimeBrandAlignment.test.js` (6 `it`) vérifie la feuille : l'état vide ne
+  porte ni ombre ni rayon ni cadre ; `min-height` du creux vient du jeton ; la
+  feuille ne re-décrit plus `height/background/border/font-size/letter-spacing/
+  text-transform` sur `.ot-page button` ; `font: inherit` ne touche plus les
+  boutons ; les segments portent la taille du kit.
+- **Le comptage remplace le seuil.** Premier essai : « au moins 6 ×
+  `ch-btn-contour` » — et il est resté VERT quand un septième bouton quittait le
+  kit. La loi est maintenant un écart exact : 12 `<button>` écrits dans la
+  source, 11 habillés par le kit, la différence étant le sélecteur de vue (un
+  seul `<button>` source, trois rendus). Muté, il répond : `expected 10 to be 11`.
+- Table des mutations exercées (une aiguille qui ne rougit pas sur commande ne
+  verrouille rien) : retirer l'avis → 3 `it` rouges ; couper `viser(...)` → 1
+  chacun ; rendre le bouton muet à l'export → 1 ; renommer le geste → 2 ;
+  remplacer la cote du trou par `190px` → 1 ; remettre `font: inherit` sur les
+  boutons → 1 ; enlever la taille des segments → 1 ; faire réapparaître la tête
+  de table dans le vide → 1 ; enlever une classe de kit → 1.
+
+### Portes
+
+- `npx vitest run src/services/__tests__/overtime*` : **5 fichiers / 42 tests
+  verts**. Vitest complet : **201 fichiers / 2883 tests verts**.
+- `npx eslint --config eslint.gate.config.js src` : **0 erreur**, les 6 warnings
+  préexistants (fichiers non touchés).
+- `npm run charte`, lu sur la feuille : **4** tailles déclarées (quatre jetons,
+  comme avant ce chapitre), **0** couleur en dur hors couche d'alias, **0** rayon
+  hors liste, **0** flou, **0** dégradé.
+- Et le compteur du dépôt n'a PAS bougé d'une virgule entre la base et ce
+  chapitre — mesuré en rejouant le contrôle après `git stash` : 67 tailles
+  distinctes · 42 marges · 27 rayons · 4441 couleurs en dur dans 180 fichiers,
+  avant comme après, y compris les DÉCLARATIONS (2305 / 1679 / 1181 des deux
+  côtés) : la reprise déplace des règles à l'intérieur de la même feuille, elle
+  n'y ajoute pas de valeurs. Les 67 tailles ne viennent pas d'ici :
+  `src/pages/JoursFeries.css`, arrivé par #392, en porte à lui seul une douzaine
+  en dur (10, 10,5, 11, 11,5, 12, 12,5, 13, 13,5, 14, 14,5, 15, 16 px).
+
+### Le câble de l'export, vérifié ligne à ligne
+
+`exportCSV` construit l'en-tête de douze colonnes, mappe `overtimeData`, forme un
+`Blob`, le nomme `heures_sup_{première}_{dernière}.csv` et le télécharge — le
+courant passait déjà, le bouton était seulement coupé en amont par son
+`disabled`. Un seul défaut trouvé au passage, corrigé : l'ancre de téléchargement
+était cliquée **sans être ajoutée au document**. Selon le navigateur, un clic sur
+une ancre détachée peut être ignoré sans un mot — c'est-à-dire le symptôme exact
+qui a été signalé. Elle est maintenant appendue, cliquée, retirée, et
+`revokeObjectURL` garde son délai. Ce point n'est pas verrouillé par un test :
+`URL.createObjectURL` n'existe pas en jsdom, et inventer une aiguille muette
+aurait fait comptable d'une preuve inexistante.
+
+### Ouvert
+
+- Aucun navigateur dans ce dépôt : les hauteurs ci-dessus sont l'arithmétique
+  des cotes déclarées. La largeur réelle de la cause (une ou deux lignes) dépend
+  du nom des entreprises.
+- L'avis est lu par un lecteur d'écran (`role="status"`) et posé sous les
+  boutons ; il n'est pas annoncé à nouveau si l'utilisateur clique deux fois sur
+  le même refus — c'est voulu (même cause, même texte, pas de bis).
+- Un admin **non** rédacteur ne voit toujours pas le bouton « Règles de calcul »
+  (permission, pas état) ; il lit le guide de calcul, qui reste à l'écran.
+- Les autres pages de l'admin ont les mêmes boutons muets (le patron
+  `disabled={... || !rows.length}` se retrouve ailleurs) : rien ici ne les a
+  corrigées, et la loi « soit FAIT, soit DIT » ne vaut pour l'instant que sur
+  celle-ci.

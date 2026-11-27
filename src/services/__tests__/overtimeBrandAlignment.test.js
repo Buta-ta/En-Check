@@ -28,6 +28,7 @@ const CSS = readFileSync('src/pages/HeuresSupplementaires.css', 'utf8')
 const bands = readFileSync('src/components/PageCulturalBand.css', 'utf8')
 const PAGE = readFileSync('src/pages/HeuresSupplementaires.jsx', 'utf8')
 const NAV = readFileSync('src/components/OvertimeExperience.jsx', 'utf8')
+const DASH = readFileSync('src/components/OvertimeDashboard.jsx', 'utf8')
 
 /*  LA COUCHE D'ALIAS. Cette page n'écrit pas ses cotes dans un `:root` mais
     dans `.ot-page` — c'est ce bloc qui a le DROIT de porter une valeur en dur
@@ -169,6 +170,91 @@ it('ne porte plus ni raccourcis ni bouton de thème, et donc plus de second thè
   expect(PAGE).toMatch(/className="ot-page"/)
   expect(nu(PAGE)).not.toMatch(/['"`]ot-dark/)
   expect(corps).not.toMatch(/\.ot-dark\b/)
+})
+
+/*  le CORPS d'une règle, pour pouvoir dire qu'il NE contient pas telle
+    déclaration — sans ça, `css.includes('box-shadow')` répond oui à cause d'un
+    voisin et l'aiguille ment en silence. (Le nom `corps` est déjà pris par la
+    portée de la feuille entière.) */
+function regle(nu, selecteur) {
+  const i = nu.indexOf(selecteur)
+  if (i < 0) return null
+  return nu.slice(nu.indexOf('{', i) + 1, nu.indexOf('}', i))
+}
+
+it('habille les états vides et les boutons sans réécrire le kit', () => {
+  const nu = nuCSS
+  //  UN ÉTAT VIDE N'EST PAS UNE CARTE DANS LA CARTE : le bloc est posé dans un
+  //  panneau déjà cerclé, il prend donc le lavis et la règle de trois à gauche,
+  //  jamais une seconde ombre, un second rayon ou un cadre complet.
+  for (const sel of ['.ot-vide', '.ot-vide-creux']) {
+    const c = regle(nu, sel)
+    expect(c, `${sel} doit exister dans la feuille`).toBeTruthy()
+    for (const interdit of ['box-shadow', 'border-radius', 'border:']) {
+      expect(c.includes(interdit), `${sel} ne doit pas porter ${interdit} (une bordure par bord)`).toBe(false)
+    }
+  }
+  //  la figure est déclarée UNE fois sur la base ; le modificateur du trou
+  //  n'hérite pas d'un second cadre, il n'hérite que du premier.
+  expect(regle(nu, '.ot-vide')).toMatch(/border-left:\s*var\(--ot-regle\)/)
+  expect(regle(nu, '.ot-vide')).toMatch(/background:\s*var\(--ot-lavis\)/)
+  /*  et la pastille posée DANS ce lavis ne peut pas avoir la MÊME pâte : un
+        objet du fond de son contenant n'est plus un objet, c'est une tache.
+        Aucun navigateur ici, donc la loi est écrite comme une règle — l'override
+        doit exister et porter le papier. */
+  const pastille = regle(nu, '.ot-vide .ot-coin')
+  expect(pastille, 'la pastille de l’état vide doit être repérée sur le lavis').toBeTruthy()
+  expect(pastille).toMatch(/background:\s*var\(--ot-surface\)/)
+  //  la cote du trou du graphe reste UNE fois écrite : le vide occupe la place
+  //  du plein, et non un 190 px re-taper à côté du 205.
+  expect(regle(nu, '.ot-vide-creux')).toMatch(/min-height:\s*var\(--ot-hauteur-graphe\)/)
+  expect(regle(nu, '.ot-vide')).not.toMatch(/min-height:\s*\d/)
+
+  /*  LE KIT N'A PAS DE DOUBLON SUR CETTE PAGE. Le 26/12, la feuille avait
+        recopié les cotes de `.ch-btn-pleine` dans `.ot-page button { … }` ; le
+        27/11, le markup porte les classes de la maison et la copie est partie.
+        Elle est interdite pour DEUX raisons, et la seconde est la plus
+        silencieuse : un `.ot-page button { font: inherit }` bat
+        `.ch-btn-pleine { font-size: 9,5px }` (une classe + un type > une classe
+        seule) et fait disparaître les capitales du kit sans qu'aucun contrôle
+        de fichier ne le voie. */
+  for (const sel of ['.ot-page button', '.ot-page button:hover', '.ot-page button:disabled']) {
+    const b = regle(nu, sel)
+    if (!b) continue
+    for (const interdit of ['height', 'background', 'border', 'font-size', 'letter-spacing', 'text-transform']) {
+      expect(b, `théorie 121 : ${sel} ne doit plus décrire ${interdit} — c'est le kit`).not.toMatch(
+        new RegExp(`(^|;)\\s*${interdit}[a-z-]*\\s*:`),
+      )
+    }
+  }
+  const base = regle(nu, '.ot-page button,')
+  if (base) {
+    expect(base, '`font: inherit` ne doit plus viser les boutons').not.toMatch(/font:\s*inherit/)
+  }
+  //  et les segments, qui ne sont PAS des boutons du kit, portent leur
+  //  typographie eux-mêmes — sinon ils retomberaient en 16 px du navigateur.
+  const segments = regle(nu, '.ot-segments button')
+  expect(segments).toMatch(/font-size:\s*var\(--charte-taille-bouton\)/)
+  expect(segments).toMatch(/text-transform:\s*uppercase/)
+
+  /*  LE MARKUP A ADOPTÉ LE KIT, BOUTON PAR BOUTON — et le comptage est la
+        seule façon honnête de le dire. Un seuil du genre « au moins 6 fois
+        ch-btn-contour » ne refuse rien : il restait VERT quand un septième
+        bouton quittait le kit. La loi est donc un ÉCART EXACT : chaque `<button`
+        écrit dans la source porte une classe du kit, à l'exception d'UN seul —
+        les trois segments de vue, qui ne sont pas des actions mais un
+        sélecteur, et qui ne sont écrits qu'une fois dans un `.map`. */
+  const sources = PAGE + NAV + DASH
+  const ecrits = (sources.match(/<button\b/g) || []).length
+  const habilles = (sources.match(/ch-btn-(?:pleine|contour)/g) || []).length
+  expect(
+    habilles,
+    `théorie 121 : ${ecrits} <button> écrits, ${habilles} habillés — tout bouton de la page doit porter le kit, un seul (le sélecteur de vue) en est exclus`,
+  ).toBe(ecrits - 1)
+  expect(sources).toMatch(/className="ch-btn-pleine"/)
+  expect(nu).not.toMatch(/\.ot-btn-contour|\.ot-pince/)
+  expect(sources).not.toMatch(/ot-btn-contour|ot-pince/)
+  expect(sources).toMatch(/ch-btn-contour ot-carre/)
 })
 
 it('garde la bande culturelle mince et vectorielle', () => {

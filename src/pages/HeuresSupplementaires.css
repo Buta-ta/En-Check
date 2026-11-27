@@ -153,54 +153,24 @@
   flex-wrap: wrap;
 }
 
-/* ───────────  BOUTONS · le kit, pas un deuxième  ───────────
+/* ───────────  BOUTONS · le kit, écrit UNE fois  ───────────
    Le doc de la chimise l'écrit déjà pour les Absences : « la page ne s'est pas
-   refaite de boutons à son compte, c'était le reproche ». Les trois boutons de
-   la page (Exporter, Règles de calcul, les segments de vue) prennent donc la
-   commande C12 — 36 px, capitales 700 à 9,5 px, espacées de 1,3 — dans la
-   feuille, parce que le markup ne change pas. */
-.ot-page button,
+   refaite de boutons à son compte, c'était le reproche ». Le 26/12, la page
+   avait répondu en RE-COPIANT les cotes du kit dans `.ot-page button { … }` —
+   même rendu, deux lois, et la seconde devient fausse le jour où le kit bouge.
+   Le 27/11, le markup porte enfin les classes de la maison (`ch-btn-pleine`,
+   `ch-btn-contour`) : la copie saute et la feuille ne garde que ce qu'elle
+   possède vraiment — les segments, le carré, le focus des non-boutons.
+   ⚠️ Le `font: inherit` ne s'applique PLUS aux boutons, et ce n'est pas une
+   économie : posé sur `.ot-page button` (une classe + un type), il BAT
+   `.ch-btn-pleine` (une classe seule) parce qu'une règle avec un SÉLECTEUR DE
+   TYPE est plus spécifique qu'une classe — et il écrasait donc les capitales
+   9,5 px du kit. Aucun contrôle ne voit ça : `npm run charte` lit des fichiers,
+   pas le cascade. C'est la raison pour laquelle les champs ci-dessous sont
+   écrits `.ot-page .ot-champ-cadre`, et pas `.ot-champ-cadre`. */
 .ot-page input,
 .ot-page select {
   font: inherit;
-}
-.ot-page button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--charte-espace-2);
-  height: var(--ot-case);
-  padding: 0 var(--charte-espace-5);
-  border: var(--ot-trait) solid var(--ot-encre);
-  border-radius: var(--ot-rayon-champ);
-  background: var(--charte-btn-repos);
-  color: var(--ot-sur-action);
-  font-size: var(--charte-taille-bouton);
-  font-weight: 700;
-  letter-spacing: 1.3px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background-color var(--charte-duree) var(--charte-easing);
-}
-.ot-page button:hover:not(:disabled) {
-  background: var(--charte-btn-survol);
-}
-.ot-page button:active:not(:disabled) {
-  background: var(--charte-btn-actif);
-  transform: translate(1px, 1px);
-}
-.ot-page button:disabled {
-  background: var(--charte-btn-desactive);
-  border-color: transparent;
-  color: var(--charte-btn-desactive-texte);
-  cursor: default;
-}
-.ot-page :is(button, input, select, summary):focus-visible {
-  outline: var(--ot-trait) solid var(--ot-encre);
-  outline-offset: 2px;
-}
-.ot-page input,
-.ot-page select {
   background: var(--ot-surface);
   color: var(--ot-text);
   min-width: 0;
@@ -212,6 +182,20 @@
 .ot-page input:focus,
 .ot-page select:focus {
   border-color: var(--ot-encre);
+}
+/*  le focus reste déclaré ici pour ce que le kit NE couvre pas : les trois
+    segments, les champs et le `summary` d'un employé. Ses deux boutons à lui
+    portent déjà le même anneau (charte.css). */
+.ot-page :is(button, input, select, summary):focus-visible {
+  outline: var(--ot-trait) solid var(--ot-encre);
+  outline-offset: 2px;
+}
+/*  LE CARRÉ : un bouton du kit, seulement sans graisse latérale — la flèche de
+    période, la croix du tiroir. Il ne change pas de forme, il change
+    d'encombrement, et le 36 reste la case du kit. */
+.ot-page button.ot-carre {
+  width: var(--ot-case);
+  padding: 0;
 }
 
 /* ───────────  LE RANG DES FILTRES  ─────────── */
@@ -268,6 +252,14 @@
 .ot-segments button {
   flex: 1;
   border: 0;
+  /* la typographie des capitales du kit (C12) : les segments ne SONT pas des
+     boutons du kit — un sélecteur de vue n'est pas une action — mais ils
+     doivent se composer exactement comme eux. */
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
   /* la cote, UNE fois : le bouton tenu mesure 36 (la case du kit) une fois la
      garniture du cerclage ajoutée — 28 + 2 × 4, pas un 28 posé là. */
   height: calc(var(--ot-case) - 2 * var(--charte-espace-1));
@@ -327,8 +319,9 @@
   color: var(--ot-ecrit);
 }
 /* LE TAMPON du KPI : la figure de la maison (badge 11 px, contour de 2,
-   capitales) — pas un rond de 56 px cerclé d'un `inset` de 4. Le lavis en
-   `::after` est le second passage du feutre sous la pastille. */
+   capitales) — pas un rond de 56 px cerclé d'un `inset` de 4. Le second passage
+   du feutre est le LAVIS POSÉ SOUS LA PASTILLE, dans la même règle : un
+   `::after` aurait été un troisième objet pour une seule teinte. */
 .ot-coin {
   position: relative;
   width: var(--ot-glyphe);
@@ -424,18 +417,83 @@
   border-radius: var(--ot-rayon-champ) var(--ot-rayon-champ) 0 0;
   min-height: 0;
 }
-.ot-chart-empty {
-  /* la MÊME cote que le graphe plein : passer de « aucune donnée » aux
-     données ne doit pas faire sauter la page de quinze pixels. */
-  min-height: var(--ot-hauteur-graphe);
-  display: grid;
-  place-items: center;
-  padding: var(--charte-espace-4);
+/* ───────────  L'ÉTAT VIDE, À L'INTÉRIEUR D'UN BLOC  ───────────
+   27/11 : « rajoute une UI » aux deux phrases de vide. Une phrase de 11 px
+   perdue dans un trou de 205 px ne dit pas POURQUOI elle est là — et « vide »
+   veut dire ici deux choses opposées : personne n'a pointé, ou tout le monde
+   est resté sous le seuil. La page sait laquelle, elle l'écrit, avec le nombre
+   qu'elle a déjà calculé, et elle laisse une sortie.
+     La figure est le lavis + la règle d'encre de 3 à gauche — la même que les
+   deux encarts du tiroir — parce qu'un état posé DANS un bloc cerclé n'a pas le
+   droit de s'offrir un second cerclage. Pas d'ombre, pas de rayon, pas de carte.
+   Les cotes viennent du jeton, la typographie des trois tailles. */
+.ot-vide {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--charte-espace-3);
+  min-width: 0;
+  margin: 0 var(--charte-espace-4) var(--charte-espace-4);
+  padding: var(--charte-espace-3) var(--charte-espace-4);
   background: var(--ot-lavis);
-  border-radius: var(--ot-rayon-champ);
-  color: var(--ot-muted);
+  border-left: var(--ot-regle) solid var(--ot-encre);
+}
+.ot-vide-texte {
+  min-width: 0;
+}
+/*  DANS LE LAVIS, LA PASTILLE PREND LE PAPIER. Le fond de `.ot-vide` est déjà
+      `--ot-lavis` : y poser un `.ot-coin` du même remplissage efface l'objet —
+      il ne resterait que son cerclage, et un cadre sans pâte n'est plus un
+      tampon. Une ligne de plus, et rien d'autre : l'en-tête du tiroir pose le
+      même carré sur le PAPIER (`--ot-surface`) — là, les deux pâtes diffèrent
+      déjà, il n'a rien fallu corriger. */
+.ot-vide .ot-coin {
+  background: var(--ot-surface);
+}
+/*  le trou du graphe garde LA cote du graphe : `--ot-hauteur-graphe` est écrit
+    une fois, et l'état vide occupe exactement la place de l'état plein — sinon
+    l'arrivée des données fait sauter la page. */
+.ot-vide-creux {
+  align-items: center;
+  min-height: var(--ot-hauteur-graphe);
+  margin: var(--charte-espace-3) 0 0;
+  padding: var(--charte-espace-4);
+}
+.ot-vide-titre {
+  margin: 0;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ot-text);
+}
+.ot-vide-cause {
+  margin: var(--charte-espace-1) 0 0;
   font-size: var(--charte-taille-micro);
-  text-align: center;
+  line-height: 1.6;
+  color: var(--ot-muted);
+}
+/*  un état vide qui cite un nombre le cite en monospace tabulaire, comme le
+    reste des comptes de la page — « 31 journées examinées » se compare à
+    largeur de signe égale. */
+.ot-vide-nombre {
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ot-text);
+}
+.ot-vide-gestes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-2);
+  margin-top: var(--charte-espace-3);
+}
+/*  l'avis d'un refus, sous les boutons : la même ligne que « Contrôle
+    indisponible », un seul motif pour « la page ne peut pas, et voici ce
+    qu'elle attend ». `flex-basis: 100%` le pose sur sa ligne à lui — la rangée
+    de boutons ne bouge pas d'un pixel, l'en-tête ne grandit que quand il y a
+    quelque chose à dire. */
+.ot-avis {
+  flex-basis: 100%;
+  justify-content: flex-end;
+  text-align: end;
 }
 
 /* ───────────  LE GUIDE DE CALCUL  ─────────── */
@@ -822,13 +880,6 @@
   margin: 0;
   font-size: var(--charte-taille-titre);
 }
-/*  le « pince » qui referme le tiroir : le même gabarit de 36 que tous les
-    boutons de la page, seulement carré et sans graisse latérale. Il ne change pas
-    de forme, il change d'encombrement. */
-.ot-page button.ot-pince {
-  width: var(--ot-case);
-  padding: 0;
-}
 .ot-rules-body {
   display: flex;
   flex-direction: column;
@@ -872,7 +923,7 @@
    pour laquelle `npm run charte` ne voyait ni les neuf blancs translucides ni
    les deux `borderRadius: '10px'` du tiroir). Les voici dans la feuille : la
    charte les voit, et le thème sombre aussi. */
-.ot-champ-cadre {
+.ot-page .ot-champ-cadre {
   width: 100%;
   padding: var(--charte-espace-2) var(--charte-espace-3);
   background: var(--ot-surface);
@@ -887,11 +938,11 @@
   font-family: var(--charte-mono);
   font-variant-numeric: tabular-nums;
 }
-.ot-champ-cadre:focus {
+.ot-page .ot-champ-cadre:focus {
   border-color: var(--ot-encre);
   outline: none;
 }
-.ot-champ-cadre:disabled {
+.ot-page .ot-champ-cadre:disabled {
   background: var(--charte-btn-desactive);
   color: var(--charte-btn-desactive-texte);
 }
@@ -987,26 +1038,6 @@
   font-family: var(--charte-mono);
   font-variant-numeric: tabular-nums;
   color: var(--ot-text);
-}
-/*  le contour du kit : même gabarit, même cerclage, encre sur papier. Seul
-    « Annuler » le porte, pour que la charge reste au bouton plein. */
-.ot-page button.ot-btn-contour {
-  background: var(--ot-surface);
-  color: var(--ot-text);
-}
-.ot-page button.ot-btn-contour:hover:not(:disabled) {
-  background: var(--ot-lavis);
-}
-.ot-page button.ot-btn-contour:active:not(:disabled) {
-  background: var(--charte-surface2);
-}
-.ot-pied-note {
-  display: flex;
-  align-items: baseline;
-  gap: var(--charte-espace-2);
-  flex-wrap: wrap;
-  font-size: var(--charte-taille-micro);
-  color: var(--ot-muted);
 }
 
 /* ───────────  L'ÉCRAN DE CHARGEMENT  ───────────
