@@ -20,7 +20,11 @@ import { formaterDureeComplete } from '../utils/timezoneUtils'
 
 const duration = (seconds) => formaterDureeComplete(seconds || 0)
 
-export function OvertimeRulesDrawer({ children, onClose, darkMode, busy }) {
+/*  Le tiroir ne connaît plus le thème : il ne PEUT pas le connaître. Sa feuille
+    est la feuille de la page, qui lit les jetons de la maison, et `[data-theme]`
+    les retourne déjà à la racine. Le prop `darkMode` était le deuxième circuit —
+    celui par lequel `.ot-dark` survivait. */
+export function OvertimeRulesDrawer({ children, onClose, busy }) {
   const ref = useRef(null)
   useEffect(() => {
     const dialog = ref.current
@@ -37,7 +41,7 @@ export function OvertimeRulesDrawer({ children, onClose, darkMode, busy }) {
   return (
     <dialog
       ref={ref}
-      className={`ot-page ot-drawer ${darkMode ? 'ot-dark' : ''}`}
+      className="ot-page ot-drawer"
       aria-label="Règles de calcul des heures supplémentaires"
       onKeyDown={(e) => {
         if (e.key !== 'Tab') return

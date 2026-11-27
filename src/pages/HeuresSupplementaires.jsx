@@ -1,14 +1,10 @@
-import {
-  OvertimeNavigation,
-  OvertimeLoadingScreen,
-} from '../components/OvertimeExperience'
+import { OvertimeLoadingScreen } from '../components/OvertimeExperience'
 // ═══════════════════════════════════════════════════════════
 // ⏱️ PAGE HEURES SUPPLÉMENTAIRES - AFROFUTURISTE
 // ═══════════════════════════════════════════════════════════
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import { useTheme } from '../contexts/ThemeContext'
 import PageCulturalBand from '../components/PageCulturalBand'
 import OvertimeDashboard, {
   OvertimeRulesDrawer,
@@ -29,7 +25,12 @@ import { formaterDureeComplete } from '../utils/timezoneUtils'
 import { ETIQUETTE_INDISPONIBLE } from '../lib/controleDisponible'
 
 export default function HeuresSupplementaires() {
-  const { darkMode, toggleTheme } = useTheme()
+  /*  LE THÈME N'EST PLUS UNE AFFAIRE DE CETTE PAGE (26/12 : « enlever les
+      raccourcis, le bouton sombre/clair »). `darkMode` ne sert plus à habiller :
+      les jetons de la maison s'inversent à la racine (`[data-theme='dark']`,
+      tokens.css), donc la page lit le thème GLOBAL et n'a plus de classe
+      `.ot-dark` à entretenir à côté — deux thèmes l'un sur l'autre, c'est celui
+      qui gagne par accident. */
   const requestId = useRef(0)
   const [loadError, setLoadError] = useState('')
   const [admin, setAdmin] = useState(null)
@@ -470,10 +471,9 @@ export default function HeuresSupplementaires() {
   }, [hasAccess, settingsForm.weekly_threshold, settingsForm.alerte_hebdo_activee, provenance])
 
   return (
-    <div className={`ot-page ${darkMode ? 'ot-dark' : ''}`}>
+    <div className="ot-page">
       <PageHeader title="Heures supplémentaires" />
       <PageCulturalBand pathname="/heures-supplementaires" />
-      <OvertimeNavigation darkMode={darkMode} onToggleTheme={toggleTheme} />
       <main className="ot-main">
         {!accessChecked ? (
           <OvertimeLoadingScreen checkingAccess />
@@ -529,115 +529,50 @@ export default function HeuresSupplementaires() {
       <PageCulturalBand pathname="/heures-supplementaires" placement="bottom" />
       {showSettingsModal && (
         <OvertimeRulesDrawer
-          darkMode={darkMode}
           busy={savingSettings}
           onClose={() => setShowSettingsModal(false)}
         >
-          <div className="ot-rules-header" style={pageStyles.settingsHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'rgba(249, 115, 22, 0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Settings size={20} color="#F97316" />
-              </div>
+          <div className="ot-rules-header">
+            <div className="ot-rules-titre">
+              <span className="ot-coin">
+                <Settings size={20} aria-hidden="true" />
+              </span>
               <div>
-                <h2
-                  style={{
-                    color: 'var(--ot-text)',
-                    fontSize: '18px',
-                    fontWeight: '700',
-                    margin: 0,
-                  }}
-                >
-                  Règles de calcul
-                </h2>
-                <span style={{ color: 'var(--ot-muted)', fontSize: '12px' }}>
-                  Configuration des seuils et taux
-                </span>
+                <h2>Règles de calcul</h2>
+                <span className="ot-aide">Configuration des seuils et taux</span>
               </div>
             </div>
             <button
               aria-label="Fermer les règles"
               disabled={savingSettings}
               onClick={() => setShowSettingsModal(false)}
-              style={pageStyles.closeSettingsBtn}
+              className="ot-pince"
             >
-              <X aria-label="Fermer les règles" size={20} />
+              <X size={18} aria-hidden="true" />
             </button>
           </div>
 
-          <div className="ot-rules-body" style={pageStyles.settingsBody}>
+          <div className="ot-rules-body">
             <details>
               <summary>Comment les seuils sont-ils définis ?</summary>
-              <div
-                style={{
-                  padding: '14px 16px',
-                  background: 'rgba(99, 102, 241, 0.06)',
-                  border: '1px solid rgba(99, 102, 241, 0.15)',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  gap: '10px',
-                  alignItems: 'flex-start',
-                }}
-              >
-                <Info
-                  size={16}
-                  color="#6366F1"
-                  style={{ flexShrink: 0, marginTop: '1px' }}
-                />
+              <div className="ot-info">
+                <Info size={16} className="ot-info-icone" aria-hidden="true" />
                 <div>
-                  <p
-                    style={{
-                      color: 'var(--ot-indigo)',
-                      fontSize: '13px',
-                      fontWeight: '700',
-                      margin: '0 0 4px 0',
-                    }}
-                  >
-                    Le Planning définit le seuil de base
-                  </p>
-                  <p
-                    style={{
-                      color: 'var(--ot-muted)',
-                      fontSize: '12px',
-                      margin: 0,
-                      lineHeight: '1.5',
-                    }}
-                  >
+                  <p className="ot-info-titre">Le Planning définit le seuil de base</p>
+                  <p className="ot-info-texte">
                     Les heures contractuelles sont calculées automatiquement
                     depuis le planning (ex: 08h-17h avec 1h pause = 8h de
                     seuil). Ces paramètres définissent uniquement les{' '}
-                    <strong style={{ color: 'var(--ot-text)' }}>
-                      taux de majoration
-                    </strong>{' '}
-                    et
-                    <strong style={{ color: 'var(--ot-text)' }}>
-                      {' '}
-                      l'écart déclenchant le taux majoré
-                    </strong>
-                    .
+                    <strong>taux de majoration</strong> et{' '}
+                    <strong>l'écart déclenchant le taux majoré</strong>.
                   </p>
                 </div>
               </div>
             </details>
-            <div
-              className="ot-rules-section"
-              style={pageStyles.settingsSection}
-            >
-              <h3 style={pageStyles.settingsSectionTitle}>Déclenchement</h3>
-              <div style={pageStyles.settingsField}>
-                <label
-                  htmlFor="ot-overtime_major_after_hours"
-                  style={pageStyles.settingsLabel}
-                >
+            <div className="ot-rules-section">
+              <h3>Déclenchement</h3>
+              <div className="ot-champ">
+                <label className="ot-etiquette" htmlFor="ot-overtime_major_after_hours">
                   Après combien d'heures sup (heures)
                 </label>
                 <input
@@ -655,15 +590,9 @@ export default function HeuresSupplementaires() {
                         e.target.value === '' ? '' : Number(e.target.value),
                     })
                   }
-                  style={pageStyles.settingsInput}
+                  className="ot-champ-cadre"
                 />
-                <span
-                  style={{
-                    color: 'var(--ot-muted)',
-                    fontSize: '11px',
-                    marginTop: '4px',
-                  }}
-                >
+                <span className="ot-aide">
                   Ex: 2 → les 2 premières heures sup à taux normal, le reste à
                   taux majoré
                 </span>
@@ -671,36 +600,17 @@ export default function HeuresSupplementaires() {
 
               <details>
                 <summary>Exemple de répartition par palier</summary>
-                <div
-                  style={{
-                    padding: '12px 14px',
-                    background: 'rgba(249, 115, 22, 0.05)',
-                    border: '1px solid rgba(249, 115, 22, 0.12)',
-                    borderRadius: '10px',
-                    fontSize: '12px',
-                    color: 'var(--ot-muted)',
-                    lineHeight: '1.8',
-                  }}
-                >
-                  <p
-                    style={{
-                      margin: 0,
-                      color: 'var(--ot-copper)',
-                      fontWeight: '700',
-                      marginBottom: '4px',
-                    }}
-                  >
+                <div className="ot-palier">
+                  <p className="ot-palier-titre">
                     Aperçu du calcul (planning 08h-17h, 1h pause)
                   </p>
-                  <p style={{ margin: 0 }}>
-                    0h → 8h = temps contractuel (pas de majoration)
-                  </p>
-                  <p style={{ margin: 0, color: 'var(--ot-copper)' }}>
+                  <p>0h → 8h = temps contractuel (pas de majoration)</p>
+                  <p className="ot-palier-nombre">
                     8h → {8 + (settingsForm.overtime_major_after_hours ?? 2)}h =
                     +{settingsForm.overtime_major_after_hours ?? 2}h à{' '}
                     {settingsForm.rate_normal ?? 25}% (taux normal)
                   </p>
-                  <p style={{ margin: 0, color: 'var(--ot-copper)' }}>
+                  <p className="ot-palier-nombre">
                     Au-delà de{' '}
                     {8 + (settingsForm.overtime_major_after_hours ?? 2)}h = taux
                     majoré {settingsForm.rate_major ?? 50}%
@@ -709,17 +619,11 @@ export default function HeuresSupplementaires() {
               </details>
             </div>
 
-            <div
-              className="ot-rules-section"
-              style={pageStyles.settingsSection}
-            >
-              <h3 style={pageStyles.settingsSectionTitle}>Majorations</h3>
-              <div style={pageStyles.settingsRow}>
-                <div style={pageStyles.settingsField}>
-                  <label
-                    htmlFor="ot-rate_normal"
-                    style={pageStyles.settingsLabel}
-                  >
+            <div className="ot-rules-section">
+              <h3>Majorations</h3>
+              <div className="ot-rang">
+                <div className="ot-champ">
+                  <label className="ot-etiquette" htmlFor="ot-rate_normal">
                     Taux normal (%)
                   </label>
                   <input
@@ -736,17 +640,12 @@ export default function HeuresSupplementaires() {
                           e.target.value === '' ? '' : Number(e.target.value),
                       })
                     }
-                    style={pageStyles.settingsInput}
+                    className="ot-champ-cadre"
                   />
-                  <span style={{ color: 'var(--ot-muted)', fontSize: '10px' }}>
-                    Premières heures sup
-                  </span>
+                  <span className="ot-aide">Premières heures sup</span>
                 </div>
-                <div style={pageStyles.settingsField}>
-                  <label
-                    htmlFor="ot-rate_major"
-                    style={pageStyles.settingsLabel}
-                  >
+                <div className="ot-champ">
+                  <label className="ot-etiquette" htmlFor="ot-rate_major">
                     Taux majoré (%)
                   </label>
                   <input
@@ -763,28 +662,22 @@ export default function HeuresSupplementaires() {
                           e.target.value === '' ? '' : Number(e.target.value),
                       })
                     }
-                    style={pageStyles.settingsInput}
+                    className="ot-champ-cadre"
                   />
-                  <span style={{ color: 'var(--ot-muted)', fontSize: '10px' }}>
+                  <span className="ot-aide">
                     Après {settingsForm.overtime_major_after_hours ?? 2}h sup
                   </span>
                 </div>
               </div>
             </div>
 
-            <div
-              className="ot-rules-section"
-              style={pageStyles.settingsSection}
-            >
-              <h3 style={pageStyles.settingsSectionTitle}>
+            <div className="ot-rules-section">
+              <h3>
                 Jours particuliers
               </h3>
-              <div style={pageStyles.settingsRow}>
-                <div style={pageStyles.settingsField}>
-                  <label
-                    htmlFor="ot-rate_sunday"
-                    style={pageStyles.settingsLabel}
-                  >
+              <div className="ot-rang">
+                <div className="ot-champ">
+                  <label className="ot-etiquette" htmlFor="ot-rate_sunday">
                     Taux dimanche (%)
                   </label>
                   <input
@@ -801,14 +694,11 @@ export default function HeuresSupplementaires() {
                           e.target.value === '' ? '' : Number(e.target.value),
                       })
                     }
-                    style={pageStyles.settingsInput}
+                    className="ot-champ-cadre"
                   />
                 </div>
-                <div style={pageStyles.settingsField}>
-                  <label
-                    htmlFor="ot-rate_holiday"
-                    style={pageStyles.settingsLabel}
-                  >
+                <div className="ot-champ">
+                  <label className="ot-etiquette" htmlFor="ot-rate_holiday">
                     Taux jours fériés (%)
                   </label>
                   <input
@@ -825,11 +715,11 @@ export default function HeuresSupplementaires() {
                           e.target.value === '' ? '' : Number(e.target.value),
                       })
                     }
-                    style={pageStyles.settingsInput}
+                    className="ot-champ-cadre"
                   />
                 </div>
               </div>
-              <label style={pageStyles.settingsToggle}>
+              <label className="ot-bascule">
                 <input
                   disabled={savingSettings}
                   type="checkbox"
@@ -849,19 +739,13 @@ export default function HeuresSupplementaires() {
                 Le seuil peut servir de point de repère sans que personne ne
                 veuille être prévenu — d'où la case séparée. Et aucune alerte
                 ne se déduit d'une valeur : seule la case l'allume. */}
-            <div
-              className="ot-rules-section"
-              style={pageStyles.settingsSection}
-            >
-              <h3 style={pageStyles.settingsSectionTitle}>
+            <div className="ot-rules-section">
+              <h3>
                 Alerte hebdomadaire
               </h3>
-              <div style={pageStyles.settingsRow}>
-                <div style={pageStyles.settingsField}>
-                  <label
-                    htmlFor="ot-weekly_threshold"
-                    style={pageStyles.settingsLabel}
-                  >
+              <div className="ot-rang">
+                <div className="ot-champ">
+                  <label className="ot-etiquette" htmlFor="ot-weekly_threshold">
                     Seuil hebdomadaire (heures)
                   </label>
                   <input
@@ -879,11 +763,11 @@ export default function HeuresSupplementaires() {
                           e.target.value === '' ? '' : Number(e.target.value),
                       })
                     }
-                    style={pageStyles.settingsInput}
+                    className="ot-champ-cadre"
                   />
                 </div>
               </div>
-              <label style={pageStyles.settingsToggle}>
+              <label className="ot-bascule">
                 <input
                   id="ot-alerte_hebdo_activee"
                   disabled={savingSettings}
@@ -898,7 +782,7 @@ export default function HeuresSupplementaires() {
                 />
                 <span>M’alerter au-delà de ce seuil</span>
               </label>
-              <small style={pageStyles.settingsNote}>
+              <small className="ot-aide">
                 Le seuil et l’alerte sont deux choses : vous pouvez fixer un
                 seuil sans être prévenu. Sans case cochée, aucune alerte n’est
                 produite. 48 h est une valeur proposée par le produit, pas une
@@ -907,19 +791,19 @@ export default function HeuresSupplementaires() {
             </div>
           </div>
 
-          <div className="ot-rules-footer" style={pageStyles.settingsFooter}>
+          <div className="ot-rules-footer">
+            {/*  Le kit ne connaît qu'une seule espèce de bouton — l'argile pleine.
+                « Annuler » n'a donc pas le droit d'être un troisième objet : il
+                prend le CONTOUR du kit (même gabarit, même cerclage, encre sur
+                papier) et laisse la charge à « Sauvegarder ». */}
             <button
               disabled={savingSettings}
               onClick={() => setShowSettingsModal(false)}
-              style={pageStyles.settingsCancelBtn}
+              className="ot-btn-contour"
             >
               Annuler
             </button>
-            <button
-              onClick={handleSaveSettings}
-              style={pageStyles.settingsSaveBtn}
-              disabled={savingSettings}
-            >
+            <button onClick={handleSaveSettings} disabled={savingSettings}>
               <Save size={16} />
               {savingSettings ? 'Sauvegarde...' : 'Sauvegarder'}
             </button>
@@ -928,113 +812,4 @@ export default function HeuresSupplementaires() {
       )}
     </div>
   )
-}
-
-// ═══════════════════════════════════════════════════════════
-// 🎨 STYLES
-// ═══════════════════════════════════════════════════════════
-const pageStyles = {
-  settingsHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '20px 24px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-  },
-  closeSettingsBtn: {
-    background: 'var(--ot-border)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '10px',
-    padding: '8px',
-    color: 'var(--ot-muted)',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsBody: {
-    padding: '24px',
-    overflow: 'auto',
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px',
-  },
-  settingsSection: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  settingsSectionTitle: {
-    color: 'var(--ot-text)',
-    fontSize: '14px',
-    fontWeight: '700',
-    margin: 0,
-    letterSpacing: '0.5px',
-  },
-  settingsRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-  settingsField: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  settingsLabel: {
-    color: 'var(--ot-muted)',
-    fontSize: '12px',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '0.3px',
-  },
-  settingsInput: {
-    padding: '10px 12px',
-    border: '1px solid var(--ot-border)',
-    borderRadius: '10px',
-    background: 'var(--ot-surface)',
-    color: 'var(--ot-text)',
-    fontSize: '15px',
-    fontWeight: '600',
-    fontFamily: "'SF Mono', 'Fira Code', monospace",
-    width: '100%',
-    boxSizing: 'border-box',
-  },
-  settingsNote: {
-    color: 'var(--ot-muted)',
-    fontSize: '12px',
-    lineHeight: 1.5,
-    margin: 0,
-  },
-  settingsToggle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '12px',
-    background: 'var(--ot-surface)',
-    borderRadius: '10px',
-    border: '1px solid rgba(255,255,255,0.05)',
-    color: 'var(--ot-text)',
-    fontSize: '13px',
-    cursor: 'pointer',
-  },
-  settingsFooter: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '12px',
-    padding: '16px 24px',
-    borderTop: '1px solid rgba(255,255,255,0.06)',
-  },
-  settingsCancelBtn: {
-    padding: '12px 20px',
-    background: 'var(--ot-border)',
-    border: '1px solid var(--ot-border)',
-    color: 'var(--ot-text)',
-    borderRadius: '12px',
-    fontWeight: '600',
-    fontSize: '14px',
-    cursor: 'pointer',
-  },
-  settingsSaveBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '12px 24px',
-    background: 'linear-gradient(135deg, #F97316, #EA580C)',
-    color: '#FFF',
-    border: 'none',
-    borderRadius: '12px',
-    fontWeight: '700',
-    fontSize: '14px',
-    cursor: 'pointer',
-  },
 }
