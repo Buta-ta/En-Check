@@ -336,3 +336,181 @@ un composant *et* une fonction — ce que la règle du rechargement à chaud
 interdit. La carte des motifs est passée dans
 `src/components/culturalMotif.js` ; le bandeau l'importe, les sept tests qui la
 lisaient aussi.
+
+## Le brut adouci, encre sur bosse (8 novembre 2026)
+
+La demande :
+
+> Maintenant passons à la page « Rémunération ». Cette page on va la garder telle
+> quelle mais on va seulement appliquer le style brut adouci, double feutre.
+> Enlever les raccourcis, le bouton sombre/clair. Retravaille un peu les formes
+> de certains blocs.
+
+Le verrou est dans le premier mot : **garder telle quelle**. Aucun bloc n'a
+changé de place, aucune étiquette n'a été réécrite, aucun `data-testid` n'a été
+touché, l'ordre des lignes, les requêtes et le calcul du coût sont ceux d'hier.
+Ce qui a bougé est de l'encre et de la géométrie, plus les deux suppressions
+nommées.
+
+### Ce qui est tombé
+
+**Le bouton sombre/clair.** La page entretenait un second thème à côté du
+global : une classe `.rw-clair` posée par l'écran, et treize couleurs réécrites
+pour lui répondre. C'est exactement ce que le verrou `overtimeBrandAlignment`
+défend depuis le contrat de temps, et la formulation de la loi n'est pas
+« la page ignore le thème » mais « la page n'en tient pas un deuxième » : une
+classe locale, un `data-theme=` posé par l'écran, l'ancre `encheck.theme`, les
+mots « Mode sombre/clair », un `<button onClick={toggleTheme}` — interdits. Le
+thème se règle dans le rail, la page obéit aux jetons, et `[data-theme='dark']`
+de `tokens.css` retourne l'échelle à la racine. Le bouton carré de l'en-tête,
+lui, est resté : il porte le rechargement et s'appelle maintenant `.rw-cadre`
+(il s'appelait `.rw-bascule` parce qu'il portait aussi la bascule).
+
+**Le bandeau de raccourcis.** `<RaccourcisPages>` vivait dans le seuil, sous
+l'en-tête, et redisait la barre latérale. La bande, son import et ses huit
+règles CSS sont supprimés ; le seuil a cessé de promettre des « accès rapides »
+qu'il ne montre plus — son `aria-label` dit maintenant
+« Entreprise, devise, période ».
+
+Deux choses ont été **gardées** contre une lecture trop littérale de « enlever
+les raccourcis » : le ⌘S / Ctrl+S de la barre d'assemblage et son badge
+`.rw-touche`. Ce ne sont pas des raccourcis de navigation, c'est le moyen
+d'écrire sans quitter la page ; le contrat de temps les épingle par un test,
+et ils en ont un ici (`raccourci.current = vue === 'contrats' ? enregistrerTout : null`).
+
+### La couche de jetons : des alias, plus de couleur
+
+`Remunerations.css` ne contient plus une seule couleur écrite : 66 lignes de
+littéraux (hex, `rgba`, un `radial-gradient`, un `backdrop-filter`) sont
+devenues trente et un alias dans le bloc commun de la page : dix-huit de
+couleur (`--rw-nuit`, `--rw-ocre`, `--rw-alerte`…), tous lus dans `--charte-*`
+ou mélangés depuis lui ; un de trait ; douze mesures nommées (`--rw-cadre`,
+`--rw-sceau`, `--rw-reserve`…). S'y ajoutent les deux du motif,
+`--rw-bogolan-trait` et `--rw-bogolan-plein` : trente-trois jetons, zéro
+littéral. Les seuls chiffres qui restent dans la feuille sont ces mesures, et
+chacune dit ce qu'elle mesure. La règle tenue : *un
+jeton de page qui serait une couleur est la charte au second degré*. Deux niveaux de texte
+« pâle » sont des mélanges colorimétriques du jeton (`color-mix`), jamais des
+`opacity` — un texte délayé laisse voir la ligne à travers lui.
+
+Le cuivre a deux métiers que la page confondait sous un seul nom :
+
+| métier | avant | après | pourquoi |
+| --- | --- | --- | --- |
+| **peint** — liseré, point de trame, pan teint, jauge | `#D4813C` | `var(--charte-aplat)` | une figure se juge à 3:1 |
+| **écrit** — le sourcil, les libellés, les icônes | le même hex | `var(--charte-texte)` | l'argile de la charte ne vaut que 3,5:1 en texte ; « l'argile écrite » est le jeton du kit pour les mots |
+
+Ce qui **porte du texte et se remplit** (la pastille de filtre active, la vue
+active, la puce de la modale, la coche, le bouton cuivre d'une ligne, la piste
+allumée) ne se remplit plus de pigment de motif mais de fond de pagne,
+`--rw-boue`, avec `--charte-blanc` dessus : 14:1 dans les deux thèmes.
+
+### Les contrastes, recalculés
+
+L'ancien moteur de contraste du fichier lisait des hex dans `.rw-page` et
+`.rw-page.rw-clair`. Il lisait donc la palette parallèle — et il avait raison
+de la réclamer, puisque c'était la seule. Le test suit maintenant la chaîne
+complète : `--rw-*` → `--charte-*` → le thème posé à la racine, en sRGB, comme
+le navigateur. Trois niveaux de texte × quatre fonds × deux thèmes, l'accent
+écrit, les trois états sur le creux et sur le lavis de la case active, le texte
+d'un pan rempli : tout passe à 4,5:1 ou mieux.
+
+Les mélanges ne sont pas des coups d'œil. Le plus pâle des trois niveaux était
+à 3,1:1 sur le fond des cases ; il est maintenant `douce` à 94 % dans la
+surface, qui vaut 4,75:1 au pire. Les états écrits sont resserrés vers l'encre
+du thème (`succes` 90 %, `alerte` 88 %, `erreur` 78 %) : comme l'encre
+s'inverse, le resserrage se retourne tout seul — plus foncé sur le sable, plus
+clair sur la nuit. C'est le même calcul que celui du 26 novembre sur la
+refonte, rejoué sur les jetons du kit au lieu de six hex soigneusement choisis.
+
+### Les formes, retouchées une à une
+
+| objet | avant | après |
+| --- | --- | --- |
+| tous les contours | `1px` de filet | `var(--charte-trait)` = 2 px d'encre |
+| les liserés de gauche (seuil, période, constats) | 2 ou 3 px au choix | `--rw-filet` = 3 px, partout |
+| les cinq ombres portées | `0 16px 34px`, `0 26px 60px`… | `var(--charte-ombre-dure)`, flou nul, sur les panneaux portés seulement |
+| les rayons | 13 valeurs (1,5 · 3 · 4 · 5 · 7 · 9 · 10 · 14 · 50%…) | les cinq du kit (0 · 6 · 8 · 12 · 999) + le rond du bouton-poussoir |
+| les tailles | 19 crans de 8 à 25 px | quatre (micro · corps · titre · bouton) |
+| les pas | 44 `padding` distincts, 20 `gap` | les sept de l'échelle, arrondis au plus proche |
+| la couture sous le bandeau | bande de 9 px, pointillé de 1 px, `opacity .75` | trois pixels de règle, un point de cuivre tous les huit |
+| les pastilles de filtre et les deux vues | actives = anneau de cuivre de deux pixels autour d'un mot cuivre | actives = **remplies** (un pan de boue, texte blanc cassé) : phase 60, *soit FAIT soit DIT* |
+| la case de montant | 7 px, `1px` + `border-bottom: 2px` | 6 px, 2 px d'encre et une **règle de trois** en pied |
+| la case à cocher, le sceau, la piste | 16 px, 46 px, 34×18 | `--rw-coche` 18, `--rw-sceau` 42 (le médaillon remplit sa case), piste 38×20 avec une poignée de 12 |
+| la modale | 680 px, rayon 14 | `var(--charte-modale-large)`, rayon d'une carte |
+| le focus | `outline: none` × 3, halos `0 0 0 4px` | une seule règle pour toute la page : anneau d'encre de 2 px décollé de 2 |
+| la barre d'assemblage, sur téléphone | pilule flottante à 12 px des bords | rayon d'une carte, d'un bord à l'autre |
+| le bas de la coque | `104px` nu | `--rw-reserve`, nommé : c'est la hauteur de la barre collée |
+
+Deux défauts de la feuille ont été rebouchés au passage, parce que « retravailler
+les formes » n'interdit pas de cesser de se contredire : `@keyframes rw-monter`
+était déclaré deux fois (la seconde dans le bloc téléphone) et les deux
+`@media (max-width: 520px)` n'en font plus qu'un. Le repli
+`prefers-reduced-motion` couvre maintenant les seize objets qui bougent, pas
+huit — les huit autres étaient passés entre les mailles.
+
+### Le chargeur et le motif, décolérés
+
+`RemunerationsLoading` recevait `darkMode` en propriété et peignait son propre
+`#150C06`, avec six règles `[data-theme='light']` pour le cas contraire. Il ne
+reçoit plus rien du tout — le modèle est `OvertimeLoadingScreen` : un chargeur
+n'a pas d'avis sur le thème. Sa scène (bande, pans, sillages, bâton, frise)
+garde son dessin et prend ses couleurs par classes `rw-scene-*`.
+
+`RemunerationsBogolan.jsx` portait les six hex de la maison dans un `const
+BOGOLAN`, et c'est pour ça que les tests de contraste les réclamaient. Le motif
+est resté intégralement — un motif validé ne se redessine pas — mais il est
+**décoloré** : le composant ne nomme plus que des classes (`rw-bo-cadre`,
+`rw-bo-losange`, `rw-bo-points`, `rw-bo-case`, `rw-bo-pan`) et une teinte
+(`cuivre`, `craie`, `boue`) ; `Remunerations.css` décide du pigment. Le ton
+« craie » ne se peint pas, il se grave : `--charte-blanc`, et une bande
+complète cesse d'être une bande *sombre*.
+
+### Une seule action pleine par écran
+
+La barre d'assemblage et la barre du budget portent chacune `ch-btn-pleine` —
+les deux vues ne s'affichent pas ensemble, donc un seul bouton plein par écran,
+et les seize autres boutons de la page restent `.rw-bouton` (ils sont le
+vocabulaire compact de la page, ils ont eu le trait et les rayons du kit, pas
+ses capitales). Le bouton de confirmation de la modale « Reprendre » prend la
+pleine, lui aussi : sous un voile, l'œil est dans le couloir.
+
+### Les tests
+
+Neuf assertions de `remunerationsBogolan.test.jsx` et quatre de
+`remunerationsCout.test.jsx` **exigeaient** les objets supprimés — le verrou
+du 26 décembre sur la bascule, le bandeau de raccourcis, la palette à six hex,
+les `color-scheme` des deux thèmes. Elles ont été **inversées**, pas supprimées
+ni adoucies : « la page a deux thèmes avec sa propre bascule » est devenu « la
+page n'entretient pas un second thème à côté du global », « les raccourcis
+vivent dans le seuil » est devenu « le bandeau de raccourcis est tombé : le rail
+les dit déjà », et la boucle sur six hex est devenue douze jetons du kit qu'on
+retraverse, plus l'interdiction d'un `--rw-*` qui serait une couleur. Les
+sélecteurs `.rw-barre .rw-bouton` et `.rw-modale-pied .rw-bouton` ont suivi
+l'action pleine.
+
+Une onzième section, « le brut adouci : l'encre, la bosse et rien d'autre »,
+verrouille la passe : aucun contour de un pixel, aucune ombre floue, les
+ombres de la page sont le jeton ou rien, les rayons/tailles/pas viennent du
+kit, deux `opacity` dans la feuille et une seule affaire (le pan qui n'est pas
+encore teint et son repli), le motif a gardé son dessin et perdu sa palette, un
+seul bouton plein par écran. Les douze mutations correspondantes ont été
+jouées : **12 rougies, 0 silencieuses**. La dixième a demandé de borner
+l'aiguille (`"rw-bo-points"` entre guillemets, et `.rw-bo-points {` en CSS) :
+sans quoi `rw-bo-points-doux` satisfaisait la recherche et la mutation passait
+inaperçue.
+
+### Ce qui n'a pas été fait, et ce que le compteur a bougé
+
+`JoursFeries.css` garde ses 65 couleurs en dur et `src/index.css` les siennes :
+`npm run charte` reste NON CONFORME sur le dépôt, comme avant cette passe. Le
+verdict n'a pas changé de camp, mais la page a cessé d'y peser — compté sur la
+même commande, avant puis après :
+
+| mesure de la charte | avant | après |
+| --- | --- | --- |
+| C1 couleurs en dur | 4390 dans 179 fichiers | 4368 dans 177 fichiers |
+| C9 ombres floues | 124 | 119 |
+| C10 rayons hors liste | 323 sur 18 valeurs | 307 sur 17 valeurs |
+
+Et plus un seul des trois fichiers de la page n'apparaît dans le rapport.

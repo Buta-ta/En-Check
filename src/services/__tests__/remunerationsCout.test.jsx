@@ -240,8 +240,13 @@ describe('1. une seule page pour les deux lectures', () => {
   it('la page garde ses deux bandeaux et ses repères', () => {
     expect(PAGE).toContain('<PageCulturalBand pathname="/remunerations" />')
     expect(PAGE).toContain('<PageCulturalBand pathname="/remunerations" placement="bottom" />')
-    expect(PAGE).toContain('role="switch"')
-    expect(PAGE).toContain('<RaccourcisPages compact excludePaths={[\'/remunerations\']} />')
+    //  la bascule de thème et le bandeau de raccourcis sont tombés : le
+    //  premier vit dans le rail, le second redisait la barre latérale
+    expect(PAGE).not.toContain('<RaccourcisPages')
+    expect(PAGE).not.toContain('aria-checked={darkMode}')
+    expect(PAGE).not.toContain('useTheme')
+    //  l'interrupteur d'heures, lui, est bien un switch : c'est un réglage
+    expect(PAGE).toContain('className="rw-interrupteur"')
   })
 })
 
@@ -310,8 +315,9 @@ describe('2. la vue coût', () => {
     expect(vues[1].getAttribute('aria-pressed')).toBe('true')
     //  les repères ne bougent pas d'une vue à l'autre
     expect(hote.querySelector('.rw-seuil')).not.toBeNull()
-    expect(hote.querySelector('[data-testid="raccourcis-pages"]')).not.toBeNull()
-    expect(hote.querySelector('.rw-bascule[role="switch"]')).not.toBeNull()
+    expect(hote.querySelector('[data-testid="raccourcis-pages"]')).toBeNull()
+    expect(hote.querySelector('.rw-bascule')).toBeNull()
+    expect(hote.querySelector('.rw-raccourcis')).toBeNull()
   })
 
   it('la période se règle en haut, et le mois suit les pointages', async () => {
@@ -499,7 +505,7 @@ describe('2. la vue coût', () => {
     expect(texte(barre)).toContain('96,7 % du budget')
     expect(texte(barre)).toContain('1 500 000')
 
-    const bouton = [...barre.querySelectorAll('.rw-bouton')]
+    const bouton = [...barre.querySelectorAll('.ch-btn-pleine')]
       .find(b => texte(b).includes('Contrôler le budget'))
     await clic(bouton)
 
@@ -596,14 +602,18 @@ describe('2. la vue coût', () => {
     expect(toasts).toHaveLength(0)
   })
 
-  it('les deux vues partagent le même basculement de thème', async () => {
+  it('les deux vues partagent le même pagne, et aucune ne porte le thème', async () => {
     await monter()
 
-    expect(hote.querySelector('[role="switch"]').getAttribute('aria-checked')).toBe('true')
+    //  plus aucune vue n'a de bascule à son chevet
+    expect(hote.querySelector('.rw-entete [role="switch"]')).toBeNull()
     await clic([...hote.querySelectorAll('.rw-vue')][0])
 
-    expect(hote.querySelector('[role="switch"]')).not.toBeNull()
+    expect(hote.querySelector('.rw-entete [role="switch"]')).toBeNull()
     expect(hote.querySelector('.rw-periode')).toBeNull()
+    //  et la classe de la page ne change pas au fil d'un thème local
+    expect(hote.querySelector('.rw-page')).not.toBeNull()
+    expect(hote.querySelector('.rw-clair')).toBeNull()
   })
 })
 
