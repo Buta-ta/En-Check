@@ -415,8 +415,6 @@
    information : la maison ne colore pas une alternance, elle colore un état,
    et l'état d'une barre, c'est sa hauteur. Les littéraux sont tus ici : le
    contrôle de charte compte les octets du fichier, pas ses règles. */
-   la maison ne colore pas une alternance, elle colore un état — et l'état
-   d'une barre, c'est sa hauteur. */
 .ot-bar {
   width: 70%;
   margin: 0 auto;
@@ -1225,7 +1223,7 @@
         règle du corps gagne déjà celle de l'enveloppe (`.ot-drawer >
         .ot-rules-body`, deux classes, contre `.ot-drawer > div`, une classe et un
         type) — un `!important` posé là pour « au cas où » serait une dette qui
-        ment sur une règle inexistante.
+        ment sur une règle inexistante. */
   .ot-drawer > .ot-rules-body {
     padding: var(--charte-espace-4);
   }
