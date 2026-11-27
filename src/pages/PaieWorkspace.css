@@ -197,3 +197,207 @@
 @media (max-width: 380px) {
   .pw-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LE BLOC DE TÊTE — le bandeau des Retards, mot pour mot (27/11)
+   ═══════════════════════════════════════════════════════════════════════════
+
+   Sa demande : « transforme ce bloc qu'il ressemble exactement comme au bloc
+   de la page retards, un bloc encerclé du bandeau bogolan ».
+
+   On ne réinvente donc rien. On reprend les mesures du `.rt-cadre` et du
+   `.rt-bandeau` des Retards — 26 px de lisière, rayon 12, contour 2 px et
+   feutre de 3, un rond de 36 px pour le retour, la marque, le titre en 17 px
+   surmonté de son sous-titre en petites capitales — et l'on n'y change que
+   ce que la page a de propre : son titre, et l'entreprise à droite, qui
+   prend la place de la période.
+
+   Trois choses ont quitté ce bloc, et elles n'y reviennent pas :
+   · les raccourcis de pages — le rail fait déjà ce voyage ;
+   · le bouton clair / sombre — le thème est un choix de l'application ;
+   · la bande bogolan posée AU-DESSUS — elle ne disparaît pas pour autant :
+     elle fait maintenant le TOUR du bloc. */
+
+.pw-cadre {
+  --pw-cadre-epaisseur: 26px;
+  --ec-cadre-epaisseur: var(--pw-cadre-epaisseur);
+  position: relative;
+  max-width: 1400px;
+  margin: 10px auto 0;
+  width: 92.2%;
+  padding: var(--pw-cadre-epaisseur);
+  border: 2px solid var(--charte-encre);
+  border-radius: 12px;
+  background: var(--charte-surface);
+  box-shadow: 3px 3px 0 var(--charte-encre);
+}
+.pw-cadre > .ec-cultural-cadre {
+  border-radius: 11px;
+  overflow: hidden;
+}
+.pw-planche {
+  position: relative;
+  z-index: 1;
+  background: var(--charte-surface);
+  border-radius: 8px;
+}
+
+/* la ligne du bandeau : retour, marque, titre — puis l'entreprise */
+.pw-bandeau {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px 12px 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* le rond du retour : 36 px, contour 1,5 px — jamais un carré */
+.pw-bandeau button.pw-retour {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: 999px;
+  background: var(--charte-blanc);
+  color: var(--charte-encre);
+  cursor: pointer;
+  transition: transform 140ms ease, background-color 140ms ease;
+}
+.pw-bandeau button.pw-retour:hover {
+  background: var(--charte-surface2);
+  transform: translateX(-2px);
+}
+.pw-marque {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  line-height: 0;
+}
+.pw-bandeau-titre { min-width: 0; }
+.pw-bandeau-titre h1 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--charte-encre);
+}
+.pw-bandeau-titre p {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+  margin: 3px 0 0;
+}
+
+/* l'entreprise, à droite de la même ligne */
+.pw-bandeau-entreprise {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 320px;
+  padding: 6px 12px 6px 7px;
+  border: 1.5px solid var(--charte-bordure);
+  border-radius: 999px;
+  background: var(--charte-blanc);
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+.pw-bandeau-entreprise-icone {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--charte-surface2);
+  color: var(--charte-aplat);
+}
+.pw-bandeau-entreprise-corps { display: block; min-width: 0; }
+.pw-bandeau-entreprise .pw-eyebrow {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.13em;
+  font-weight: 750;
+  color: var(--charte-douce);
+  margin: 0;
+}
+.pw-bandeau-entreprise select {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--charte-encre);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  appearance: none;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+.pw-bandeau-entreprise:focus-within {
+  outline: 2px solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* Sous 820 px, le cadre s'affine comme celui des Retards : 14 px de lisière. */
+@media (max-width: 820px) {
+  .pw-cadre {
+    --pw-cadre-epaisseur: 14px;
+    width: auto;
+    margin: 8px 12px 0;
+  }
+  .pw-bandeau { gap: 10px; padding: 10px 10px 10px 8px; }
+  .pw-bandeau-titre h1 { font-size: 15px; }
+  .pw-bandeau button.pw-retour { width: 34px; height: 34px; }
+  .pw-bandeau-entreprise {
+    margin-left: 0;
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/*  Le pays fiscal et la devise : la seconde place à droite du bandeau. Même
+    forme que l'entreprise, mais rien à ouvrir — c'est une valeur, pas un
+    réglage : elle se change dans Fiscalité, pas dans l'en-tête. */
+.pw-bandeau-pays {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 14px 6px 7px;
+  border: 1.5px solid var(--charte-bordure);
+  border-radius: 999px;
+  background: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+.pw-bandeau-pays-icone {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--charte-blanc);
+  color: var(--charte-aplat);
+}
+.pw-bandeau-pays strong {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.pw-bandeau-pays strong span { color: var(--charte-douce); }
+
+@media (max-width: 820px) {
+  .pw-bandeau-pays { flex: 1 1 auto; }
+}

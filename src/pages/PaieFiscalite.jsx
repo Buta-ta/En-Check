@@ -1,12 +1,12 @@
 import PaieWalletLoader from '../components/PaieWalletLoader'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Sun, Moon, FileText, Landmark, Settings, Building2, ChevronDown, Globe2, Users, Gift, Upload, ClipboardCheck, SlidersHorizontal, Percent, Eye } from 'lucide-react'
+import { ArrowLeft, FileText, Landmark, Settings, Building2, ChevronDown, Globe2, Users, Gift, Upload, ClipboardCheck, SlidersHorizontal, Percent, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import PaieCoin from '../components/PaieCoin'
+import PageCulturalBand from '../components/PageCulturalBand'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
-import RaccourcisPages from '../components/RaccourcisPages'
 import PaieEntreprises from '../components/PaieEntreprises'
 import ConfigurationFiscale from './ConfigurationFiscale'
 import FichesPaie from './FichesPaie'
@@ -27,7 +27,10 @@ export function paieAccess(enterprise, superAdmin) {
 
 export default function PaieFiscalite() {
   const navigate = useNavigate()
-  const { darkMode, toggleTheme } = useTheme()
+  /*  Le thème n'est plus piloté d'ici : le bouton clair / sombre a quitté
+      le bandeau le 27/11, il vit dans le rail, une seule fois. On ne garde
+      que la valeur, pour l'attribut `data-theme` de la page. */
+  const { darkMode } = useTheme()
   const [params, setParams] = useSearchParams()
   const [context, setContext] = useState(null)
   const [enterpriseId, setEnterpriseId] = useState(null)
@@ -87,18 +90,99 @@ export default function PaieFiscalite() {
     localStorage.setItem(`last_enterprise_id_${context.admin.id}`, id)
   }
 
+  /*  Le retour et l'entreprise partagent la même garde : quitter la paie ou
+      changer d'entreprise abandonne les saisies en cours, il faut le dire
+      avant, pas après. */
+  const confirmerSortie = () => {
+    if (window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) navigate('/dashboard')
+  }
+
   return <div className="paie-page paie-workspace" data-theme={darkMode ? 'dark' : 'light'}>
-    <header className="pw-header">
-      <div className="pw-brand"><button className="paie-btn" aria-label="Retour au tableau de bord" onClick={() => { if (window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) navigate('/dashboard') }}><ArrowLeft size={20}/></button><EnCheckBrandMark size={38}/><h1>En-Check · Paie & Fiscalité</h1></div>
-      {context && <div className="pw-context">
-        <label className="pw-enterprise-control"><span className="pw-context-icon"><Building2 size={20}/></span><span className="pw-enterprise-value"><span className="pw-control-label">ENTREPRISE</span><select aria-label="Entreprise" value={enterpriseId || ''} disabled={busy} onChange={e => changeEnterprise(e.target.value)}>{context.enterprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></span><ChevronDown size={15} aria-hidden="true"/></label>
-        <div className="pw-country-control" aria-label="Pays fiscal et devise"><PaieCoin variant={2}><Globe2 size={18}/></PaieCoin><div><span className="pw-control-label">PAYS · DEVISE</span><strong>{enterprise?.country_code || 'Non défini'}<span aria-hidden="true"> / </span>{enterprise?.currency || 'Non définie'}</strong></div></div>
-      </div>}
-      <button className="paie-btn" aria-label={darkMode ? 'Mode clair' : 'Mode sombre'} onClick={toggleTheme}>{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</button>
-      <div className="pw-header-lower"><div className="pw-workspace-caption"><span className="pw-caption-diamond" aria-hidden="true">◆</span><div><strong>Vos équipes. Votre rythme.</strong><span>Préparer, vérifier, calculer.</span></div></div>
-      <div className="pw-shortcuts" onClickCapture={event => { if (event.target.closest('a,button') && !window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) { event.preventDefault(); event.stopPropagation() } }}><RaccourcisPages excludePaths={['/paie']} /></div></div>
-    </header>
-    <div className="pw-bogolan pw-bogolan-top" aria-hidden="true" />
+    {/* ═══ LE BLOC DE TÊTE : un cadre bogolan, comme la page Retards ═══
+
+        Sa demande du 27/11 : « transforme ce bloc qu'il ressemble exactement
+        comme au bloc de la page retards, un bloc encerclé du bandeau bogolan ».
+        Et deux retraits dans la même phrase : les raccourcis de pages, et le
+        bouton clair / sombre.
+
+        Ce ne sont pas deux oublis, c'est la même leçon qu'aux Retards le
+        25/11 : une page n'a pas à se refaire menu — le rail s'en charge — et
+        le thème est un choix de l'application, pas d'une page. Le bouton de
+        thème vivait ici en double ; il reste au rail, une seule fois.
+
+        Le motif ne se pose plus AU-DESSUS de la page : il l'ENTOURE. Une
+        seule toile, `placement="cadre"`, et la planche posée par-dessus —
+        c'est elle qui masque le milieu, donc le bogolan ne se voit qu'en
+        lisière. Une seule bande par page : celle du haut, qui ouvrait la
+        page, disparaît avec ce placement. */}
+    <div className="pw-cadre">
+      <PageCulturalBand pathname="/paie" placement="cadre" />
+      <div className="pw-planche">
+        <header className="pw-bandeau">
+          <button
+            type="button"
+            className="pw-retour"
+            onClick={confirmerSortie}
+            title="Retour au tableau de bord"
+            aria-label="Retour au tableau de bord"
+          >
+            <ArrowLeft size={17} aria-hidden="true" />
+          </button>
+
+          <span className="pw-marque" aria-hidden="true">
+            <EnCheckBrandMark size={34} />
+          </span>
+
+          <div className="pw-bandeau-titre">
+            <h1>En-Check · Paie &amp; Fiscalité</h1>
+            <p>Vos équipes. Votre rythme.</p>
+          </div>
+
+          {/*  L'entreprise reste ICI : c'est elle qui décide de tout ce que la
+              page montre ensuite, et la changer abandonne les saisies. Elle
+              prend la place de la période des Retards, à droite du bandeau. */}
+          {context && (
+            <label className="pw-bandeau-entreprise">
+              <span className="pw-bandeau-entreprise-icone" aria-hidden="true">
+                <Building2 size={17} />
+              </span>
+              <span className="pw-bandeau-entreprise-corps">
+                <span className="pw-eyebrow">Entreprise</span>
+                <select
+                  aria-label="Entreprise"
+                  value={enterpriseId || ''}
+                  disabled={busy}
+                  onChange={e => changeEnterprise(e.target.value)}
+                >
+                  {context.enterprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+              </span>
+              <ChevronDown size={15} aria-hidden="true" />
+            </label>
+          )}
+
+          {/*  Le pays fiscal et la devise restent affichés : ils ne se règlent
+              pas ici, mais ils décident de tout ce qui se calcule. Ils
+              prennent la seconde place à droite, comme la période des
+              Retards — une étiquette, une valeur, rien de plus. */}
+          {context && (
+            <div className="pw-bandeau-pays" aria-label="Pays fiscal et devise">
+              <span className="pw-bandeau-pays-icone" aria-hidden="true">
+                <Globe2 size={17} />
+              </span>
+              <span className="pw-bandeau-entreprise-corps">
+                <span className="pw-eyebrow">Pays · devise</span>
+                <strong>
+                  {enterprise?.country_code || 'Non défini'}
+                  <span aria-hidden="true"> / </span>
+                  {enterprise?.currency || 'Non définie'}
+                </strong>
+              </span>
+            </div>
+          )}
+        </header>
+      </div>
+    </div>
     {error ? <div className="pw-error" role="alert">{error}<button className="paie-btn" onClick={() => setRetry(n => n + 1)}>Réessayer</button></div>
       : !context ? <PaieWalletLoader label="Chargement de votre espace Paie & Fiscalité…"/>
       : !section ? <p className="pw-loading">Les modules Paie et Fiscalité ne sont pas activés pour cette entreprise.</p>
