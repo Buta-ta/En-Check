@@ -171,6 +171,21 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(html).toContain('jf-annee-suite')
   })
 
+  it('le titre ne se coupe jamais lettre à lettre', () => {
+    //  La panne du 27/11 : entre 900 et 1 200 px, la colonne du titre tombait
+    //  à min-content — une lettre — et « Jours fériés » s'écrivait à la
+    //  verticale sur 750 px de haut.
+    //  1. le titre refuse la césure et le retour dans un mot, à toute largeur ;
+    expect(CSS).toContain('.jf-page .jf-titre {')
+    expect(CSS).toMatch(/\.jf-page \.jf-titre \{[^}]*overflow-wrap: normal;/)
+    expect(CSS).toMatch(/\.jf-page \.jf-titre \{[^}]*hyphens: none;/)
+    expect(CSS).toMatch(/\.jf-page \.jf-titre \{[^}]*min-width: min-content;/)
+    //  2. la colonne du titre ne peut plus s'écraser : plancher de contenu.
+    expect(CSS).toContain('grid-template-columns: auto auto minmax(min-content, 1fr) auto auto;')
+    //  3. sous 1 200 px, le titre prend une ligne à lui, pleine largeur.
+    expect(CSS).toMatch(/@media \(max-width: 1200px\) \{[\s\S]*?\.jf-page \.jf-entete \.jf-titre-bloc \{\s*grid-column: 1 \/ -1;/)
+  })
+
   it('le sous-titre est retiré, et la page tient sur petit écran', () => {
     //  « Enlève ce texte » (26/11) : la phrase de présentation ne s'affiche
     //  plus. L'eyebrow et le titre restent.

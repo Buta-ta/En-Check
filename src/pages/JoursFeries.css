@@ -4157,3 +4157,125 @@
   .jf-bouton { width: 100%; justify-content: center; }
   .jf-barre .jf-bouton { width: auto; }
 }
+
+/* ═══ LE TITRE NE SE CASSE PLUS LETTRE À LETTRE ════════════════════════════
+
+     Sa capture du 27/11, fenêtre réduite : « Jours fériés » s'écrit à la
+     VERTICALE, une lettre par ligne, sur 750 px de haut, et tout le reste de
+     l'en-tête tombe en dessous.
+
+     La cause n'est pas le titre, c'est la grille de l'en-tête. Elle a cinq
+     colonnes `auto auto minmax(0,1fr) auto auto` : entre 900 et 1 200 px, le
+     sélecteur d'entreprise et les quatre sceaux occupent les quatre colonnes
+     `auto`, donc la colonne du titre tombe à ZÉRO. Un titre dans une colonne
+     de 0 px, avec `overflow-wrap: anywhere`, ne peut que se casser à chaque
+     caractère — il ne déborde pas, il se comprime, ce qui est bien pire.
+
+     Le remède : le titre garde une largeur PLANCHER, et les quatorze `auto`
+     cèdent avant lui. Si le plancher ne tient pas, c'est l'en-tête entier qui
+     passe à la ligne (le titre prend alors toute la largeur), jamais le titre
+     qui s'effile. */
+.jf-entete {
+  grid-template-columns: auto auto minmax(min-content, 1fr) auto auto;
+}
+
+/*  En dessous de 1 200 px, les quatre sceaux ne tiennent plus à droite du
+     titre : ils passent sous lui, sur leur propre ligne, et le titre garde
+     toute la largeur de la page. On le fait AVANT que la grille ne se serre. */
+@media (max-width: 1200px) {
+  .jf-entete {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    row-gap: 14px;
+  }
+  .jf-entete .jf-titre-bloc { grid-column: 3; }
+  .jf-entete .jf-entete-droite { grid-column: 4; }
+  .jf-entete .jf-sceaux {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    padding: 0;
+  }
+  .jf-sceaux-fil { display: none; }
+  .jf-sceaux .jf-mesures { gap: 14px; }
+}
+
+/*  Entre 900 et 1 200 px, le titre est encore à côté du retour et du sceau :
+     il lui faut au moins la moitié de la largeur pour ne pas s'effiler. */
+@media (min-width: 901px) and (max-width: 1200px) {
+  .jf-titre { font-size: clamp(28px, 4.6vw, 44px); white-space: nowrap; }
+  .jf-eyebrow { white-space: nowrap; }
+}
+
+/*  Sous 900 px, le titre a déjà sa propre ligne : il peut se replier sur deux
+     lignes si la police est grande, mais jamais à l'intérieur d'un mot. */
+@media (max-width: 900px) {
+  .jf-titre { overflow-wrap: normal; word-break: normal; hyphens: none; }
+  .jf-titre-bloc { width: 100%; }
+}
+
+/* ═══ LE TITRE NE SE COUPE JAMAIS, ET IL A TOUJOURS SA LARGEUR ═════════════
+
+     Deuxième passe sur la panne du 27/11 — la première n'allait pas assez
+     loin. Voici le mécanisme exact, pour qu'il ne revienne pas :
+
+       · `overflow-wrap: break-word` + `hyphens: auto` sur le titre font
+         tomber son `min-content` à la largeur d'UNE LETTRE ;
+       · la grille de l'en-tête place le titre dans `minmax(min-content, 1fr)`
+         entre quatre colonnes `auto` (retour, sceau, sélecteur, sceaux) ;
+       · quand ces quatre colonnes ne laissent plus la place, la colonne du
+         titre se résout à `min-content` — c'est-à-dire à une lettre. D'où
+         « J o u r s  f é r i é s » écrit à la verticale sur 750 px.
+
+     On coupe le mal à la racine, et à TOUTES les largeurs : un titre de deux
+     mots n'a jamais besoin d'être coupé au milieu d'un mot. `overflow-wrap`
+     repasse à `normal`, les césures sont interdites, et le titre a un plancher
+     de largeur. Si ce plancher ne tient pas à côté des autres blocs, c'est
+     l'en-tête qui passe à la ligne — jamais le titre qui s'effile. */
+.jf-page .jf-titre {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+  white-space: normal;
+  min-width: min-content;
+}
+
+/*  Sous 1 200 px, les quatre sceaux et le sélecteur ne cohabitent plus avec
+     le titre sur une seule ligne : le titre prend une ligne à lui, pleine
+     largeur, et les sceaux passent dessous. On ne laisse jamais la grille
+     arbitrer entre un titre et quatre disques. */
+@media (max-width: 1200px) {
+  .jf-page .jf-entete {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    row-gap: 12px;
+  }
+  .jf-page .jf-entete .jf-titre-bloc {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+  .jf-page .jf-entete .jf-entete-droite {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-content: flex-end;
+  }
+  .jf-page .jf-entete .jf-sceaux {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-content: flex-start;
+    padding: 0;
+  }
+  .jf-page .jf-titre { font-size: clamp(26px, 5.2vw, 44px); }
+}
+
+/*  Sous 900 px, le sélecteur descend sous le titre : plus rien à côté de lui. */
+@media (max-width: 900px) {
+  .jf-page .jf-entete .jf-entete-droite {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+  .jf-page .jf-entete .jf-titre-bloc { grid-row: 1; }
+  .jf-page .jf-entete .jf-sceaux { grid-row: 3; }
+  .jf-page .jf-titre { font-size: clamp(24px, 7vw, 34px); }
+}
