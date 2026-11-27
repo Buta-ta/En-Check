@@ -351,14 +351,26 @@ bloc `:hover` / `:active` / `:disabled` de boutons). Trois conséquences, mesur�
 - `npm run charte`, lu sur la feuille : **4** tailles déclarées (quatre jetons,
   comme avant ce chapitre), **0** couleur en dur hors couche d'alias, **0** rayon
   hors liste, **0** flou, **0** dégradé.
-- Et le compteur du dépôt n'a PAS bougé d'une virgule entre la base et ce
-  chapitre — mesuré en rejouant le contrôle après `git stash` : 67 tailles
-  distinctes · 42 marges · 27 rayons · 4441 couleurs en dur dans 180 fichiers,
-  avant comme après, y compris les DÉCLARATIONS (2305 / 1679 / 1181 des deux
-  côtés) : la reprise déplace des règles à l'intérieur de la même feuille, elle
-  n'y ajoute pas de valeurs. Les 67 tailles ne viennent pas d'ici :
-  `src/pages/JoursFeries.css`, arrivé par #392, en porte à lui seul une douzaine
-  en dur (10, 10,5, 11, 11,5, 12, 12,5, 13, 13,5, 14, 14,5, 15, 16 px).
+- Et le compteur du dépôt n'a PAS bougé d'une virgule entre la base de cette
+  branche et ce chapitre — mesuré deux fois : en rejouant le contrôle après un
+  `git stash`, puis en relanchant `scripts/charte-check.mjs` dans les deux
+  tarballs d'archives (`a0a9884`, le parent de la reprise du 26/12, et
+  `75a9cb7`, sa fusion) : **67 tailles distinctes · 27 rayons · 4441 couleurs en
+  dur dans 180 fichiers**, avec les DÉCLARATIONS (2305 / 1679 / 1181 des deux
+  côtés). Cette reprise déplace des règles à l'intérieur de la même feuille, elle
+  n'y ajoute aucune valeur.
+- Le recoupement avec les archives **confirme** ce que le chapitre du 26/12
+  revendiquait, ligne 187-190, sans l'avoir mesuré aux révisions : la reprise a
+  bien retiré **une marge** au recensement du dépôt (**43 → 42** marges
+  distinctes), **4471 → 4441** couleurs en dur, **182 → 180** fichiers — et rien
+  d'autre ne bouge : 67 tailles et 27 rayons des deux côtés.
+  Les 67 tailles ne viennent pas d'ici : `src/pages/JoursFeries.css` (la page
+  Jours fériés) en porte, mesuré au regex sur ses seules lignes hors commentaires,
+  **132 déclarations de `font-size`, 38 valeurs littérales distinctes — dont 10
+  `clamp()`** (5,8 ; 6,2 ; 6,5 ; 6,8 ; 7,5 ; 8 ; 8,5 ; 9 ; 9,5 ; 10 ; 10,5 ; 11 ;
+  11,5 ; 12 ; 12,5 ; 13 ; 13,5 ; 14 ; 14,5 ; 15 ; 16 ; 17 ; 18 ; 19 ; 20 ; 21 ;
+  22 ; 26 px). Autrement dit : cette page-là est le vrai chantier de la charte, et
+  il n'a jamais été dans mon périmètre ni dans mon autorisation.
 
 ### Le câble de l'export, vérifié ligne à ligne
 
