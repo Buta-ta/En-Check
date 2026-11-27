@@ -2088,7 +2088,6 @@
 .jf-retour {
   width: 42px;
   height: 42px;
-  margin-top: 34px;
   color: var(--charte-encre);
   background: var(--charte-surface);
   border: var(--jf-trait);
@@ -2107,7 +2106,6 @@
 .jf-entete > svg {
   width: 78px;
   height: 78px;
-  margin-top: 16px;
   padding: 4px;
   border: var(--jf-trait);
   border-radius: var(--jf-radius-capsule);
@@ -4476,6 +4474,22 @@
      et seulement en media queries. Aucune règle ne vaut « par défaut » : la
      largeur décide, toujours. */
 
+/*  ── Le rang du haut : deux disques, deux tailles ────────────────────────
+ *
+ *   `.jf-retour` portait `margin-top: 34px` et `.jf-entete > svg` portait
+ *   `margin-top: 16px` — deux valeurs de l'ancienne mise en page, où le sceau
+ *   vivait à côté du TITRE et devait s'aligner sur sa ligne de base. Ils ne
+ *   sont plus côte à côte avec lui : ils forment leur propre rang. Ces marges
+ *   ne servaient donc plus qu'à mettre le rang de travers et à coller les
+ *   deux disques (sa capture du 28/11 : « le bouton flèche retour un peu
+ *   plus à gauche »). On les annule ici, une fois, pour toutes les largeurs :
+ *   l'alignement vient de `align-self: center`, la distance de `column-gap`.
+ */
+.jf-page .jf-entete > .jf-retour,
+.jf-page .jf-entete > .jf-sceau {
+  margin-top: 0;
+}
+
 /*  ── Grand écran : tout sur une ligne ─────────────────────────────────── */
 @media (min-width: 1201px) {
   .jf-entete {
@@ -4513,15 +4527,44 @@
   .jf-titre { font-size: clamp(26px, 5.2vw, 44px); }
 }
 
-/*  ── Sous 900 px : retour et sceau, puis titre, puis sceaux ───────────── */
+/*  ── Sous 900 px : retour et sceau, puis titre, puis sceaux ─────────────
+ *
+ *   Sa capture du 28/11 (image 1), fenêtre réduite : « le bouton flèche
+ *   retour un peu plus à gauche », et « tu peux un peu espacer les éléments
+ *   en haut ». Deux restes de l'ancienne mise en page en étaient la cause,
+ *   et ils n'ont jamais été annulés :
+ *
+ *     · `.jf-retour` garde `margin-top: 34px` et `.jf-entete > svg` garde
+ *       `margin-top: 16px` — des valeurs posées quand le sceau vivait à
+ *       CÔTÉ du titre, pour les aligner sur sa ligne de base. Le retour et
+ *       le sceau étaient donc décalés de travers, et le sceau, plus haut,
+ *       semblait manger le bord gauche ;
+ *     · la gouttière de colonne restait à 14 px alors que deux disques de
+ *       42 et 62 px se touchent presque à cette distance.
+ *
+ *   On annule les deux marges, on porte la gouttière à 18 px, et le retour
+ *   s'aligne à gauche de la gouttière de page — comme le titre juste
+ *   dessous, ce qui fait un vrai bord.
+ */
 @media (max-width: 900px) {
   .jf-entete {
     grid-template-columns: auto auto minmax(0, 1fr);
-    row-gap: 10px;
-    padding: 14px 12px 10px;
+    column-gap: 18px;
+    row-gap: 14px;
+    padding: 18px 16px 12px;
   }
-  .jf-entete > .jf-retour { grid-column: 1; grid-row: 1; align-self: center; }
-  .jf-entete > .jf-sceau { grid-column: 2; grid-row: 1; align-self: center; }
+  .jf-entete > .jf-retour {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    margin-top: 0;
+  }
+  .jf-entete > .jf-sceau {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    margin-top: 0;
+  }
   .jf-entete > .jf-titre-bloc { grid-column: 1 / -1; grid-row: 2; }
   .jf-entete > .jf-sceaux {
     grid-column: 1 / -1;
@@ -4529,12 +4572,21 @@
     justify-content: flex-start;
     flex-wrap: wrap;
     padding: 0;
+    /*  les quatre mesures ne collent plus au titre : 22 px de champ */
+    margin-top: 8px;
   }
   .jf-entete > .jf-entete-droite { display: none; }
   .jf-titre { font-size: clamp(24px, 7vw, 34px); }
 }
 
-/*  ── Sous 560 px : les quatre mesures en grille de deux ──────────────── */
+/*  ── Sous 560 px : les quatre mesures en grille de deux ────────────────
+ *
+ *   « Tu peux un peu espacer les éléments en haut » : la grille de deux
+ *   était réglée à `gap: 10px`, donc les deux colonnes se touchaient presque
+ *   au milieu alors que les disques gardent un anneau et une ombre portée de
+ *   3 px. L'écart passe à 18 px en travers et 16 px en hauteur — la mesure
+ *   respire, et l'ombre de l'un ne recouvre plus le bord de l'autre.
+ */
 @media (max-width: 560px) {
   .jf-entete > .jf-sceau { width: 48px; height: 48px; max-width: 48px; }
   /*  On ne redéclare pas la position : elle est déjà dite par le palier
@@ -4543,7 +4595,7 @@
   .jf-sceaux .jf-mesures {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 16px 18px;
     width: 100%;
   }
   .jf-sceaux .jf-mesure { width: 100%; max-width: none; height: auto; aspect-ratio: 1; }

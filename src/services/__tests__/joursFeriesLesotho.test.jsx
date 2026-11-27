@@ -273,6 +273,32 @@ describe('2. la lisière de l’année place chaque fête', () => {
     expect(CSS).toMatch(/@media \(max-width: 1200px\) \{[\s\S]*?\.jf-entete > \.jf-titre-bloc \{\s*grid-column: 1 \/ -1;/)
   })
 
+  it('le rang du haut est droit : plus de marges héritées', () => {
+    //  Sa capture du 28/11, fenêtre réduite : « le bouton flèche retour un
+    //  peu plus à gauche, tu peux un peu espacer les éléments en haut ».
+    //  Deux marges de l'ancienne mise en page — quand le sceau vivait à CÔTÉ
+    //  du titre — n'avaient jamais été annulées : `margin-top: 34px` sur le
+    //  retour, `margin-top: 16px` sur le sceau. Elles désalignaient le rang.
+    const retour = CSS.match(/\.jf-retour \{([^}]*)\}/)
+    expect(retour).not.toBeNull()
+    expect(retour[1]).not.toMatch(/margin-top/)
+    const sceauSvg = CSS.match(/\.jf-entete > svg \{([^}]*)\}/)
+    expect(sceauSvg).not.toBeNull()
+    expect(sceauSvg[1]).not.toMatch(/margin-top/)
+    //  …et la remise à zéro est écrite une fois, pour toutes les largeurs.
+    expect(CSS).toMatch(
+      /\.jf-page \.jf-entete > \.jf-retour,[\s\S]{0,120}\.jf-page \.jf-entete > \.jf-sceau \{\s*margin-top: 0;/
+    )
+  })
+
+  it('les éléments du haut ne se touchent pas', () => {
+    //  Deux disques de 42 et 62 px à 14 px l'un de l'autre se touchaient
+    //  presque ; la grille de deux mesures tenait à `gap: 10px`, si bien que
+    //  l'ombre de l'un recouvrait le bord de l'autre.
+    expect(CSS).toMatch(/@media \(max-width: 900px\)[\s\S]*?column-gap: 18px;/)
+    expect(CSS).toMatch(/@media \(max-width: 560px\)[\s\S]*?gap: 16px 18px;/)
+  })
+
   it('le sous-titre est retiré, et la page tient sur petit écran', () => {
     //  « Enlève ce texte » (26/11) : la phrase de présentation ne s'affiche
     //  plus. L'eyebrow et le titre restent.
