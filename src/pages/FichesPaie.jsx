@@ -18,6 +18,7 @@ import CurrencyService from '../services/currencyService'
 import { publishPayrollBatch, PayrollDeliveryBlocked, PayrollTaxReviewRequired } from '../services/payrollDelivery'
 import PaieDeliveryControl from '../components/PaieDeliveryControl'
 import PaieTaxOverrideDialog from '../components/PaieTaxOverrideDialog'
+import PastilleEntreprise from '../components/paie/PastilleEntreprise'
 import * as XLSX from 'xlsx'
 import LeaveBalanceService from '../services/leaveBalanceService'
 import {
@@ -1376,7 +1377,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               <div style={S.card} className="pay-card pw-settings-summary">
                 <div style={S.cardHeader}>
                   <div style={S.cardHeaderLeft}>
-                    <div style={{ ...S.cardIcon, background: P.vert1 }}><Building2 size={18} color={P.vert} /></div>
+                    {/* Logo de l'entreprise à la place de l'icône d'immeuble ; repli = rond vert + icône. */}
+                    <PastilleEntreprise entreprise={enterpriseData} taille={34} icone={<Building2 size={17} color={P.vert} />} style={{ ...S.cardIcon, background: P.vert1 }} />
                     <div><h3 style={S.cardTitle}>Vos repères</h3><p style={S.cardSub}>Aperçu des valeurs actuellement saisies</p></div>
                   </div>
                 </div>

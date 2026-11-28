@@ -1,11 +1,12 @@
 import PaieWalletLoader from '../components/PaieWalletLoader'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, FileText, Landmark, Settings, Building2, ChevronDown, Globe2, Users, Gift, Upload, ClipboardCheck, SlidersHorizontal, Percent, Eye } from 'lucide-react'
+import { ArrowLeft, FileText, Landmark, Settings, ChevronDown, Globe2, Users, Gift, Upload, ClipboardCheck, SlidersHorizontal, Percent, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import PaieCoin from '../components/PaieCoin'
 import PageCulturalBand from '../components/PageCulturalBand'
+import PastilleEntreprise from '../components/paie/PastilleEntreprise'
 import CoqueAdmin from '../components/coque/CoqueAdmin'
 import SidebarUnique from '../components/SidebarUnique'
 import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
@@ -194,9 +195,14 @@ export default function PaieFiscalite() {
                 prend la place de la période des Retards, à droite du bandeau. */}
             {context && (
               <label className="pw-bandeau-entreprise">
-                <span className="pw-bandeau-entreprise-icone" aria-hidden="true">
-                  <Building2 size={17} />
-                </span>
+                {/*  Le logo de l'entreprise choisie, pas une icône
+                    d'immeuble : sa demande du 27/11. Le repli est son
+                    initiale, comme dans la bande du rail. */}
+                <PastilleEntreprise
+                  entreprise={enterprise}
+                  taille={30}
+                  className="pw-bandeau-entreprise-logo"
+                />
                 <span className="pw-bandeau-entreprise-corps">
                   <span className="pw-eyebrow">Entreprise</span>
                   <select

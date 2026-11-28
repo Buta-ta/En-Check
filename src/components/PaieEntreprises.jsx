@@ -18,6 +18,7 @@ import { palettePaie } from '../styles/paieTheme'
 import { resumerConfigurations, copierConfigurationFiscale } from '../services/paieFiscale'
 import RecapChargement from './PaieRecapChargement'
 import { CarteGraphique } from './PaieGraphiques'
+import PastilleEntreprise from './paie/PastilleEntreprise'
 
 export default function PaieEntreprises({
   entreprises = [],
@@ -108,9 +109,19 @@ export default function PaieEntreprises({
                   flexWrap: 'wrap',
                 }}
               >
-                <span style={{ color: courante ? P.ambre : P.texteDoux }}>
-                  <Building2 size={15} />
-                </span>
+                {/*  Le logo de CETTE entreprise — pas celui de celle qui est
+                    ouverte : la rangée sert justement à les comparer. Sa
+                    demande du 27/11 : plus d'icône d'immeuble générique. */}
+                <PastilleEntreprise
+                  entreprise={e}
+                  taille={28}
+                  icone={<Building2 size={14} />}
+                  style={{
+                    background: courante ? P.ambre2 : P.voile2,
+                    color: courante ? P.ambre : P.texteDoux,
+                    border: `1px solid ${courante ? P.ambre7 : P.contour}`,
+                  }}
+                />
 
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 800, color: P.texte }}>
