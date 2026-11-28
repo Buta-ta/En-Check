@@ -740,34 +740,80 @@ export function stylesPaie(darkMode = true) {
     padding: 16,
   },
 
+  /*  LA FEUILLE (maquette D « fiche », 02/12)
+      Même cartouche que la modale des profils manquants : coin carré,
+      contour d'encre 2 px, ombre dure de 8 px, bande de colle de 14 px.
+      L'ombre floue de 60 px disparaît (C9). */
   modalContent: {
-    background: p.surface2,
-    border: `1px solid ${p.voile6}`,
-    borderRadius: 24,
+    position: 'relative',
     width: '100%',
-    maxWidth: 560,
-    maxHeight: '90vh',
-    overflow: 'auto',
-    boxShadow: `0 20px 60px ${p.ombre}`,
+    maxWidth: 680,
+    maxHeight: 'calc(100dvh - 48px)',
+    display: 'flex',
+    flexDirection: 'column',
+    paddingBottom: 14,
+    overflow: 'hidden',
+    border: 'var(--charte-trait) solid var(--charte-encre)',
+    borderRadius: 0,
+    backgroundColor: 'var(--charte-surface)',
+    backgroundImage: 'linear-gradient(to bottom, color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 14px, color-mix(in srgb, var(--charte-encre) 16%, transparent) 14px 15px, transparent 15px)',
+    boxShadow: '8px 8px 0 0 var(--charte-encre)',
+    color: 'var(--charte-encre)',
   },
 
   modalHeader: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 24,
-    borderBottom: `1px solid ${p.voile5}`,
+    alignItems: 'flex-start',
+    gap: 16,
+    padding: '24px 24px 16px',
+    borderBottom: '1px solid var(--charte-bordure)',
   },
 
-  modalTitle: { color: p.texte, fontSize: 18, fontWeight: 700, margin: 0 },
+  modalTitle: { color: 'var(--charte-encre)', fontSize: 22, fontWeight: 700, margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em' },
 
+  /*  Le carré chiffré de la maquette D : c'est un repère, pas une décoration.
+      Il est annoncé `aria-hidden` dans le composant. */
+  modalGlyphe: {
+    display: 'grid',
+    placeItems: 'center',
+    width: 56,
+    height: 56,
+    flex: '0 0 auto',
+    border: 'var(--charte-trait) solid var(--charte-encre)',
+    borderRadius: 0,
+    backgroundColor: 'var(--charte-surface)',
+    color: 'var(--charte-encre)',
+    fontFamily: 'var(--charte-police)',
+    fontSize: 26,
+    fontWeight: 700,
+    lineHeight: 1,
+  },
+
+  /*  Le sous-titre : en capitales espacées, SOUS le titre, sur sa propre
+      ligne — jamais à côté. C'est ce qui manquait sur la capture : le titre
+      était seul et rien ne disait de quelle fenêtre il s'agissait. */
+  modalSousTitre: {
+    margin: '6px 0 0',
+    color: 'var(--charte-texte)',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+  },
+
+  /*  « Annuler » et « Enregistrer » étaient illisibles (capture du 02/12,
+      1,51:1 et 2,55:1) parce qu'ils s'écrivaient en valeurs TRANSLUCIDES
+      sur du papier. Ils prennent les jetons de la charte, dont les paires
+      sont vérifiées par le contrôle C2. */
   modalCloseBtn: {
     width: 36,
     height: 36,
-    borderRadius: 10,
-    background: p.voile4,
-    border: `1px solid ${p.voile7}`,
-    color: p.texteDoux2,
+    flex: '0 0 auto',
+    borderRadius: 0,
+    background: 'transparent',
+    border: '1px solid var(--charte-encre)',
+    color: 'var(--charte-texte)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -775,41 +821,56 @@ export function stylesPaie(darkMode = true) {
   },
 
   modalBody: {
-    padding: 24,
+    padding: '20px 24px',
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
+    /*  c'est lui qui défile : la feuille garde son contour et son rabat */
+    flex: '1 1 auto',
+    minHeight: 0,
+    overflowY: 'auto',
   },
 
+  /*  La perforation de la maquette D : le pied se détache comme un talon. */
   modalFooter: {
     display: 'flex',
+    flexWrap: 'wrap',
     justifyContent: 'flex-end',
     gap: 12,
-    padding: '16px 24px',
-    borderTop: `1px solid ${p.voile5}`,
+    padding: '16px 24px 20px',
+    borderTop: '1px dashed var(--charte-encre)',
   },
 
+  /*  LE DÉFAUT DE LA CAPTURE DU 02/12, verrouillé plus bas par un test :
+      `color` valait `p.contour` = rgba(93,66,39,0.22) — une encre à 22 %
+      d'opacité — sur un fond à 4 %. Mesuré sur la capture : 1,51:1.
+      Un bouton doit se voir AVANT de se lire. */
   cancelBtn: {
-    padding: '12px 20px',
-    borderRadius: 12,
-    border: `1px solid ${p.voile7}`,
-    background: p.voile3,
-    color: p.contour,
-    fontWeight: 600,
+    padding: '10px 18px',
+    borderRadius: 0,
+    border: 'var(--charte-trait) solid var(--charte-encre)',
+    backgroundColor: 'var(--charte-surface)',
+    color: 'var(--charte-encre)',
+    fontWeight: 700,
     cursor: 'pointer',
     fontFamily: 'inherit',
-    fontSize: 14,
+    fontSize: 13,
+    whiteSpace: 'nowrap',
+    boxShadow: '2px 2px 0 0 var(--charte-encre)',
   },
 
+  /*  `color` valait `p.overlayFond` = rgba(35,25,17,0.45) : une encre à
+      45 % sur l'ambre. Mesuré sur la capture : 2,55:1 au cœur des glyphes. */
   saveBtn: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 8,
-    padding: '12px 20px',
-    borderRadius: 12,
-    border: 'none',
-    background: `linear-gradient(135deg, ${p.ambre}, ${p.ambreFonce})`,
-    color: p.overlayFond,
+    padding: '10px 18px',
+    borderRadius: 0,
+    border: 'var(--charte-trait) solid var(--charte-encre)',
+    backgroundColor: 'var(--charte-encre)',
+    color: 'var(--charte-surface)',
+    boxShadow: '2px 2px 0 0 var(--charte-encre)',
     fontWeight: 700,
     cursor: 'pointer',
     fontFamily: 'inherit',
