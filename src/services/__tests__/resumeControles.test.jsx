@@ -74,8 +74,9 @@ it('offre la réparation, et la met en avant', async () => {
   const reparer = bouton('Compléter les 4 profils')
   expect(reparer).toBeTruthy()
   //  C'est le bouton PLEIN de la modale : celui qui répare, pas celui qui force.
-  //  La peau est portée par la feuille (classes), plus par des styles en ligne.
-  expect(reparer.className).toContain('pw-feuille-btn--plein')
+  //  Il porte l'encre pleine, là où l'autre reste en papier contouré.
+  expect(reparer.style.backgroundColor).toBe('var(--charte-encre)')
+  expect(reparer.style.color).toBe('var(--charte-blanc)')
   await act(async () => reparer.click())
   expect(actions.onProfils).toHaveBeenCalledTimes(1)
 })
@@ -86,8 +87,8 @@ it('laisse forcer, mais en le nommant et sans le mettre en avant', async () => {
   expect(forcer).toBeTruthy()
   //  Plus de « Générer quand même » : le libellé dit ce qu'on obtient.
   expect(document.body.textContent).not.toContain('Générer quand même')
-  //  Et ce n'est pas le bouton plein — contour seulement.
-  expect(forcer.className).not.toContain('pw-feuille-btn--plein')
+  //  Et ce n'est pas le bouton plein — papier contouré, pas encre pleine.
+  expect(forcer.style.backgroundColor).toBe('var(--charte-surface)')
   await act(async () => forcer.click())
   expect(actions.onGenerer).toHaveBeenCalledTimes(1)
 })
@@ -108,22 +109,34 @@ it('se ferme par Échap, par Annuler et par le fond — jamais par la boîte', a
   expect(actions.onFermer).not.toHaveBeenCalled()
 })
 
-it('se centre dans la place libre, sous la barre et au-dessus du bas d’écran', async () => {
+it('se centre vraiment — sans rembourrage qui déplace, sans défilement qui glisse', async () => {
   await afficher({ zoneHaute: 168, zoneBasse: 0 })
   const fond = document.querySelector('.pw-resume-controles-fond')
-  //  La zone libre commence au bas de la barre figée : 168 + 16 de respiration.
-  expect(fond.style.paddingTop).toBe('184px')
-  //  Et la fenêtre se CENTRE dans ce qui reste — elle n'est plus poussée vers
-  //  le bas par une marge haute qui la décalait (la faute relevée le 28/11).
-  expect(fond.style.justifyContent).toBe('safe center')
-  expect(fond.style.paddingBottom).toBe('16px')
+
+  //  LE DÉFAUT DE LA CAPTURE DU 28/11, verrouillé ici.
+  //  `safe center` n'est pas reconnu sur `justify-content` : la déclaration
+  //  tombait et la fenêtre partait en haut à gauche.
+  expect(fond.style.justifyContent).toBe('center')
+  expect(fond.style.alignItems).toBe('center')
+
+  //  Et le voile ne porte AUCUN rembourrage haut ou bas : c'est lui qui
+  //  poussait la fenêtre vers le bas dès que la boîte défilait.
+  expect(fond.style.paddingTop).toBe('')
+  expect(fond.style.paddingBottom).toBe('')
+  expect(fond.style.overflowY).toBe('')
+
+  //  Seul le rembourrage latéral demeure, pour ne pas toucher les bords.
+  expect(fond.style.paddingLeft).toBe('16px')
 })
 
-it('garde sa hauteur dans la zone, même quand la barre est haute', async () => {
+it('garde sa hauteur dans la place libre, et c’est ELLE qui défile', async () => {
   await afficher({ zoneHaute: 200, zoneBasse: 72 })
   const feuille = document.querySelector('.pw-resume-controles')
   //  200 + 72 + 32 : jamais plus haut que la place réellement libre.
   expect(feuille.style.maxHeight).toBe('calc(100dvh - 304px)')
+  //  Le débordement se règle dans la feuille, jamais dans le voile : ainsi
+  //  rien ne peut la décaler, et son en-tête reste atteignable.
+  expect(feuille.style.overflow).toBe('auto')
 })
 
 it('dit la vérité au singulier comme au pluriel', async () => {
@@ -139,11 +152,10 @@ it('aucune couleur en dur : tout vient des jetons de la charte', async () => {
   //  La règle de la charte (C1) : un #hex dans un composant, et le compte
   //  global monte. Cette modale ne doit pas l'aggraver.
   expect(source.match(/#[0-9a-fA-F]{3,8}\b/g) || []).toEqual([])
-  expect(source).toContain('pw-feuille')
-  //  Et la feuille elle-même ne lit que des jetons : ni hex, ni flou.
-  const feuille = readFileSync('src/components/PaieFeuille.css', 'utf8')
-  expect(feuille).toContain('var(--charte-encre)')
-  expect(feuille.match(/#[0-9a-fA-F]{3,8}\b/g) || []).toEqual([])
-  expect(feuille).not.toContain('backdrop-filter')
-  expect(feuille).not.toContain('blur(')
+  //  La peau est en styles en ligne, sur des JETONS de charte : aucune valeur
+  //  de couleur n'est écrite ici, c'est le thème qui les fournit.
+  expect(source).toContain('var(--charte-encre)')
+  //  Et aucun flou, nulle part (peau D, D-016).
+  expect(source).not.toContain('blur(')
+  expect(source).not.toContain('backdropFilter')
 })
