@@ -58,6 +58,10 @@ import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import useLoadingMinimum from '../hooks/useLoadingMinimum'
 import PageCulturalBand from '../components/PageCulturalBand'
+import CoqueAdmin from '../components/coque/CoqueAdmin'
+import SidebarUnique from '../components/SidebarUnique'
+import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
+import { useTheme } from '../contexts/ThemeContext'
 import RemunerationsLoading from '../components/RemunerationsLoading'
 import {
   BogolanMedaillonSvg, BogolanTeinture, BogolanLosangeSvg, BogolanPanSvg,
@@ -271,6 +275,16 @@ export default function Remunerations() {
   const [controleBudget, setControleBudget] = useState(false)
 
   const estSuperAdmin = admin?.role === 'super_admin'
+
+  /*  ⚠️ Le thème. Cette page a perdu SON bouton sombre/clair le 26/12 (« enlever
+      les raccourcis, le bouton sombre/clair »), et le verrou qui le dit est
+      tenu par la section 8. Ce qui était défendu n'était pas de changer de
+      thème : c'était d'entretenir UN SECOND thème à côté du global — une classe
+      locale posée par l'écran, avec sa palette parallèle. `useTheme()` n'est
+      donc lu ici que pour BRANCHER la commande du rail, jamais pour habiller
+      la page : elle ne pose ni `data-theme`, ni classe, ni écriture de
+      `localStorage`. */
+  const { darkMode, toggleTheme } = useTheme()
   const devise = entreprise?.currency || ''
 
   // ─────────────────────────────────────────────────────────
@@ -292,7 +306,11 @@ export default function Remunerations() {
   const chargerEntreprises = async () => {
     const { data, error } = await supabase
       .from('enterprises')
-      .select('id, name, code')
+      /*  `logo_url` n'est pas un caprice du sélecteur d'en-tête : c'est le rail
+          qui le demande. Sans cette colonne, la pastille de l'entreprise ne
+          trouve rien à signer et retombe sur la lettre — la panne du 26/11,
+          écrite en commentaire dans `SelecteurEntreprise`. */
+      .select('id, name, code, logo_url')
       .eq('is_active', true)
       .order('name')
 
@@ -896,7 +914,60 @@ export default function Remunerations() {
 
   const aucunResultat = visibles.length === 0
 
+  /*  LE RAIL — la fabrique de la maison : `CoqueAdmin` + `SidebarUnique` +
+      `sectionsNavAdmin`, comme le Planning, les Employés, les Pauses, les
+      Retards, les Absences et les Jours fériés. La rubrique « Rémunérations »
+      y figure déjà (`sectionsNavAdmin.js`, gardée par `module_remunerations`),
+      donc le rail s'allume ici tout seul.
+
+      ⚠️ Les deux vues (Contrats · Coût) ne sont PAS données au rail : la page
+      a les siennes, dans son seuil. Deux interrupteurs pour la même lampe,
+      et l'un des deux mentirait — la leçon est écrite à `Planning.jsx`. */
+  const sectionsNav = sectionsNavAdmin({
+    admin,
+    /*  le rail montre toutes les rubriques : la page voisine s'ouvre par SA
+        propre porte (`AdminRoute` et le verrou de module), pas par un
+        grisonnement décidé ici — la ligne de `Absences.jsx` */
+    moduleActif: () => true,
+  })
+
+  const nomAdmin =
+    `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() ||
+    admin?.name || admin?.email || 'Administrateur'
+
+  const surDeconnexion = () => {
+    localStorage.removeItem('admin')
+    localStorage.removeItem('last_enterprise_id')
+    navigate('/login')
+  }
+
+  /*  le rail change d'entreprise par le SEUL chemin de la page :
+      `setSelectedEntId`. L'effet qui regarde cette valeur recharge tout ; un
+      second chemin, et la réponse en retard de l'entreprise quittée écrirait
+      sur la nouvelle. */
+  const entrepriseActive = societes.find(e => e.id === selectedEntId) || null
+  const surEntreprise = (choix) => {
+    const id = typeof choix === 'string' ? choix : choix?.id || null
+    if (id === selectedEntId) return
+    setSelectedEntId(id)
+  }
+
   return (
+    <CoqueAdmin
+      sidebar={
+        <SidebarUnique
+          sections={sectionsNav}
+          nomAdmin={nomAdmin}
+          initialeAdmin={(admin?.first_name || nomAdmin || 'A').charAt(0).toUpperCase()}
+          darkMode={darkMode}
+          surTheme={toggleTheme}
+          surDeconnexion={surDeconnexion}
+          entreprises={societes}
+          entrepriseActive={entrepriseActive}
+          surEntreprise={surEntreprise}
+        />
+      }
+    >
     <div className="rw-page">
       {/*  plus de bandeau motif au-dessus de l'en-tête, plus de couture de
             pointillés : la planche rognée se suffit de son propre cadre. Le
@@ -904,58 +975,64 @@ export default function Remunerations() {
 
       {/* ══ L'EN-TÊTE : une planche rognée en billet ══ */}
       <header className="rw-entete">
-        <button
-          type="button"
-          className="rw-retour"
-          onClick={() => navigate('/dashboard')}
-          aria-label="Revenir au tableau de bord"
-          title="Tableau de bord"
-        >
-          <ArrowLeft size={17} />
-        </button>
-
-        <BogolanLosangeSvg taille={44} ton="cuivre" />
-
-        <div className="rw-titre-bloc">
-          <span className="rw-eyebrow">
-            {vue === 'cout' ? 'Coût de l’employeur' : 'Contrats et montants'}
-          </span>
-          <h1 className="rw-titre">Rémunérations<span>.</span></h1>
-          <p className="rw-sous-titre">
-            {vue === 'cout'
-              ? 'Le brut, les charges et les heures réelles, salarié par salarié, et la projection du mois face au budget.'
-              : 'La base, le rythme, les compléments et les heures prévues de chaque contrat. Une ligne par salarié, avec ce qui reste à renseigner.'}
-          </p>
-        </div>
-
-        <div className="rw-entete-droite">
-          {estSuperAdmin && societes.length > 0 && (
-            <div className="rw-entreprise">
-              <Building2 size={14} aria-hidden="true" />
-              <select
-                value={selectedEntId || ''}
-                onChange={e => setSelectedEntId(e.target.value || null)}
-                aria-label="Entreprise dont on règle les rémunérations"
-              >
-                {societes.map(e => (
-                  <option key={e.id} value={e.id}>{e.name}{e.code ? ` (${e.code})` : ''}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
+        {/*  le tissu bogolan entoure le bloc, comme à la page Employés : deux bandes,
+            une en haut, une en bas, et le cadre rogné les tient par leurs ongles */}
+        <span className="rw-entete-bandeau" aria-hidden="true" />
+        <div className="rw-entete-corps">
           <button
             type="button"
-            className="rw-cadre"
-            onClick={() => { setRafraichir(true); chargerTout(selectedEntId) }}
-            disabled={rafraichir || !selectedEntId}
-            aria-label="Recharger les rémunérations"
-            title="Recharger"
+            className="rw-retour"
+            onClick={() => navigate('/dashboard')}
+            aria-label="Revenir au tableau de bord"
+            title="Tableau de bord"
           >
-            <RefreshCw size={15} className={rafraichir ? 'rw-tourne' : ''} />
+            <ArrowLeft size={17} />
           </button>
 
+          <BogolanLosangeSvg taille={44} ton="cuivre" />
+
+          <div className="rw-titre-bloc">
+            <span className="rw-eyebrow">
+              {vue === 'cout' ? 'Coût de l’employeur' : 'Contrats et montants'}
+            </span>
+            <h1 className="rw-titre">Rémunérations<span>.</span></h1>
+            <p className="rw-sous-titre">
+              {vue === 'cout'
+                ? 'Le brut, les charges et les heures réelles, salarié par salarié, et la projection du mois face au budget.'
+                : 'La base, le rythme, les compléments et les heures prévues de chaque contrat. Une ligne par salarié, avec ce qui reste à renseigner.'}
+            </p>
+          </div>
+
+          <div className="rw-entete-droite">
+            {estSuperAdmin && societes.length > 0 && (
+              <div className="rw-entreprise">
+                <Building2 size={14} aria-hidden="true" />
+                <select
+                  value={selectedEntId || ''}
+                  onChange={e => setSelectedEntId(e.target.value || null)}
+                  aria-label="Entreprise dont on règle les rémunérations"
+                >
+                  {societes.map(e => (
+                    <option key={e.id} value={e.id}>{e.name}{e.code ? ` (${e.code})` : ''}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="rw-cadre"
+              onClick={() => { setRafraichir(true); chargerTout(selectedEntId) }}
+              disabled={rafraichir || !selectedEntId}
+              aria-label="Recharger les rémunérations"
+              title="Recharger"
+            >
+              <RefreshCw size={15} className={rafraichir ? 'rw-tourne' : ''} />
+            </button>
+
+          </div>
         </div>
+        <span className="rw-entete-bandeau rw-entete-bandeau--bas" aria-hidden="true" />
       </header>
 
       <main className="rw-coque">
@@ -2088,5 +2165,6 @@ export default function Remunerations() {
         </div>
       )}
     </div>
+    </CoqueAdmin>
   )
 }

@@ -246,7 +246,12 @@ describe('1. une seule page pour les deux lectures', () => {
     //  premier vit dans le rail, le second redisait la barre latérale
     expect(PAGE).not.toContain('<RaccourcisPages')
     expect(PAGE).not.toContain('aria-checked={darkMode}')
-    expect(PAGE).not.toContain('useTheme')
+    //  `useTheme` est revenu le 8/12, mais pour BRANCHER la commande du rail.
+    //  Ce que la page ne doit pas faire, c'est s'habiller elle-même : ni
+    //  `data-theme`, ni bouton de thème, ni écriture de l'ancre du thème
+    expect(PAGE).not.toContain('data-theme=')
+    expect(PAGE).not.toMatch(/<button[^>]*onClick=\{toggleTheme\}/)
+    expect(PAGE).not.toContain('encheck.theme')
     //  l'interrupteur d'heures, lui, est bien un switch : c'est un réglage
     expect(PAGE).toContain('className="rw-interrupteur"')
   })

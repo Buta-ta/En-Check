@@ -125,6 +125,14 @@
       L'ombre ne peut pas être un `box-shadow` de la planche : le `clip-path`
       la rognerait avec tout le reste — c'est une seconde silhouette, rognée
       du même polygone et décalée, peinte dessous. */
+  /*  le tissu qui entoure la planche : la bande de motif fait 18 px, comme
+      sur la page Employés, et elle s'arrête à l'ongle de cuivre — les quatre
+      carrés du cadre deviennent les agrafes qui tiennent l'étoffe. */
+  --rw-tissu: 18px;
+  --rw-agrafe: calc(var(--rw-filetage) + var(--rw-coing));
+  --rw-tissu-haut: url('/images/paie-bogolan-haut.webp');
+  --rw-tissu-bas: url('/images/paie-bogolan-bas.webp');
+
   --rw-coupe: 14px;
   --rw-filetage: 10px;
   --rw-coing: 6px;
@@ -182,12 +190,49 @@
       pseudos en `z-index` négatif glisseraient sous le fond de la page et la
       planche disparaîtrait derrière le lavis. */
   isolation: isolate;
+  display: block;
+  width: var(--rw-colonne);
+  margin: var(--charte-espace-5) auto var(--charte-espace-4);
+  /*  `padding: 0`, et surtout PAS `overflow: hidden` : le tissu doit toucher
+      les deux traits du cadre, et un rognage ici couperait l'ombre du bloc.
+      Le rognage, c'est le `clip-path` des calques qui le fait, bandeau par
+      bandeau — la leçon est écrite en toutes lettres à `.empv3-entete`. */
+  padding: 0;
+}
+
+/*  LE TISSU — deux bandes de bogolan, une en haut, une en bas, qui entourent
+      le bloc sans le noyer. Le motif est le même fichier que le bandeau de
+      page (`paie-bogolan-haut/bas.webp`), répété à l'horizontale et calé sur
+      la hauteur de la bande ; il ne remplit pas, il ne s'étire pas (C4).
+
+      La bande est DESCENDUE dans le gousset du cadre, de l'épaisseur même du
+      filetage : posée à `top: 0`, elle aurait peint par-dessus le trait
+      d'encre et le contour de la planche se serait ouvert en haut et en bas
+      (C11). Recalée ainsi, l'étoffe est prise DANS le cadre, et les quatre
+      carrés de cuivre — qui sont à `var(--rw-filetage)` du bord — viennent
+      mordre son extrémité comme des agrafes. */
+.rw-entete-bandeau {
+  display: block;
+  height: var(--rw-tissu);
+  margin: var(--rw-filetage) var(--rw-agrafe) 0;
+  background-image: var(--rw-tissu-haut);
+  background-repeat: repeat-x;
+  background-position: center;
+  background-size: auto var(--rw-tissu);
+}
+
+.rw-entete-bandeau--bas {
+  margin: 0 var(--rw-agrafe) var(--rw-filetage);
+  background-image: var(--rw-tissu-bas);
+}
+
+/*  ce qui est posé entre les deux bandes : le rythme du bloc, avec ses
+      gouttières à lui — le tissu, lui, respire de bord à bord */
+.rw-entete-corps {
   display: flex;
   align-items: center;
   gap: var(--charte-espace-3);
   flex-wrap: wrap;
-  width: var(--rw-colonne);
-  margin: var(--charte-espace-5) auto var(--charte-espace-4);
   padding: var(--charte-espace-4) var(--charte-espace-5);
 }
 
@@ -2304,10 +2349,19 @@
 
 @media (max-width: 760px) {
   .rw-entete {
-    padding: var(--charte-espace-3);
     width: calc(100% - 2 * var(--charte-espace-3));
     margin-top: var(--charte-espace-4);
     margin-bottom: var(--charte-espace-3);
+  }
+
+  .rw-entete-corps {
+    padding: var(--charte-espace-3);
+  }
+
+  .rw-entete-bandeau {
+    --rw-tissu: var(--rw-filetage); /* 10 px : la bande maigre, lisible au pouce */
+    height: var(--rw-tissu);
+    background-size: auto var(--rw-tissu);
   }
 
   .rw-entete-droite {

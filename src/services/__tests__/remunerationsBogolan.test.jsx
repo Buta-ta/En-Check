@@ -398,6 +398,10 @@ describe('5. la page se monte et se lit', () => {
     await monter()
 
     expect(hote.querySelector('.rw-page')).not.toBeNull()
+    //  la sidebar est revenue avec son rail : la fabrique de la maison, pas
+    //  une seconde barre écrite à la main dans la page
+    expect(hote.querySelector('aside[aria-label="Rubriques"]')).not.toBeNull()
+    expect(hote.querySelector('.sb-rail')).not.toBeNull()
     expect(hote.querySelector('[data-cultural-motif="bogolan"]')).not.toBeNull()
     expect(hote.querySelector('h1').textContent).toContain('Rémunérations')
     //  quatre mesures, pas trois
@@ -407,6 +411,10 @@ describe('5. la page se monte et se lit', () => {
     expect(hote.querySelector('[data-testid="raccourcis-pages"]')).toBeNull()
     //  et le pied de page en bogolan
     expect(hote.querySelector('.ec-cultural-bottom')).not.toBeNull()
+    //  l'en-tête est une planche entourée d'étoffe, posée DANS la coque
+    const planche = hote.querySelector('.rw-entete')
+    expect(planche.querySelectorAll('.rw-entete-bandeau')).toHaveLength(2)
+    expect(planche.querySelector('.rw-entete-corps')).not.toBeNull()
   })
 
   it('la bande annonce ce qui manque, sans le dire en jargon', async () => {
@@ -1014,5 +1022,124 @@ describe('12. la planche : la forme du billet, rien de plus', () => {
     const repli = DECL12.slice(DECL12.indexOf('@media (max-width: 760px)'))
     expect(repli.slice(0, repli.indexOf('}', repli.indexOf('.rw-entete-droite'))))
       .toContain('border-left: 0')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════
+// 13. LE TISSU AUTOUR DU BLOC, ET LE RAIL DE LA MAISON
+// ═══════════════════════════════════════════════════════════
+describe('13. le tissu autour du bloc, et le rail de la maison', () => {
+  const DECL13 = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+  const regle13 = (selecteur) => {
+    const i = DECL13.indexOf(`\n${selecteur} {`)
+    if (i < 0) return null
+    return DECL13.slice(i, DECL13.indexOf('}', i))
+  }
+  const CAGE = regle13('.rw-entete')
+  const BANDE = regle13('.rw-entete-bandeau')
+  const CORPS = regle13('.rw-entete-corps')
+  const RAIL = (() => {
+    const d = PAGE.indexOf('<SidebarUnique')
+    return PAGE.slice(d, PAGE.indexOf('/>', d))
+  })()
+
+  it('le bloc est entouré d’étoffe, par deux bandes', () => {
+    //  aiguilles bornées : la classe du BAS est un préfixe de celle du haut,
+    //  une recherche sans borne se satisferait d'une seule des deux
+    expect(PAGE).toContain('className="rw-entete-bandeau"')
+    expect(PAGE).toContain('className="rw-entete-bandeau rw-entete-bandeau--bas"')
+    expect((PAGE.match(/<span className="rw-entete-bandeau/g) || [])).toHaveLength(2)
+    expect(CSS).toContain('.rw-entete-bandeau--bas')
+  })
+
+  it('le tissu est le fichier de la maison, pas une copie', () => {
+    const bande = readFileSync('src/components/PageCulturalBand.css', 'utf8')
+    for (const [juron, fichier] of [
+      ['--rw-tissu-haut', 'paie-bogolan-haut.webp'],
+      ['--rw-tissu-bas', 'paie-bogolan-bas.webp'],
+    ]) {
+      expect(CSS, juron).toContain(`${juron}: url('/images/${fichier}')`)
+      //  le même fichier que le bandeau de page : une seule étoffe sur l'écran
+      expect(bande, fichier).toContain(fichier)
+    }
+    //  les deux bandes ne portent pas la même étoffe : la cadette lit son
+    //  propre jeton, sinon c'est le tissage du haut répété deux fois
+    expect(BANDE).toContain('background-image: var(--rw-tissu-haut)')
+    expect(regle13('.rw-entete-bandeau--bas')).toContain('background-image: var(--rw-tissu-bas)')
+    //  répété à l'horizontale, calé sur la hauteur — jamais étiré (C4)
+    expect(BANDE).toContain('background-repeat: repeat-x')
+    expect(BANDE).toContain('background-size: auto var(--rw-tissu)')
+    expect(BANDE).not.toMatch(/background-size:\s*100%/)
+  })
+
+  it('l’étoffe respire de bord à bord, et la cage ne rogne rien', () => {
+    expect(CAGE, 'la cage').not.toBeNull()
+    expect(CAGE).toContain('padding: 0')
+    //  `.empv3-entete` le dit en toutes lettres : un `overflow: hidden` ici
+    //  couperait ce qui dépasse du bloc — et l'ombre du billet avec
+    expect(CAGE).not.toMatch(/overflow:\s*hidden/)
+    //  le rythme du bloc a descendu d'un cran : c'est le corps qui le porte
+    expect(CORPS).toContain('padding: var(--charte-espace-4) var(--charte-espace-5)')
+    expect(CAGE).not.toMatch(/\bpadding:\s*var\(--charte-espace-4\)/)
+    //  et l'étoffe s'arrête à l'ongle de cuivre, calculé depuis le cadre
+    expect(BANDE).toContain('margin: var(--rw-filetage) var(--rw-agrafe) 0')
+    expect(CSS).toContain('--rw-agrafe: calc(var(--rw-filetage) + var(--rw-coing))')
+    //  descendue dans le gousset du cadre : sinon elle peigne le trait
+    //  d'encre et le contour de la planche s'ouvre en haut comme en bas
+    expect(BANDE).not.toMatch(/margin:\s*0 var\(--rw-agrafe\)/)
+    expect(regle13('.rw-entete-bandeau--bas'))
+      .toContain('margin: 0 var(--rw-agrafe) var(--rw-filetage)')
+  })
+
+  it('la page est montée dans la fabrique de la maison', () => {
+    expect(PAGE).toContain('<CoqueAdmin')
+    expect(PAGE).toContain('sidebar={')
+    expect(PAGE).toContain('<SidebarUnique')
+    expect(PAGE).toContain('sections={sectionsNav}')
+    expect(PAGE).toContain('sectionsNavAdmin({')
+    //  le rail n'a PAS les vues de la page : deux interrupteurs pour la même
+    //  lampe, et l'un des deux mentirait (la leçon de `Planning.jsx`)
+    expect(RAIL, 'le rail ne reçoit pas `vues`').not.toMatch(/\bvues=/)
+    expect(RAIL).not.toMatch(/\bvueActive=/)
+  })
+
+  it('le rail porte le profil des entreprises', () => {
+    expect(RAIL).toContain('entreprises={societes}')
+    expect(RAIL).toContain('entrepriseActive={entrepriseActive}')
+    expect(RAIL).toContain('surEntreprise={surEntreprise}')
+    //  la cause de la panne du 26/11 : sans la colonne, la pastille n'a rien
+    //  à signer et retombe sur la lettre
+    const q = PAGE.indexOf('const chargerEntreprises')
+    const requete = PAGE.slice(q, PAGE.indexOf('setSocietes(data', q))
+    expect(requete).toContain(".select('id, name, code, logo_url')")
+    //  et le rail passe par le SEUL chemin de la page : il pose l'identifiant,
+    //  et c'est l'effet qui le regarde qui recharge — pas lui
+    expect(PAGE).toContain('if (id === selectedEntId) return')
+    expect(PAGE).toContain('setSelectedEntId(id)')
+    expect(PAGE).toMatch(/if \(selectedEntId\) chargerTout\(selectedEntId\)/)
+    const q2 = PAGE.indexOf('const surEntreprise')
+    const corps = PAGE.slice(q2, PAGE.indexOf('\n  }', q2))
+    expect(corps, 'un second chemin de chargement, et la réponse en retard de '
+      + "l'entreprise quittée écrit sur la nouvelle").not.toContain('chargerTout')
+  })
+
+  it('le rail commande le thème, la page ne se rhabille pas', () => {
+    //  `useTheme()` est revenu dans la page, et c'est voulu : non pas pour
+    //  l'habiller, mais pour brancher la commande du rail. Le verrou du 26/12
+    //  tenait autre chose — un SECOND thème entretenu par l'écran.
+    expect(PAGE).toContain('const { darkMode, toggleTheme } = useTheme()')
+    expect(RAIL).toContain('darkMode={darkMode}')
+    expect(RAIL).toContain('surTheme={toggleTheme}')
+    const d = PAGE.indexOf('<SidebarUnique')
+    const horsRail = PAGE.slice(0, d) + PAGE.slice(PAGE.indexOf('/>', d) + 2)
+    //  le seul `toggleTheme` hors du rail est LA déstructure qui l'alimente :
+    //  ni bouton, ni props d'habillage
+    expect(horsRail.match(/toggleTheme/g), horsRail.slice(0, 40)).toHaveLength(1)
+    expect(horsRail).not.toMatch(/onClick=\{toggleTheme\}/)
+    expect(horsRail).not.toMatch(/darkMode=\{darkMode\}/)
+    expect(PAGE.match(/toggleTheme/g)).toHaveLength(2)
+    expect(PAGE).not.toContain('data-theme=')
+    expect(PAGE).not.toContain('encheck.theme')
+    expect(PAGE).not.toMatch(/<button[^>]*onClick=\{toggleTheme\}/)
   })
 })
