@@ -399,3 +399,60 @@ it('37. cancelBtn et saveBtn portent une encre OPAQUE, jamais un voile', () => {
   expect(contraste(jetons('encre'), jetons('surface'))).toBeGreaterThanOrEqual(4.5)
   void styles
 })
+
+// ── 02/12 (3) : « on ne peut pas scroller » et « des écrits illisibles » ──
+
+it('38. les libellés de cases se lisent, et la fenêtre peut défiler', () => {
+  const theme = lire('src/styles/paieTheme.js')
+  const interiors = lire('src/components/PaieInteriors.css')
+
+  //  LES ÉCRITS ILLISIBLES. `p.contour` vaut rgba(93,66,39,0.22) : c'est un
+  //  jeton de BORDURE. Posé en `color`, il donnait 1,43:1 sur le papier —
+  //  les cases à cocher apparaissaient délavées. Un libellé est du texte.
+  const caseBloc = theme.slice(theme.indexOf('checkboxLabel: {'), theme.indexOf('},', theme.indexOf('checkboxLabel: {')))
+  expect(caseBloc).not.toContain('color: p.contour')
+  expect(caseBloc).toContain("color: 'var(--charte-encre)'")
+
+  //  LE DÉFILEMENT. Deux conditions, et il suffit d'en oublier une :
+  //   · la feuille ne rétrécit pas (`flex: 0 0 auto`) — sinon elle s'écrase
+  //     à la hauteur du voile et rogne son contenu ;
+  //   · le fieldset peut défiler (`flex: 1 1 auto` + `min-height: 0`).
+  //  `min-height: 0` est LA ligne qui manquait : sans elle, un enfant de
+  //  flex prend la hauteur de son contenu et déborde au lieu de glisser.
+  //  Il y a plusieurs `.pw-drawer` dans le fichier — on cible la DÉFINITION,
+  //  celle qui commence en début de ligne et ouvre le bloc de la feuille.
+  const debutDrawer = interiors.search(/^\.pw-drawer \{$/m)
+  expect(debutDrawer).toBeGreaterThan(-1)
+  const drawer = interiors.slice(debutDrawer, interiors.indexOf('}', debutDrawer) + 1)
+  expect(drawer).toContain('flex: 0 0 auto')
+
+  const fieldset = interiors.slice(
+    interiors.indexOf('fieldset.pw-drawer-content'),
+    interiors.indexOf('}', interiors.indexOf('fieldset.pw-drawer-content')),
+  )
+  expect(fieldset).toContain('overflow-y: auto')
+  expect(fieldset).toContain('min-height: 0')
+  expect(fieldset).toContain('flex: 1 1 auto')
+
+  //  Et la règle de fond sur l'encre : elle tient largement 4,5:1.
+  const jeton = (nom) => {
+    const m = interiors.match(new RegExp(`--charte-${nom}: (#[0-9A-Fa-f]{6})`))
+      || theme.match(new RegExp(`--charte-${nom}: (#[0-9A-Fa-f]{6})`))
+    return m ? m[1] : null
+  }
+  const lum = (hex) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)))
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+  }
+  const jetons = (nom) => {
+    const m = lire('src/styles/tokens.css').match(new RegExp(`--charte-${nom}: (#[0-9A-Fa-f]{6})`))
+    return m ? m[1] : null
+  }
+  const contraste = (a, b) => {
+    const x = lum(a), y = lum(b)
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+  expect(contraste(jetons('encre'), jetons('surface'))).toBeGreaterThanOrEqual(10)
+  void jeton
+})
