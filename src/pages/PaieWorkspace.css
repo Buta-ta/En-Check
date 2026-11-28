@@ -310,13 +310,10 @@
   color: var(--charte-encre);
   cursor: pointer;
 }
-.pw-bandeau-entreprise-icone {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 auto;
-  border-radius: 999px;
+/*  La pastille du logo prend la place de l'icône d'immeuble (27/11). Le
+    fond et le rond restent : ils tiennent le cadre quand l'image est
+    encore en train de se signer, et l'initiale du repli s'y pose. */
+.pw-bandeau-entreprise-logo {
   background: var(--charte-surface2);
   color: var(--charte-aplat);
 }

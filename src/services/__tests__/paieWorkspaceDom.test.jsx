@@ -146,6 +146,39 @@ it('la sidebar et son rail sont revenus, avec les logos des entreprises', async 
   expect(host.querySelector('.sb-rail').textContent.length).toBeGreaterThan(0)
 })
 
+it('l’image de l’entreprise paraît partout où son icône paraissait', async () => {
+  await render(<MemoryRouter><PaieFiscalite/></MemoryRouter>)
+  const source = readFileSync('src/pages/PaieFiscalite.jsx', 'utf8')
+  const fiches = readFileSync('src/pages/FichesPaie.jsx', 'utf8')
+  const rangee = readFileSync('src/components/PaieEntreprises.jsx', 'utf8')
+
+  //  Sa demande du 27/11 : « fais apparaître l'image profil de l'entreprise
+  //  partout où l'icône de l'entreprise apparaît dans cette page ».
+  //  Trois endroits portaient un `Building2` générique ; les trois passent
+  //  maintenant par la même pastille.
+  const pastille = readFileSync('src/components/paie/PastilleEntreprise.jsx', 'utf8')
+  expect(pastille).toContain('PhotoSignee')
+  expect(pastille).toContain('logo_url')
+  //  Sans logo, c'est l'INITIALE — jamais un rond vide.
+  expect(pastille).toContain('initiale(entreprise?.name)')
+
+  //  1. l'entreprise du bandeau
+  expect(source).toContain('<PastilleEntreprise')
+  expect(source).not.toContain('<Building2 size={17} />')
+
+  //  2. chaque ligne de la rangée des entreprises (la SIENNE, pas celle qui
+  //     est ouverte : c'est ce qui permet de les comparer)
+  expect(rangee).toContain('<PastilleEntreprise')
+  expect(rangee).toContain('entreprise={e}')
+
+  //  3. la carte « Vos repères » des bulletins
+  expect(fiches).toContain('<PastilleEntreprise')
+  expect(fiches).toContain('entreprise={enterpriseData}')
+
+  //  Et sur la page montée, la pastille est bien dans le bandeau.
+  expect(host.querySelector('.pw-bandeau .paie-pastille-entreprise')).toBeTruthy()
+})
+
 it('une erreur réseau ne devient pas un zéro salarié', async () => {
   state.error = { message: 'Connexion interrompue' }
   await render(<MemoryRouter><PaieFiscalite/></MemoryRouter>)
