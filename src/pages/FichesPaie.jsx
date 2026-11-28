@@ -18,6 +18,7 @@ import CurrencyService from '../services/currencyService'
 import { publishPayrollBatch, PayrollDeliveryBlocked, PayrollTaxReviewRequired } from '../services/payrollDelivery'
 import PaieDeliveryControl from '../components/PaieDeliveryControl'
 import PaieTaxOverrideDialog from '../components/PaieTaxOverrideDialog'
+import ResumeControles from '../components/paie/ResumeControles'
 import PastilleEntreprise from '../components/paie/PastilleEntreprise'
 import * as XLSX from 'xlsx'
 import LeaveBalanceService from '../services/leaveBalanceService'
@@ -51,7 +52,7 @@ import { usePaiementsFiches } from '../hooks/usePaiementsFiches'
 // PAGE PRINCIPALE
 // ═══════════════════════════════════════════════════════════
 
-export default function FichesPaie({ integre = false, ongletExterne = null, entrepriseIdForce = null, onOngletChange = null, onBusyChange = null } = {}) {
+export default function FichesPaie({ integre = false, ongletExterne = null, entrepriseIdForce = null, onOngletChange = null, onBusyChange = null, hauteurBarre = 0 } = {}) {
   const { darkMode } = useTheme()
   const S = stylesBulletins(darkMode)
   const P = palettePaie(darkMode)
@@ -1936,15 +1937,11 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
             </div>
           )}
 
-          {/* Modale confirmation génération */}
+          {/* Modale « profils manquants » — dans son composant : la page est au plafond de 2 000 lignes. */}
           {showGenerateConfirm && (
-            <div style={S.modalOverlay} onClick={() => setShowGenerateConfirm(false)}>
-              <div style={{ ...S.modalContent, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: P.ambre4, border: `1px solid ${P.ambre6}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><AlertTriangle size={22} color={P.ambre} /></div><div><h3 style={S.modalTitle}>Problèmes détectés</h3><p style={S.modalSub}>{preCheckResults.blockers.length} employé(s) sans profil valide</p></div></div><button onClick={() => setShowGenerateConfirm(false)} style={S.modalCloseBtn}><X size={18} /></button></div>
-                <div style={{ padding: 20 }}><p style={{ color: P.texteDoux, fontSize: 13, margin: '0 0 12px 0' }}>Les employés suivants auront une fiche à 0 :</p><div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>{preCheckResults.blockers.map((b, i) => (<div key={i} style={{ padding: '8px 12px', background: P.rouge6, border: `1px solid ${P.rouge7}`, borderRadius: 10 }}><span style={{ color: P.rougeClair, fontSize: 12 }}>{b.employee} — {b.reason}</span></div>))}</div></div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={() => setShowGenerateConfirm(false)} style={S.modalCancelBtn}>Annuler</button><button onClick={handleGeneratePreview} style={S.primaryBtn}><Eye size={16} /><span>Générer quand même</span></button></div>
-              </div>
-            </div>
+            <ResumeControles blockers={preCheckResults.blockers} ready={preCheckResults.ready.length} hauteurBarre={hauteurBarre}
+              onFermer={() => setShowGenerateConfirm(false)} onGenerer={handleGeneratePreview}
+              onProfils={() => { setShowGenerateConfirm(false); changerOnglet('profiles') }} />
           )}
 
           {/* Modale historique */}

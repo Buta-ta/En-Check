@@ -1,5 +1,5 @@
 import PaieWalletLoader from '../components/PaieWalletLoader'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, FileText, Landmark, Settings, ChevronDown, Globe2, Users, Gift, Upload, ClipboardCheck, SlidersHorizontal, Percent, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -42,6 +42,29 @@ export default function PaieFiscalite() {
   const [retry, setRetry] = useState(0)
   const [bulletinsBusy, setBulletinsBusy] = useState(false)
   const [fiscalBusy, setFiscalBusy] = useState(false)
+  /*  LA HAUTEUR DE LA BARRE FIGÉE, MESURÉE (28/11)
+      ─────────────────────────────────────────────────────────────────────
+      Depuis qu'elle colle PARTOUT, la barre recouvre le haut de ce qui est
+      `fixed` : une fenêtre centrée voit son coin haut gauche passer dessous.
+      Sa capture du 28/11 le montrait — le bouton « Générer quand même »
+      était coupé net par le bord de la barre.
+
+      On mesure donc la barre et on publie sa hauteur en `--pw-fixe-hauteur`.
+      Toute fenêtre modale s'en sert comme marge haute : elle naît SOUS la
+      barre, jamais derrière. Repli à 0 si la mesure n'a pas lieu (SSR) ou si
+      la barre n'est pas là (aucun contexte chargé). */
+  const barre = useRef(null)
+  const [hauteurBarre, setHauteurBarre] = useState(0)
+  useEffect(() => {
+    const noeud = barre.current
+    if (!noeud || typeof ResizeObserver === 'undefined') return undefined
+    const mesurer = () => setHauteurBarre(Math.round(noeud.getBoundingClientRect().height))
+    mesurer()
+    const observateur = new ResizeObserver(mesurer)
+    observateur.observe(noeud)
+    return () => observateur.disconnect()
+  }, [context])
+
   const busy = bulletinsBusy || fiscalBusy
   const [fiscalRevision, setFiscalRevision] = useState(0)
   const [visited, setVisited] = useState({})
@@ -166,7 +189,7 @@ export default function PaieFiscalite() {
     ) : null}
   >
   <div className="paie-page paie-workspace" data-theme={darkMode ? 'dark' : 'light'}>
-    <div className="pw-fixe">
+    <div className="pw-fixe" ref={barre} style={{ '--pw-fixe-hauteur': `${hauteurBarre}px` }}>
       <div className="pw-cadre">
         <PageCulturalBand pathname="/paie" placement="cadre" />
         <div className="pw-planche">
@@ -257,7 +280,7 @@ export default function PaieFiscalite() {
           {/* Keep both editors mounted across tabs: drafts and the chosen period survive navigation.
               A new enterprise gets a fresh keyed subtree; stale responses cannot paint into it. */}
           {access.bulletins && (visited[`${enterpriseId}:bulletins`] || !fiscal) && <div hidden={fiscal}>
-            <FichesPaie integre entrepriseIdForce={enterpriseId} ongletExterne={fiscal ? 'preparation' : tab} onOngletChange={go} onBusyChange={setBulletinsBusy}/>
+            <FichesPaie integre entrepriseIdForce={enterpriseId} hauteurBarre={hauteurBarre} ongletExterne={fiscal ? 'preparation' : tab} onOngletChange={go} onBusyChange={setBulletinsBusy}/>
           </div>}
           {access.fiscal && (visited[`${enterpriseId}:fiscal`] || fiscal) && <div hidden={!fiscal}>
             {context.admin.role === 'super_admin' && fiscal && tab === 'pays' && <PaieEntreprises entreprises={context.enterprises} entrepriseCouranteId={enterpriseId} darkMode={darkMode} onCopieEffectuee={() => setFiscalRevision(n => n + 1)}/>}

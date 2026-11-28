@@ -11,6 +11,14 @@
 // Absences, Planning et Pointages ; la sombre garde l'ambiance
 // actuelle, réchauffée de quelques degrés pour s'accorder au
 // bogolan de la coque.
+//
+//  ⚠️ Ce fichier n'est PAS dans les exceptions de tokens de la charte
+//  (`scripts/charte-check.mjs`), donc ses couleurs comptent au contrôle C1.
+//  C'est assumé : il est la source unique des deux gammes du volet paie, et
+//  y déplacer une couleur d'un composant est déjà un progrès mesurable.
+//  Le déplacer dans les exceptions est une décision de charte, pas un
+//  ajustement de code — elle ne se prend pas au détour d'une refonte de
+//  modale.
 // ═══════════════════════════════════════════════════════════
 
 const SOMBRE = {
@@ -54,6 +62,11 @@ const SOMBRE = {
       ombreForte: 'rgba(0,0,0,0.85)',
       ambre: '#F59E0B',
       ambreFonce: '#D97706',
+      //  Ici l'ambre est CLAIR : l'encre doit être sombre. Même valeur que
+      //  `--charte-encre` (#2A1708), qui est plus chaud que #15110E et donne
+      //  7,6:1 ici. Écrit en hex parce que ce fichier est du JS : il ne lit pas
+      //  les variables CSS. C'est le prix, et il est visible au contrôle C1.
+      encreSurAccent: '#2A1708',
       vert: '#10B981',
       rouge: '#EF4444',
       rougeClair: '#FCA5A5',
@@ -135,6 +148,11 @@ const CLAIR = {
       ombreForte: 'rgba(35,25,17,0.85)',
       ambre: '#9C5321',
       ambreFonce: '#7C4218',
+      //  Ce qui se lit SUR un aplat ambre. Il n'existait pas, et c'est
+      //  pourquoi « Générer quand même » écrivait `voile1` — 2 % d'opacité
+      //  — sur `ambre` : brun sur brun, 1,7:1, illisible (28/11).
+      //  Même valeur que `--charte-blanc`, d'où elle vient.
+      encreSurAccent: '#FFFDF7',
       vert: '#26734D',
       rouge: '#C23B2B',
       rougeClair: '#B03020',

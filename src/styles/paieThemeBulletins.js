@@ -67,7 +67,12 @@ export function stylesBulletins(darkMode = true) {
   otInfoBox: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', background: p.orange1, border: `1px solid ${p.orange4}`, borderRadius: 14, marginBottom: 16 },
   otEditBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, background: p.orange3, border: `1px solid ${p.orange6}`, color: p.orange, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, flexShrink: 0 },
   actionsRow: { display: 'flex', gap: 10, marginTop: 8 },
-  primaryBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${p.ambre}, ${p.ambreFonce})`, color: p.overlayFond, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 },
+  //  ⚠️ Le texte du bouton principal était `p.overlayFond` — un voile de fond
+  //  semi-transparent, pas une couleur de texte. Sur l'ambre, cela donnait
+  //  1,7:1 : brun sur brun, illisible (capture du 28/11). `encreSurAccent`
+  //  est le jeton prévu pour ça, et il suit les deux thèmes (5,6:1 en clair,
+  //  8,7:1 en sombre).
+  primaryBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${p.ambre}, ${p.ambreFonce})`, color: p.encreSurAccent, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 },
   addBtn: { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, border: `1px solid ${p.vert3}`, background: p.vert1, color: p.vert, fontWeight: 700, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' },
   addBtnSmall: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderRadius: 10, border: `1px solid ${p.vert2}`, background: p.vert6, color: p.vert, fontWeight: 700, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
   copyBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 10, border: `1px solid ${p.ambre7}`, background: p.ambre2, color: p.ambre, fontWeight: 700, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
