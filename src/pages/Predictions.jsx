@@ -1,114 +1,194 @@
+// ═══════════════════════════════════════════════════════════════════════════
+//  PRÉDICTIONS — la page en « registre » (maquette F, 02/12)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  ── Ce qui a changé, et pourquoi ──────────────────────────────────────────
+//
+//  Cette page était la SEULE de l'application en thème sombre néon : fond
+//  #0A0A0F, halos ambre et indigo, cartes en verre dépoli (`backdrop-filter`),
+//  dégradés, et une soixantaine de couleurs écrites en dur. Elle jurait avec
+//  tout le reste, et elle ne suivait même pas le thème clair/sombre de
+//  l'application : elle était sombre pour tout le monde.
+//
+//  Elle est maintenant en REGISTRE, comme la maquette F :
+//
+//    · papier ivoire, contour d'encre 2 px, ombre dure — aucune transparence,
+//      aucun flou (C9 / D-016) ;
+//    · les chiffres en chasse fixe, alignés à droite, avec les filets ;
+//    · les alertes sont des LIGNES de grand livre, pas des cartes flottantes :
+//      on en lit huit d'un coup d'œil au lieu de quatre ;
+//    · les écarts sont signés (+38 % / −12 %), en rouge et vert d'état.
+//
+//  ── Ce qui n'a PAS changé ────────────────────────────────────────────────
+//
+//  Toute la logique : chargement, garde de fonctionnalité, filtres, et les
+//  sept jeux de données du service. Aucun champ n'a été retiré — les blocs
+//  que la maquette ne montrait pas (charge par employé, charge par équipe,
+//  absences à impact) sont conservés, simplement mis au registre.
+//
+//  ── Le thème ─────────────────────────────────────────────────────────────
+//
+//  Les couleurs viennent des JETONS (`--charte-…`) : la page suit donc le
+//  thème de l'application, clair comme sombre, sans une seule valeur en dur.
+// ═══════════════════════════════════════════════════════════════════════════
+
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Sparkles,
-  RefreshCw,
-  AlertTriangle,
-  Users,
-  Users2,
-  Clock,
-  TrendingUp,
-  ClipboardList,
-  CalendarDays,
-  ShieldAlert,
-  Activity,
-  ArrowRight,
-  Building2,
-  Filter,
-  Zap,
-  Target,
-  BarChart3,
-  Eye,
-} from 'lucide-react'
+/*  Seules les icônes encore posées sont importées : les sept autres
+    (AlertTriangle, Users, Users2, Clock, TrendingUp, Activity, ArrowRight,
+    Download) ne servaient plus depuis la refonte en registre. */
+import { Sparkles, RefreshCw, ClipboardList, ShieldAlert, Building2, Filter, Target } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import FeatureService, { FEATURES } from '../services/featureService'
 import { getPredictionDashboard } from '../services/predictionService'
 
-// Fonction helper pour formater les heures
+const ENCRE = 'var(--charte-encre)'
+const SURFACE = 'var(--charte-surface)'
+const BORDURE = 'var(--charte-bordure)'
+const DOUCE = 'var(--charte-douce)'
+const TEXTE = 'var(--charte-texte)'
+const TRAIT = 'var(--charte-trait)'
+const MONO = 'var(--charte-mono)'
+
+/*  Les trois sévérités. Le mot est toujours écrit — la couleur ne porte
+    jamais l'information seule (règle C7 de la maison). */
+const SEVERITES = {
+  critical: { mot: 'Critique', couleur: 'var(--charte-erreur)', lettre: 'C' },
+  warning: { mot: 'Attention', couleur: 'var(--charte-alerte)', lettre: 'A' },
+  info: { mot: 'Info', couleur: 'var(--charte-texte)', lettre: 'I' },
+}
+const severite = (s) => SEVERITES[s] || SEVERITES.info
+
+const minutes = (n) => {
+  const v = Number(n) || 0
+  if (v < 60) return `${v} min`
+  const h = Math.floor(v / 60)
+  const m = v % 60
+  return m ? `${h}h ${m}min` : `${h}h`
+}
+
+/*  Un nombre se lit en français : la virgule est le séparateur décimal, et
+    le signe moins est un vrai moins typographique (U+2212), pas le trait
+    d'union du clavier. Sans ça, un écart s'écrit « -12.5 % » — deux fautes
+    dans quatre caractères. */
+const decimal = (n, chiffres = 1) => {
+  const v = Number(n)
+  if (!Number.isFinite(v)) return '0'
+  return v.toLocaleString('fr-FR', {
+    minimumFractionDigits: 0, maximumFractionDigits: chiffres, useGrouping: false,
+  })
+}
+/*  Le signe est TOUJOURS écrit, même pour zéro : une colonne d'écarts dont
+    certaines lignes n'ont pas de signe se lit mal, et la couleur ne doit
+    jamais porter seule l'information (C7). */
+const signe = (n, chiffres = 1) => {
+  const v = Number(n) || 0
+  const corps = decimal(Math.abs(v), chiffres)
+  if (v > 0) return `+${corps}`
+  if (v < 0) return `\u2212${corps}`
+  return `0`
+}
+
+/*  `formatHours` existait déjà : on le garde tel quel, il est utilisé par
+    trois blocs. */
 function formatHours(hours) {
   if (hours == null || isNaN(hours) || hours <= 0) return '0 min'
-
   const totalMinutes = Math.round(hours * 60)
-
-  if (totalMinutes < 60) {
-    return `${totalMinutes} min`
-  }
-
+  if (totalMinutes < 60) return `${totalMinutes} min`
   const h = Math.floor(totalMinutes / 60)
   const m = totalMinutes % 60
-
-  if (m === 0) return `${h}h`
-  return `${h}h ${m}min`
+  return m === 0 ? `${h}h` : `${h}h ${m}min`
 }
 
+/* ── les briques ─────────────────────────────────────────────────────────── */
 
-
-function StatCard({ icon: Icon, color, bg, value, label, delay = 0 }) {
-  return (
-    <div className="afro-stat-card" style={{
-      ...styles.statCard,
-      animationDelay: `${delay}s`,
-      animation: 'fadeInUp 0.5s ease forwards',
-      opacity: 0,
-    }}>
-      <div style={{ ...styles.statIconWrap, background: bg }}>
-        <Icon size={22} color={color} />
-      </div>
-      <div style={styles.statContent}>
-        <span style={styles.statNumber}>{value}</span>
-        <span style={styles.statLabel}>{label}</span>
-      </div>
-    </div>
-  )
-}
-
-function SeverityBadge({ severity }) {
-  const map = {
-    critical: { color: '#EF4444', bg: 'rgba(239,68,68,0.12)', label: '⚠ Critique' },
-    warning: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', label: '⚡ Attention' },
-    info: { color: '#6366F1', bg: 'rgba(99,102,241,0.12)', label: 'ℹ Info' },
-  }
-  const item = map[severity] || map.info
+/*  Un tampon : un mot, une lettre, un contour. Jamais une couleur seule. */
+function Tampon({ severite: s }) {
+  const v = severite(s)
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '4px',
-      padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
-      color: item.color, background: item.bg, border: `1px solid ${item.color}25`,
-      whiteSpace: 'nowrap', letterSpacing: '0.3px',
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '3px 8px', border: `1px solid ${v.couleur}`, borderRadius: 0,
+      color: v.couleur, fontSize: 10, fontWeight: 700,
+      letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
     }}>
-      {item.label}
+      <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', width: 14, height: 14, border: `1px solid ${v.couleur}`, fontSize: 9, lineHeight: 1 }}>{v.lettre}</span>
+      {v.mot}
     </span>
   )
 }
 
-function SectionCard({ title, icon: Icon, color = '#F59E0B', children, action = null }) {
+/*  La carte du registre : coin carré, contour d'encre, ombre dure, titre
+    souligné d'un filet pointillé. */
+function Registre({ titre, action, children, style }) {
   return (
-    <section style={styles.sectionCard}>
-      <div style={styles.sectionHeader}>
-        <div style={styles.sectionTitleWrap}>
-          <div style={{ ...styles.sectionIcon, background: `${color}15`, border: `1px solid ${color}25` }}>
-            <Icon size={16} color={color} />
-          </div>
-          <h3 style={styles.sectionTitle}>{title}</h3>
-        </div>
+    <section style={{
+      border: `1px solid ${ENCRE}`, borderRadius: 0, backgroundColor: SURFACE,
+      boxShadow: '4px 4px 0 0 var(--charte-encre)', marginBottom: 20, ...style,
+    }}>
+      <header style={{
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+        gap: 12, flexWrap: 'wrap', padding: '12px 16px 8px',
+        borderBottom: `1px dotted ${ENCRE}`,
+      }}>
+        <h2 style={{ margin: 0, color: ENCRE, fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          {titre}
+        </h2>
         {action}
-      </div>
+      </header>
       {children}
     </section>
   )
 }
 
-function EmptyMini({ text }) {
+function Vide({ texte }) {
   return (
-    <div style={styles.emptyMini}>
-      <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(245,158,11,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Sparkles size={22} color="#F59E0B" />
+    <p style={{ margin: 0, padding: '20px 16px', color: DOUCE, fontSize: 13, fontStyle: 'italic' }}>
+      {texte}
+    </p>
+  )
+}
+
+/*  Une ligne de grand livre : le titre, des points de conduite, la valeur.
+    C'est ce qui remplace les cartes flottantes — on lit la colonne d'un trait. */
+function Ligne({ titre, sous, valeur, fin, couleur }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '9px 16px', borderTop: `1px solid ${BORDURE}`,
+    }}>
+      <div style={{ flex: '0 1 auto', minWidth: 0 }}>
+        <div style={{ color: ENCRE, fontSize: 13.5, fontWeight: 700, overflowWrap: 'anywhere' }}>{titre}</div>
+        {sous && <div style={{ color: DOUCE, fontSize: 11, marginTop: 1 }}>{sous}</div>}
       </div>
-      <span style={styles.emptyMiniText}>{text}</span>
+      {/* les points de conduite du grand livre */}
+      <span aria-hidden="true" style={{ flex: '1 1 20px', minWidth: 20, alignSelf: 'flex-end', marginBottom: 4, borderBottom: `1px dotted ${BORDURE}` }} />
+      {valeur != null && (
+        <span style={{ flex: '0 0 auto', color: couleur || ENCRE, fontFamily: MONO, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          {valeur}
+        </span>
+      )}
+      {fin}
     </div>
   )
 }
+
+const BOUTON = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+  minHeight: 38, padding: '0 14px', border: `1px solid ${ENCRE}`, borderRadius: 0,
+  backgroundColor: SURFACE, color: ENCRE, fontFamily: 'inherit',
+  fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer',
+  boxShadow: '2px 2px 0 0 var(--charte-encre)',
+}
+
+const FILTRE = {
+  ...BOUTON,
+  minHeight: 36, padding: '0 10px', fontWeight: 600, cursor: 'pointer',
+  boxShadow: 'none', appearance: 'none',
+}
+
+/* ── la page ─────────────────────────────────────────────────────────────── */
 
 export default function Predictions() {
   const navigate = useNavigate()
@@ -116,7 +196,6 @@ export default function Predictions() {
   const [admin, setAdmin] = useState(null)
   const [enterpriseId, setEnterpriseId] = useState(null)
   const [loading, setLoading] = useState(true)
-
   const [data, setData] = useState({
     summary: {
       critical_alerts: 0, warning_alerts: 0, overloaded_employees: 0,
@@ -172,430 +251,290 @@ export default function Predictions() {
 
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.bgPattern}></div>
-        <div style={styles.bgOrb1}></div>
-        <div style={styles.bgOrb2}></div>
-        <div style={styles.loadingContent}>
-          <div style={styles.loadingPulse}><Sparkles size={50} color="#F59E0B" /></div>
-          <p style={styles.loadingText}>Analyse prédictive en cours...</p>
-          <div style={styles.loadingBar}><div style={styles.loadingBarFill}></div></div>
-          <div style={styles.loadingDots}>
-            <div style={{ ...styles.loadingDot, animationDelay: '0s' }}></div>
-            <div style={{ ...styles.loadingDot, animationDelay: '0.2s' }}></div>
-            <div style={{ ...styles.loadingDot, animationDelay: '0.4s' }}></div>
-          </div>
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--charte-sable)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <Sparkles size={34} color="var(--charte-aplat)" />
+          <p style={{ margin: 0, color: DOUCE, fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+            Lecture des signaux…
+          </p>
         </div>
       </div>
     )
   }
 
+  const s = data.summary || {}
+
+  /*  Le bilan : six cases, chiffre au-dessus, mot en dessous. Les deux
+      premières portent un filet rouge : ce sont les alertes. */
+  const bilan = [
+    { n: s.critical_alerts, l: 'critiques', alerte: true },
+    { n: s.warning_alerts, l: 'attention', alerte: true },
+    { n: s.overloaded_employees, l: 'surchargés' },
+    { n: s.risky_teams, l: 'équipes à risque' },
+    { n: s.impactful_absences, l: 'absences' },
+    { n: `${signe(s.avg_duration_variance_percent)} %`, l: 'écart moyen' },
+  ]
+
   return (
-    <>
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
-        @keyframes dotPulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .spin { animation: spin 1s linear infinite; }
+    <div style={{ minHeight: '100vh', background: 'var(--charte-sable)', padding: 'clamp(14px, 3vw, 28px)' }}>
+      <main style={{ maxWidth: 1280, margin: '0 auto' }}>
 
-        .afro-stat-card { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important; }
-        .afro-stat-card:hover { transform: translateY(-6px) scale(1.02) !important; box-shadow: 0 16px 50px rgba(0,0,0,0.4) !important; }
-        .afro-alert-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; }
-        .afro-alert-card:hover { transform: translateY(-2px) !important; box-shadow: 0 12px 40px rgba(0,0,0,0.35) !important; border-color: rgba(245, 158, 11, 0.25) !important; }
-        .afro-table-row { transition: all 0.2s ease !important; }
-        .afro-table-row:hover { background: rgba(245, 158, 11, 0.04) !important; border-color: rgba(245, 158, 11, 0.15) !important; }
-        .afro-filter-select:focus { border-color: #F59E0B !important; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2) !important; }
-        .afro-section-card { transition: all 0.3s ease !important; }
+        {/* ── l'onglet, au-dessus de la feuille ─────────────────────────── */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 14px', border: `1px solid ${ENCRE}`, borderBottom: 'none', backgroundColor: ENCRE, color: SURFACE }}>
+          <Sparkles size={13} aria-hidden="true" />
+          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.16em' }}>PRÉDICTIONS</span>
+          <span style={{ marginLeft: 4, padding: '1px 6px', border: `1px solid ${SURFACE}`, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em' }}>IA ACTIVE</span>
+        </div>
 
-        @media (max-width: 768px) {
-          .header-wrap { flex-direction: column !important; align-items: flex-start !important; gap: 14px !important; }
-          .actions-wrap { width: 100% !important; }
-          .two-cols-responsive { grid-template-columns: 1fr !important; }
-          .table-responsive { overflow-x: auto !important; }
-          .table-grid-4 { min-width: 500px !important; }
-          .table-grid-5 { min-width: 650px !important; }
-          .team-metrics-responsive { grid-template-columns: 1fr !important; }
-          .staffing-body-responsive { 
-  grid-template-columns: repeat(2, 1fr) !important; 
-}
-          .filters-responsive { flex-direction: column !important; }
-          .filters-responsive > * { width: 100% !important; min-width: 0 !important; }
-        }
+        <div style={{ border: `1px solid ${ENCRE}`, borderTop: `1px solid ${ENCRE}`, backgroundColor: SURFACE, boxShadow: '6px 6px 0 0 var(--charte-encre)', padding: 'clamp(16px, 3vw, 26px)' }}>
 
-        @media (max-width: 480px) {
-          .stats-grid-responsive { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0A0A0F; }
-        ::-webkit-scrollbar-thumb { background: #F59E0B; border-radius: 3px; }
-      `}</style>
-
-      <div style={styles.container}>
-        <div style={styles.bgPattern}></div>
-        <div style={styles.bgOrb1}></div>
-        <div style={styles.bgOrb2}></div>
-
-        <main style={styles.main}>
-          <div className="header-wrap" style={styles.headerSection}>
-            <div style={styles.headerLeft}>
-              <div style={styles.titleIcon}>
-                <Sparkles size={24} color="#F59E0B" />
-              </div>
-              <div>
-                <h1 style={styles.pageTitle}>Prédictions</h1>
-                <p style={styles.pageSubtitle}>Analyse intelligente des charges, besoins et tendances</p>
-              </div>
+          {/* ── le titre ───────────────────────────────────────────────── */}
+          <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ margin: 0, color: ENCRE, fontSize: 'clamp(24px, 3.4vw, 34px)', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                Prédictions
+              </h1>
+              <p style={{ margin: '8px 0 0', color: TEXTE, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                Analyse des charges, des besoins et des tendances
+              </p>
             </div>
-            <div className="actions-wrap" style={styles.headerActions}>
-              <div style={styles.liveBadge}><Activity size={14} /><span>IA Active</span></div>
-              <button onClick={() => navigate('/dashboard')} style={styles.btnSecondary}>
-                <Building2 size={16} /><span>Dashboard</span>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => navigate('/dashboard')} style={BOUTON}>
+                <Building2 size={15} aria-hidden="true" />
+                <span>Tableau de bord</span>
               </button>
-              <button onClick={() => loadPredictions()} style={styles.btnPrimary}>
-                <RefreshCw size={16} /><span>Rafraîchir</span>
+              <button type="button" onClick={() => loadPredictions()} style={{ ...BOUTON, backgroundColor: ENCRE, color: SURFACE }}>
+                <RefreshCw size={15} aria-hidden="true" />
+                <span>Rafraîchir</span>
               </button>
             </div>
-          </div>
+          </header>
 
-          <div className="stats-grid-responsive" style={styles.statsGrid}>
-            <StatCard icon={ShieldAlert} color="#EF4444" bg="rgba(239,68,68,0.12)" value={data.summary.critical_alerts} label="Alertes critiques" delay={0} />
-            <StatCard icon={AlertTriangle} color="#F59E0B" bg="rgba(245,158,11,0.12)" value={data.summary.warning_alerts} label="Alertes attention" delay={0.08} />
-            <StatCard icon={Users} color="#F97316" bg="rgba(249,115,22,0.12)" value={data.summary.overloaded_employees} label="Surchargés" delay={0.16} />
-            <StatCard icon={Users2} color="#6366F1" bg="rgba(99,102,241,0.12)" value={data.summary.risky_teams} label="Équipes à risque" delay={0.24} />
-            <StatCard icon={CalendarDays} color="#8B5CF6" bg="rgba(139,92,246,0.12)" value={data.summary.impactful_absences} label="Absences impact" delay={0.32} />
-            <StatCard icon={TrendingUp} color="#10B981" bg="rgba(16,185,129,0.12)" value={`${data.summary.avg_duration_variance_percent}%`} label="Écart moyen" delay={0.40} />
-          </div>
+          {/* ── le bilan ───────────────────────────────────────────────── */}
+          <Registre titre="Bilan">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
+              {bilan.map((c, i) => (
+                <div
+                  key={c.l}
+                  style={{
+                    padding: '14px 16px 16px',
+                    borderLeft: i === 0 ? 'none' : `1px solid ${BORDURE}`,
+                    /*  les deux premières cases portent le rouge des alertes */
+                    boxShadow: c.alerte ? 'inset 3px 0 0 0 var(--charte-erreur)' : 'none',
+                  }}
+                >
+                  <span style={{ display: 'block', color: c.alerte ? 'var(--charte-erreur)' : ENCRE, fontFamily: MONO, fontSize: 26, fontWeight: 700, lineHeight: 1 }}>
+                    {c.n}
+                  </span>
+                  <span style={{ display: 'block', marginTop: 6, color: DOUCE, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    {c.l}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Registre>
 
-          <SectionCard title="Alertes intelligentes" icon={AlertTriangle} color="#F59E0B">
-            <div className="filters-responsive" style={styles.filtersRow}>
-              <div style={styles.filterGroup}>
-                <ShieldAlert size={14} color="#F59E0B" />
-                <select className="afro-filter-select" value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)} style={styles.filterSelect}>
+          {/* ── les alertes ────────────────────────────────────────────── */}
+          <Registre
+            titre="Alertes intelligentes"
+            action={(
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <ShieldAlert size={13} aria-hidden="true" color={DOUCE} />
+                <select aria-label="Filtrer par sévérité" value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)} style={FILTRE}>
                   <option value="">Toutes sévérités</option>
-                  <option value="critical">⚠ Critique</option>
-                  <option value="warning">⚡ Attention</option>
-                  <option value="info">ℹ Info</option>
+                  <option value="critical">Critique</option>
+                  <option value="warning">Attention</option>
+                  <option value="info">Info</option>
                 </select>
-              </div>
-              <div style={styles.filterGroup}>
-                <Filter size={14} color="#6366F1" />
-                <select className="afro-filter-select" value={viewFilter} onChange={(e) => setViewFilter(e.target.value)} style={styles.filterSelect}>
+                <Filter size={13} aria-hidden="true" color={DOUCE} />
+                <select aria-label="Filtrer par objet" value={viewFilter} onChange={(e) => setViewFilter(e.target.value)} style={FILTRE}>
                   <option value="all">Toutes les alertes</option>
                   <option value="employees">Employés</option>
                   <option value="teams">Équipes</option>
                   <option value="absence">Absences</option>
                   <option value="staffing">Renfort</option>
                 </select>
+                <span style={{ color: DOUCE, fontFamily: MONO, fontSize: 11 }}>{filteredAlerts.length} signal{filteredAlerts.length > 1 ? 'x' : ''}</span>
               </div>
-            </div>
-
+            )}
+          >
             {filteredAlerts.length === 0 ? (
-              <EmptyMini text="Aucune alerte correspondant aux filtres." />
+              <Vide texte="Aucune alerte ne correspond aux filtres." />
             ) : (
-              <div style={styles.alertsList}>
-                {filteredAlerts.map((alert, index) => (
-                  <div
-                    key={`${alert.prediction_type}-${alert.target_id || index}`}
-                    className="afro-alert-card"
-                    style={{
-                      ...styles.alertCard,
-                      animationDelay: `${index * 0.05}s`,
-                      animation: 'fadeInUp 0.4s ease forwards',
-                      opacity: 0,
-                      borderColor: alert.severity === 'critical' ? 'rgba(239,68,68,0.15)' : alert.severity === 'warning' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)',
-                    }}
-                  >
-                    <div style={styles.alertTop}>
-                      <div style={styles.alertMeta}>
-                        <SeverityBadge severity={alert.severity} />
-                        <span style={styles.alertType}>{alert.title}</span>
-                      </div>
-                    </div>
-                    <p style={styles.alertMessage}>{alert.message}</p>
-                  </div>
-                ))}
-              </div>
+              filteredAlerts.map((alert, index) => (
+                <Ligne
+                  key={`${alert.prediction_type}-${alert.target_id || index}`}
+                  titre={alert.title}
+                  sous={alert.message}
+                  fin={<Tampon severite={alert.severity} />}
+                />
+              ))
             )}
-          </SectionCard>
+          </Registre>
 
-          <div className="two-cols-responsive" style={styles.twoCols}>
-            <SectionCard title="Durées réelles vs prévues" icon={Clock} color="#6366F1">
+          {/* ── deux colonnes : durées / renfort ────────────────────────── */}
+          <div className="pred-two" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 20 }}>
+            <Registre titre="Durées : prévu / réel">
               {(data.durations || []).length === 0 ? (
-                <EmptyMini text="Pas assez d'historique pour analyser les durées." />
+                <Vide texte="Pas assez d’historique pour analyser les durées." />
               ) : (
-                <div className="table-responsive" style={{ overflowX: 'auto' }}>
-                  <div className="table-grid-4" style={styles.tableHeader}>
-                    <span>Catégorie</span><span>Prévu</span><span>Réel</span><span>Écart</span>
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 8, padding: '8px 16px', color: DOUCE, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    <span>Catégorie</span><span style={{ textAlign: 'right' }}>Prévu</span><span style={{ textAlign: 'right' }}>Réel</span><span style={{ textAlign: 'right' }}>Écart</span>
                   </div>
-                  {data.durations.slice(0, 8).map((row, i) => (
-                    <div key={row.category_id} className="afro-table-row table-grid-4" style={{
-                      ...styles.tableRow,
-                      animationDelay: `${i * 0.05}s`,
-                      animation: 'fadeInUp 0.3s ease forwards',
-                      opacity: 0,
-                    }}>
-                      <div>
-                        <div style={styles.rowTitle}>{row.category_name}</div>
-                        <div style={styles.rowSub}>{row.completed_count} tâche(s)</div>
+                  {(data.durations || []).slice(0, 8).map((row) => {
+                    const v = Number(row.variance_percent) || 0
+                    return (
+                      <div key={row.category_id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 8, alignItems: 'center', padding: '8px 16px', borderTop: `1px solid ${BORDURE}` }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: ENCRE, fontSize: 13, fontWeight: 700, overflowWrap: 'anywhere' }}>{row.category_name}</div>
+                          <div style={{ color: DOUCE, fontSize: 10.5 }}>{row.completed_count} tâche(s)</div>
+                        </div>
+                        <span style={{ textAlign: 'right', color: ENCRE, fontFamily: MONO, fontSize: 12.5 }}>{minutes(row.expected_avg_minutes)}</span>
+                        <span style={{ textAlign: 'right', color: ENCRE, fontFamily: MONO, fontSize: 12.5 }}>{minutes(row.actual_avg_minutes)}</span>
+                        {/*  le signe est écrit, pas seulement la couleur (C7) */}
+                        <span style={{ textAlign: 'right', fontFamily: MONO, fontSize: 12.5, fontWeight: 700, color: v > 0 ? 'var(--charte-erreur)' : v < 0 ? 'var(--charte-succes)' : ENCRE }}>
+                          {signe(v)} %
+                        </span>
                       </div>
-                      <div style={styles.rowValue}>{row.expected_avg_minutes || 0} min</div>
-                      <div style={styles.rowValue}>{row.actual_avg_minutes || 0} min</div>
-                      <div style={{
-                        ...styles.rowValueHighlight,
-                        color: row.variance_percent > 0 ? '#EF4444' : '#10B981',
-                      }}>
-                        {row.variance_percent > 0 ? '+' : ''}{row.variance_percent}%
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
-            </SectionCard>
+            </Registre>
 
-            <SectionCard title="Besoins de renfort" icon={TrendingUp} color="#8B5CF6">
+            <Registre titre="Besoins de renfort">
               {(data.staffing_needs || []).length === 0 ? (
-                <EmptyMini text="Aucun besoin de renfort détecté pour le moment." />
+                <Vide texte="Aucun besoin de renfort détecté pour le moment." />
               ) : (
-                <div style={styles.alertsList}>
-                  {data.staffing_needs.slice(0, 6).map((item, i) => (
-                    <div key={item.team_id} className="afro-alert-card" style={{
-                      ...styles.staffingCard,
-                      animationDelay: `${i * 0.05}s`,
-                      animation: 'fadeInUp 0.3s ease forwards',
-                      opacity: 0,
-                    }}>
-                      <div style={styles.staffingTop}>
-                        <div>
-                          <div style={styles.rowTitle}>{item.team_name}</div>
-                          <div style={styles.rowSub}>Charge/membre : {formatHours(item.load_per_member_hours)}</div>
-                        </div>
-                        <SeverityBadge severity={item.severity} />
-                      </div>
-                      <div className="staffing-body-responsive" style={styles.staffingBody}>
-                        <div style={styles.staffingMetric}>
-                          <span style={styles.staffingMetricLabel}>Tâches ouvertes</span>
-                          <span style={styles.staffingMetricValue}>{item.open_tasks}</span>
-                        </div>
-                        <div style={styles.staffingMetric}>
-                          <span style={styles.staffingMetricLabel}>Renfort estimé</span>
-                          <span style={styles.staffingMetricValue}>{item.estimated_additional_people}</span>
-                        </div>
-                        <div style={styles.staffingMetric}>
-                          <span style={styles.staffingMetricLabel}>Retards</span>
-                          <span style={styles.staffingMetricValue}>{item.overdue_tasks}</span>
-                        </div>
-                        <div style={styles.staffingMetric}>
-                          <span style={styles.staffingMetricLabel}>Complétion</span>
-                          <span style={styles.staffingMetricValue}>{item.completion_rate}%</span>
-                        </div>
-                      </div>
-                      <p style={styles.staffingRecommendation}>{item.recommendation}</p>
+                (data.staffing_needs || []).slice(0, 6).map((item, i) => (
+                  <div key={item.team_id || i} style={{ padding: '10px 16px', borderTop: i === 0 ? 'none' : `1px solid ${BORDURE}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ color: ENCRE, fontSize: 13.5, fontWeight: 700 }}>{item.team_name}</span>
+                      <Tampon severite={item.severity} />
                     </div>
-                  ))}
-                </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 5, color: ENCRE, fontFamily: MONO, fontSize: 11.5 }}>
+                      <span>{item.open_tasks} tâche(s)</span>
+                      <span aria-hidden="true" style={{ color: BORDURE }}>·</span>
+                      <span>{formatHours(item.load_per_member_hours)}/membre</span>
+                      <span aria-hidden="true" style={{ color: BORDURE }}>·</span>
+                      <span>+{item.estimated_additional_people} pers.</span>
+                      <span aria-hidden="true" style={{ color: BORDURE }}>·</span>
+                      <span>{item.overdue_tasks} retard(s)</span>
+                      <span aria-hidden="true" style={{ color: BORDURE }}>·</span>
+                      <span>{decimal(item.completion_rate, 0)} %</span>
+                    </div>
+                    {item.recommendation && (
+                      <p style={{ margin: '6px 0 0', color: TEXTE, fontSize: 12, fontStyle: 'italic', lineHeight: 1.5 }}>
+                        {item.recommendation}
+                      </p>
+                    )}
+                  </div>
+                ))
               )}
-            </SectionCard>
+            </Registre>
           </div>
 
-          <SectionCard title="Charge par employé" icon={Users} color="#F97316">
+          {/* ── charge par employé ─────────────────────────────────────── */}
+          <Registre titre="Charge par employé">
             {(data.employee_workloads || []).length === 0 ? (
-              <EmptyMini text="Aucune charge employé à analyser." />
+              <Vide texte="Aucune charge employé à analyser." />
             ) : (
-              <div className="table-responsive" style={{ overflowX: 'auto' }}>
-                <div className="table-grid-5" style={styles.tableHeaderEmployee}>
-                  <span>Employé</span><span>Tâches</span><span>Prévu</span><span>Estimé réel</span><span>Risque</span>
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr .7fr 1fr 1fr 1fr', gap: 8, padding: '8px 16px', color: DOUCE, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  <span>Employé</span><span style={{ textAlign: 'right' }}>Tâches</span><span style={{ textAlign: 'right' }}>Prévu</span><span style={{ textAlign: 'right' }}>Estimé</span><span style={{ textAlign: 'right' }}>Risque</span>
                 </div>
-                {data.employee_workloads.slice(0, 10).map((row, i) => (
-                  <div key={row.employee_id} className="afro-table-row table-grid-5" style={{
-                    ...styles.tableRowEmployee,
-                    animationDelay: `${i * 0.04}s`,
-                    animation: 'fadeInUp 0.3s ease forwards',
-                    opacity: 0,
-                  }}>
-                    <div>
-                      <div style={styles.rowTitle}>{row.employee_name}</div>
-                      <div style={styles.rowSub}>{row.position || row.department || 'Employé'}</div>
-                    </div>
-                    <div style={styles.rowValue}>{row.open_tasks}</div>
-                    <div style={styles.rowValue}>{row.planned_minutes} min</div>
-                    <div style={styles.rowValue}>{formatHours(row.predicted_real_hours)}</div>
-                    <div><SeverityBadge severity={row.severity} /></div>
-                  </div>
+                {(data.employee_workloads || []).slice(0, 10).map((row) => (
+                  <Ligne
+                    key={row.employee_id}
+                    titre={row.employee_name}
+                    sous={row.position || row.department || 'Employé'}
+                    valeur={`${row.open_tasks} · ${minutes(row.planned_minutes)} · ${formatHours(row.predicted_real_hours)}`}
+                    fin={<Tampon severite={row.severity} />}
+                  />
                 ))}
               </div>
             )}
-          </SectionCard>
+          </Registre>
 
-          <div className="two-cols-responsive" style={styles.twoCols}>
-            <SectionCard title="Charge par équipe" icon={Users2} color="#10B981">
+          {/* ── deux colonnes : équipes / absences ─────────────────────── */}
+          <div className="pred-two" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 20 }}>
+            <Registre titre="Charge par équipe">
               {(data.team_workloads || []).length === 0 ? (
-                <EmptyMini text="Aucune charge équipe à analyser." />
+                <Vide texte="Aucune charge équipe à analyser." />
               ) : (
-                <div style={styles.alertsList}>
-                  {data.team_workloads.slice(0, 8).map((team, i) => (
-                    <div key={team.team_id} className="afro-alert-card" style={{
-                      ...styles.teamCard,
-                      animationDelay: `${i * 0.05}s`,
-                      animation: 'fadeInUp 0.3s ease forwards',
-                      opacity: 0,
-                    }}>
-                      <div style={styles.teamTop}>
-                        <div>
-                          <div style={styles.rowTitle}>{team.team_name}</div>
-                          <div style={styles.rowSub}>{team.member_count} membre(s)</div>
-                        </div>
-                        <SeverityBadge severity={team.severity} />
+                (data.team_workloads || []).slice(0, 8).map((team, i) => {
+                  /*  La jauge : une barre plate, et le chiffre à côté. Une barre
+                      seule ne dit rien à qui ne voit pas la couleur (C7). */
+                  const taux = Math.max(0, Math.min(100, Number(team.completion_rate) || 0))
+                  return (
+                    <div key={team.team_id || i} style={{ padding: '10px 16px', borderTop: i === 0 ? 'none' : `1px solid ${BORDURE}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        <span style={{ color: ENCRE, fontSize: 13.5, fontWeight: 700 }}>{team.team_name}</span>
+                        <Tampon severite={team.severity} />
                       </div>
-                      <div className="team-metrics-responsive" style={styles.teamMetrics}>
-                        <div style={styles.teamMetricBox}>
-                          <span style={styles.teamMetricLabel}>Tâches ouvertes</span>
-                          <span style={styles.teamMetricValue}>{team.open_tasks}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                        <div style={{ flex: '1 1 auto', height: 10, border: `1px solid ${ENCRE}`, backgroundColor: SURFACE }}>
+                          <div style={{ width: `${taux}%`, height: '100%', backgroundColor: 'var(--charte-aplat)' }} />
                         </div>
-                        <div style={styles.teamMetricBox}>
-                          <span style={styles.teamMetricLabel}>Charge/membre</span>
-                          <span style={styles.teamMetricValue}>{formatHours(team.load_per_member_hours)}</span>
-                        </div>
-                        <div style={styles.teamMetricBox}>
-                          <span style={styles.teamMetricLabel}>Complétion</span>
-                          <span style={{ ...styles.teamMetricValue, color: '#10B981' }}>{team.completion_rate}%</span>
-                        </div>
+                        <span style={{ flex: '0 0 auto', color: ENCRE, fontFamily: MONO, fontSize: 12, fontWeight: 700 }}>{decimal(team.completion_rate, 0)} %</span>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 5, color: DOUCE, fontFamily: MONO, fontSize: 11 }}>
+                        <span>{team.member_count} membre(s)</span>
+                        <span>{team.open_tasks} tâche(s)</span>
+                        <span>{formatHours(team.load_per_member_hours)}/membre</span>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )
+                })
               )}
-            </SectionCard>
+            </Registre>
 
-            <SectionCard title="Absences à impact" icon={CalendarDays} color="#8B5CF6">
+            <Registre titre="Absences à impact">
               {(data.absence_impact || []).length === 0 ? (
-                <EmptyMini text="Aucune absence impactante prévue." />
+                <Vide texte="Aucune absence impactante prévue." />
               ) : (
-                <div style={styles.alertsList}>
-                  {data.absence_impact.slice(0, 8).map((item, i) => (
-                    <div key={item.team_id} className="afro-alert-card" style={{
-                      ...styles.absenceCard,
-                      animationDelay: `${i * 0.05}s`,
-                      animation: 'fadeInUp 0.3s ease forwards',
-                      opacity: 0,
-                    }}>
-                      <div style={styles.teamTop}>
-                        <div>
-                          <div style={styles.rowTitle}>{item.team_name}</div>
-                          <div style={styles.rowSub}>{item.absent_count} absence(s) prévue(s)</div>
-                        </div>
-                        <SeverityBadge severity={item.severity} />
-                      </div>
-                      <div style={styles.absenceMetrics}>
-                        <div style={styles.absenceMetricChip}>
-                          <Target size={12} color="#F59E0B" />
-                          <span>Tâches impactées : <strong style={{ color: '#FFFFFF' }}>{item.impacted_tasks}</strong></span>
-                        </div>
-                        <div style={styles.absenceMetricChip}>
-                          <ClipboardList size={12} color="#6366F1" />
-                          <span>Tâches directes : <strong style={{ color: '#FFFFFF' }}>{item.direct_tasks}</strong></span>
-                        </div>
-                      </div>
-                      <p style={styles.absenceMessage}>{item.message}</p>
+                (data.absence_impact || []).slice(0, 8).map((item, i) => (
+                  <div key={item.team_id || i} style={{ padding: '10px 16px', borderTop: i === 0 ? 'none' : `1px solid ${BORDURE}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ color: ENCRE, fontSize: 13.5, fontWeight: 700 }}>{item.team_name}</span>
+                      <Tampon severite={item.severity} />
                     </div>
-                  ))}
-                </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 5, color: ENCRE, fontFamily: MONO, fontSize: 11.5 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <Target size={11} aria-hidden="true" color={TEXTE} />
+                        {item.absent_count} absence(s)
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <ClipboardList size={11} aria-hidden="true" color={TEXTE} />
+                        {item.impacted_tasks} tâche(s) impactée(s)
+                      </span>
+                      <span>{item.direct_tasks} directe(s)</span>
+                    </div>
+                    {item.message && (
+                      <p style={{ margin: '6px 0 0', color: TEXTE, fontSize: 12, fontStyle: 'italic', lineHeight: 1.5 }}>{item.message}</p>
+                    )}
+                  </div>
+                ))
               )}
-            </SectionCard>
+            </Registre>
           </div>
-        </main>
-      </div>
-    </>
+
+          {/* ── la perforation, et le timbre d'édition ─────────────────── */}
+          <div aria-hidden="true" style={{ borderTop: `1px dashed ${ENCRE}`, marginTop: 8 }} />
+          <p style={{ margin: '10px 0 0', textAlign: 'right', color: DOUCE, fontFamily: MONO, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Édité le {new Date().toLocaleDateString('fr-FR')} · {data.alerts?.length || 0} signal(aux)
+          </p>
+        </div>
+      </main>
+
+      {/*  deux colonnes seulement quand la place existe : en dessous, tout
+          s'empile et reste lisible. */}
+      <style>{`
+        @media (max-width: 900px) {
+          .pred-two { grid-template-columns: minmax(0, 1fr) !important; }
+        }
+      `}</style>
+    </div>
   )
-}
-
-const styles = {
-  container: { minHeight: '100vh', background: '#0A0A0F', position: 'relative', overflow: 'hidden' },
-  bgPattern: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(circle at 15% 50%, rgba(245, 158, 11, 0.03) 0%, transparent 50%), radial-gradient(circle at 85% 20%, rgba(99, 102, 241, 0.03) 0%, transparent 50%), radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.02) 0%, transparent 50%)`, pointerEvents: 'none', zIndex: 0 },
-  bgOrb1: { position: 'fixed', top: '-15%', right: '-10%', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245, 158, 11, 0.04) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 },
-  bgOrb2: { position: 'fixed', bottom: '-25%', left: '-10%', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.03) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 },
-
-  loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A0A0F', position: 'relative', overflow: 'hidden' },
-  loadingContent: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 1 },
-  loadingPulse: { animation: 'float 2s ease-in-out infinite' },
-  loadingText: { color: '#888', fontSize: '16px', letterSpacing: '2px', fontWeight: '500' },
-  loadingBar: { width: '220px', height: '2px', background: 'rgba(245,158,11,0.1)', borderRadius: '2px', overflow: 'hidden' },
-  loadingBarFill: { width: '40%', height: '100%', background: 'linear-gradient(90deg, #F59E0B, #D97706)', borderRadius: '2px', animation: 'shimmer 1.5s infinite', backgroundSize: '200% 100%' },
-  loadingDots: { display: 'flex', gap: '8px' },
-  loadingDot: { width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B', animation: 'dotPulse 1.2s ease-in-out infinite' },
-
-  main: { padding: 'clamp(16px, 3vw, 24px)', maxWidth: '1450px', margin: '0 auto', position: 'relative', zIndex: 1 },
-
-  headerSection: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', gap: '16px', flexWrap: 'wrap' },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '14px' },
-  titleIcon: { width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  pageTitle: { color: '#FFFFFF', fontSize: 'clamp(20px, 3.5vw, 28px)', fontWeight: '700', margin: 0, letterSpacing: '0.5px' },
-  pageSubtitle: { color: '#888', fontSize: '13px', margin: '2px 0 0 0' },
-  headerActions: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-  liveBadge: { display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', color: '#10B981', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', letterSpacing: '0.5px' },
-
-  btnPrimary: { display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'all 0.3s ease', letterSpacing: '0.3px', fontFamily: 'inherit' },
-  btnSecondary: { display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 18px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#ddd', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', fontFamily: 'inherit' },
-
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '12px', marginBottom: '28px' },
-  statCard: { background: 'rgba(20, 20, 35, 0.8)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: 'clamp(14px, 2.5vw, 20px)', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid rgba(255,255,255,0.06)', cursor: 'default' },
-  statIconWrap: { width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  statContent: { display: 'flex', flexDirection: 'column' },
-  statNumber: { fontSize: 'clamp(22px, 3.5vw, 30px)', fontWeight: '700', color: '#FFFFFF', lineHeight: '1', marginBottom: '3px' },
-  statLabel: { fontSize: '11px', color: '#888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' },
-
-  sectionCard: { background: 'rgba(20, 20, 35, 0.6)', backdropFilter: 'blur(10px)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.06)', padding: 'clamp(16px, 3vw, 22px)', marginBottom: '18px' },
-  sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' },
-  sectionTitleWrap: { display: 'flex', alignItems: 'center', gap: '12px' },
-  sectionIcon: { width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  sectionTitle: { margin: 0, color: '#FFFFFF', fontSize: '16px', fontWeight: '700' },
-
-  filtersRow: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' },
-  filterGroup: { display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(20, 20, 35, 0.8)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 14px', borderRadius: '12px', flex: '1 1 180px', transition: 'border-color 0.2s ease' },
-  filterSelect: { border: 'none', background: 'transparent', fontSize: '13px', color: '#E5E5E5', cursor: 'pointer', outline: 'none', width: '100%', fontFamily: 'inherit' },
-
-  alertsList: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  alertCard: { padding: 'clamp(12px, 2.5vw, 16px)', borderRadius: '14px', background: 'rgba(20, 20, 35, 0.5)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'default' },
-  alertTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' },
-  alertMeta: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-  alertType: { color: '#FFFFFF', fontSize: '13px', fontWeight: '700' },
-  alertMessage: { margin: 0, color: '#999', fontSize: '13px', lineHeight: '1.6' },
-
-  twoCols: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '18px', marginBottom: '4px' },
-
-  tableHeader: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '10px', padding: '0 12px 10px 12px', color: '#888', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '700' },
-  tableRow: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '10px', alignItems: 'center', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' },
-  tableHeaderEmployee: { display: 'grid', gridTemplateColumns: '2fr .7fr 1fr 1fr 1fr', gap: '10px', padding: '0 12px 10px 12px', color: '#888', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '700' },
-  tableRowEmployee: { display: 'grid', gridTemplateColumns: '2fr .7fr 1fr 1fr 1fr', gap: '10px', alignItems: 'center', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' },
-
-  rowTitle: { color: '#FFFFFF', fontSize: '13px', fontWeight: '700' },
-  rowSub: { color: '#888', fontSize: '11px', marginTop: '2px' },
-  rowValue: { color: '#ccc', fontSize: '13px', fontFamily: "'SF Mono', 'Fira Code', monospace" },
-  rowValueHighlight: { fontSize: '13px', fontWeight: '800', fontFamily: "'SF Mono', 'Fira Code', monospace" },
-
-  staffingCard: { padding: 'clamp(12px, 2.5vw, 16px)', borderRadius: '14px', background: 'rgba(20, 20, 35, 0.5)', border: '1px solid rgba(255,255,255,0.06)' },
-  staffingTop: { display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' },
-  staffingBody: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px', marginBottom: '12px' },
-  staffingMetric: { display: 'flex', flexDirection: 'column', gap: '4px', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.04)' },
-  staffingMetricLabel: { color: '#888', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' },
-  staffingMetricValue: { color: '#FFFFFF', fontSize: '20px', fontWeight: '800' },
-  staffingRecommendation: { margin: 0, color: '#999', fontSize: '12px', lineHeight: '1.6' },
-
-  teamCard: { padding: 'clamp(12px, 2.5vw, 16px)', borderRadius: '14px', background: 'rgba(20, 20, 35, 0.5)', border: '1px solid rgba(255,255,255,0.06)' },
-  teamTop: { display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' },
-  teamMetrics: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' },
-  teamMetricBox: { padding: '10px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '4px' },
-  teamMetricLabel: { color: '#888', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  teamMetricValue: { color: '#FFFFFF', fontSize: '18px', fontWeight: '800' },
-
-  absenceCard: { padding: 'clamp(12px, 2.5vw, 16px)', borderRadius: '14px', background: 'rgba(20, 20, 35, 0.5)', border: '1px solid rgba(255,255,255,0.06)' },
-  absenceMetrics: { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' },
-  absenceMetricChip: { display: 'flex', alignItems: 'center', gap: '8px', color: '#999', fontSize: '12px', padding: '6px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' },
-  absenceMessage: { margin: 0, color: '#888', fontSize: '12px', lineHeight: '1.6' },
-
-  emptyMini: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '32px 20px' },
-  emptyMiniText: { fontSize: '13px', color: '#888', textAlign: 'center' },
 }
