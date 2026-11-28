@@ -1,73 +1,129 @@
 /* ═══════════════════════════════════════════════════════════
-   ✍️ LES REGISTRES DE CRAIE — page Rapports (refonte)
+   ✍️ LES REGISTRES DE CRAIE, SUR LE PAGNE — page Rapports
 
-   Les rapports sont un tableau de comptes tracé à la craie sur
-   l'indigo : une bande de signes nsibidi en haut, un en-tête qui
-   nomme la page, puis des registres — un cartouche pour composer
-   le rapport, un pour l'aperçu, une marge pour ce qu'il contient.
+   Le 29/11, la page a été laissée TELLE QUELLE — même seuil, même
+   composeur, même aperçu, même marge, mêmes exports — et retouchée
+   d'un seul côté : l'encre. « Appliquer le style brut adouci, double
+   feutre. Enlever les raccourcis, le bouton sombre/clair. Retravaille
+   un peu les formes de certains blocs. Remplace le bandeau motif par le
+   bandeau bogolan, et entoure le bloc du haut de ce bogolan exactement
+   comme dans la page Rémunérations. »
 
-   Trois matières, trois rôles :
-     l'indigo      les panneaux et les fonds
-     la craie      tout ce qui se lit
-     la terre      les sceaux, les accents, les alertes
-   Les couleurs de données (vert, ambre, rouge, violet) restent
-   celles du produit : elles disent un état, pas un décor.
+   La page s'habillait d'un indigo parallèle — 39 couleurs écrites en
+   dur, une palette de nuit et sa CLASSE `.rp-clair` posée par l'écran
+   pour le jour. Cette double peau est tombée : les valeurs vivent dans
+   `src/styles/tokens.css`, et `[data-theme='dark']` retourne l'échelle à
+   la RACINE. Une classe de page qui re-déclare vingt hex ne peut pas
+   battre la racine — deux thèmes l'un sur l'autre, c'est celui qui gagne
+   par accident. Il reste de l'indigo exactement une trace, assumée :
+   l'onyx, teinte de DATA (la rubrique « journal des pointages »), pas
+   un fond.
+
+   Le tissu, lui, est venu parce que la page EST la boucle de la paie :
+   ses exports nourissent les registres, les bulletins, la configuration
+   fiscale — le bogolan de Rémunérations et de la Paie est donc le sien,
+   en haut comme en bas. Le blason nsibidi reste sur la plaque et dans
+   le PDF : la signature du document, pas une bande.
+
+   « Double feutre », mesuré : un contour d'encre de DEUX pixels ET une
+   ombre franche à flou zéro, posées sur le même objet — jamais deux
+   anneaux l'un dans l'autre. Les pointillés de craie (le seuil, les
+   exports, l'étiquette, la marge, le pied) sont devenus des règles
+   pleines de trois : une couture manquée n'est pas un style.
+
+   Convention de placement, la même que sur toutes les pages refondues :
+
+     · retour au tableau de bord ....... en haut, à gauche
+     · sélecteur d'entreprise .......... dans le seuil
+     · action principale (exporter) .... à la fin du composeur
+
+   Deux repères sont tombés avec cette passe : la bascule clair / sombre
+   de l'en-tête — le thème est une décision du rail, pas d'un écran — et
+   les raccourcis vers les autres pages du seuil — ils disaient deux
+   fois ce que la barre latérale dit déjà.
    ═══════════════════════════════════════════════════════════ */
 
+/*  ── LA COUCHE DE JETONS : des alias, pas des couleurs ──────────────────
+    Une couleur écrite ici serait une charte parallèle, et c'est exactement
+    ce que `npm run charte` refuse. Tout se lit dans `--charte-*`. Ce qui
+    doit rester franc sans se délayer est un mélange colorimétrique du
+    jeton (`color-mix`), jamais une `opacity` qui laisserait voir le fond au
+    travers. Les chiffres ci-dessous (case, glyphe, tampon) sont les
+    dimensions de composants propres à l'écran — comme la feuille de
+    Rémunérations pose les siennes. Les espacements, les rayons et les
+    tailles d'écriture ne sont JAMAIS des chiffres nus.
+    ─────────────────────────────────────────────────────────────────── */
 .rp-page {
-  /* la nuit indigo */
-  --rp-nuit: #0b141c;
-  --rp-nuit-2: #0e1922;
+  /* les fonds */
+  --rp-nuit: var(--charte-sable);
+  --rp-panneau: var(--charte-surface);
+  --rp-panneau-2: color-mix(in srgb, var(--charte-surface) 90%, var(--charte-encre));
+  --rp-creux: var(--charte-surface2);
 
-  /* les panneaux */
-  --rp-panneau: #101c28;
-  --rp-panneau-2: #142430;
-  --rp-creux: #0a1219;
+  /* les encres, deux niveaux — la troisième que la page s'était donnée
+     tombait sous 4,5:1 sur le fond d'une carte */
+  --rp-encre: var(--charte-encre);
+  --rp-douce: var(--charte-douce);
+  --rp-faible: color-mix(in srgb, var(--charte-douce) 94%, var(--charte-surface));
+  --rp-sur-panneau: var(--charte-blanc);
 
-  /* les craies */
-  --rp-craie: #f2e8d5;
-  --rp-craie-douce: #c9c2b0;
-  --rp-craie-faible: #93a2ae;
+  /* l'argile, ses deux métiers : PEINÉE c'est le kit, ÉCRITE elle tient à
+     4,5:1 sur une carte — l'encre de la charte ne se décline pas en accents */
+  --rp-terre: var(--charte-aplat);
+  --rp-ocre: var(--charte-texte);
+  --rp-boue: var(--charte-tissu);
 
-  /* les accents */
-  --rp-terre: #b4622a;
-  --rp-terre-clair: #c9773c;
-  --rp-brun: #8b3e1d;
+  /* les traits — le feutre */
+  --rp-ligne: var(--charte-bordure);
+  --rp-ligne-forte: color-mix(in srgb, var(--charte-encre) 34%, var(--charte-sable));
+  --rp-trait: var(--charte-trait);
+  --rp-regle: 3px;
+  --rp-ombre: var(--charte-ombre-dure);
 
-  /* les traits */
-  --rp-ligne: rgba(242, 232, 213, 0.14);
-  --rp-ligne-forte: rgba(242, 232, 213, 0.3);
-  --rp-pointille: rgba(242, 232, 213, 0.22);
-  --rp-ombre: 0 16px 38px rgba(0, 0, 0, 0.5);
+  /* les données, resserrées vers l'encre comme à Rémunérations : un état se
+     lit aussi sur le sable, où le vert cru de la charte ne tient pas */
+  --rp-ok: color-mix(in srgb, var(--charte-succes) 90%, var(--charte-encre));
+  --rp-attente: color-mix(in srgb, var(--charte-alerte) 88%, var(--charte-encre));
+  --rp-alerte: color-mix(in srgb, var(--charte-erreur) 78%, var(--charte-encre));
+  --rp-onyx: color-mix(in srgb, var(--charte-indigo) 80%, var(--charte-encre));
+  --rp-nacre: color-mix(in srgb, var(--charte-aplat) 55%, var(--charte-indigo));
 
-  /* les données — inchangées, ce sont des états */
-  --rp-ok: #10b981;
-  --rp-attente: #f59e0b;
-  --rp-alerte: #ef4444;
-  --rp-indigo: #6366f1;
-  --rp-violet: #8b5cf6;
+  /* L'ENVELOPPE — la copie exacte du cartouche de Rémunérations (§1 de sa
+     feuille) : une épaisseur de tissu aux quatre bords, la plaque de papier
+     reculée de cette même cote. Une seule cote, jamais quatre. */
+  --rp-tissu: var(--charte-espace-5);
+  --rp-tissu-haut: url('/images/paie-bogolan-haut.webp');
+  --rp-tissu-filet: url('/images/bogolan-vertical.webp');
+  --rp-rayon-bloc: var(--charte-rayon-champ);
+  --rp-rayon-plaque: var(--charte-rayon-carte);
 
-  --rp-ok-texte: #10b981;
-  --rp-attente-texte: #f59e0b;
-  --rp-alerte-texte: #ef4444;
-  --rp-indigo-texte: #818cf8;
-  --rp-violet-texte: #a78bfa;
+  /* les dimensions propres à l'écran */
+  --rp-cadre: 36px;
+  --rp-champ: 38px;
+  --rp-glyphe: 34px;
+  --rp-sceau: 30px;
+  --rp-marque: 18px;
+  --rp-rond: 50%;
+  --rp-lavis: color-mix(in srgb, var(--rp-terre) 10%, var(--rp-nuit));
+
+  /*  la flèche des selects. UN FOND ne peut pas lire un jeton : ce qu'on
+      voudrait ici (`currentColor`, et la question est fermée), c'est un
+      MASQUE — mais `mask-image` sur un `<select>` découpe tout l'élément, son
+      texte et sa surface cliquable avec. La flèche est donc posée en data-URI
+      et sa couleur, écrite à l'extérieur du CSS : elle ne compte pas comme
+      valeur d'encre de la feuille (voir le chapitre de la doc), et la seule
+      variante est posée plus bas, à la RACINE. */
+  --rp-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%232A1708' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   min-height: 100vh;
-  margin: 0;
   background-color: var(--rp-nuit);
-  background-image:
-    radial-gradient(110% 70% at 50% -10%, rgba(23, 41, 58, 0.85), transparent 68%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(242, 232, 213, 0.012) 0 1px,
-      transparent 1px 3px
-    );
-  color: var(--rp-craie);
-  font-family: inherit;
+  background-image: linear-gradient(var(--rp-lavis), transparent 30vh);
+  color: var(--rp-encre);
+  font-family: var(--charte-police);
+  -webkit-font-smoothing: antialiased;
 }
 
 .rp-page *,
@@ -76,130 +132,169 @@
   box-sizing: border-box;
 }
 
-.rp-page :focus-visible {
-  outline: 2px solid var(--rp-terre-clair);
+.rp-page :is(input, select) {
+  /*  le seul `color-scheme` de la feuille : il dit au natif quelle couleur
+      remplir sa liste. Une page ne commande pas le système. */
+  color-scheme: light dark;
+}
+
+/*  Le focus, une seule fois, pour tout ce qui se pilote au clavier : un
+    anneau d'encre de deux pixels décollé de deux. Les anciens halos
+    `box-shadow: 0 0 0 3px` et l'anneau `border-radius: 1px` sont tombés —
+    un anneau dans un anneau, c'est le contraire du feutre. */
+.rp-page
+  :is(button, input, select, summary, [role='switch']):focus-visible {
+  outline: var(--rp-trait) solid var(--rp-encre);
   outline-offset: 2px;
-  border-radius: 1px;
 }
 
-/* ── 1. La bordure de craie ───────────────────────────────── */
+/* ── 1. L'en-tête : le bloc cerclé d'étoffe ───────────────── */
 
-.rp-bordure {
-  height: 9px;
-  flex: none;
-  background-color: var(--rp-panneau);
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--rp-craie) 0 2px,
-    transparent 2px 12px
-  );
-  opacity: 0.75;
-}
+/*  LA PLANQUE. Le mot de l'ancienne feuille était `bordure de craie` : une
+    bande de 9 px de pointillés, posée entre le bandeau et l'en-tête. Elle est
+    tombée, remplacée par ce que fait Rémunérations — l'en-tête EST un champ de
+    papier CERCLÉ d'étoffe, le tissu fait le tour (dessus, dessous, deux
+    liserés), il est à cru sur le bord du bloc, et la plaque est reculée de son
+    épaisseur. Le contour, ici, c'est le tissage : aucun trait d'encre sur la
+    plaque, aucun carré de cuivre aux coins — ils dédoubleraient ce que la
+    bande dit déjà.
 
-/* ── 2. L'en-tête ─────────────────────────────────────────── */
-
+    Collé en haut, comme à Rémunérations (`position: sticky`, `top: 0`, la cage
+    peint le fond plat) : le défilement reste celui de la page, aucune hauteur à
+    compenser. Cette constance est la deuxième moitié de la demande du 29/11. */
 .rp-entete {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  isolation: isolate;
+  display: block;
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: var(--rp-tissu);
+  background-color: var(--rp-nuit);
+  border-radius: var(--rp-rayon-bloc);
+}
+
+/*  LE TISSU — une seule bande qui fait le tour : deux couches horizontales
+    (`repeat-x`, calées sur la hauteur) et deux verticales (`repeat-y`, calées
+    sur la largeur), aux quatre bords. Les deux fichiers sont ceux que lit déjà
+    `.rw-entete::before`, `paie-bogolan-haut.webp` (1536 × 76) et son jumeau
+    `bogolan-vertical.webp` (76 × 1536). Aucun n'est étiré : chaque couche est
+    ramenée à `--rp-tissu` sur UN seul axe, donc l'échelle est uniforme. Les
+    quatre coins sont remplis par le fond du bogolan — pas de trou, pas de
+    joint. L'ombre dure est là, et nulle part ailleurs. */
+.rp-entete::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: var(--rp-rayon-bloc);
+  background-color: var(--charte-tissu);
+  background-image:
+    var(--rp-tissu-haut), var(--rp-tissu-haut),
+    var(--rp-tissu-filet), var(--rp-tissu-filet);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-position: left top, left bottom, left top, right top;
+  background-size:
+    auto var(--rp-tissu), auto var(--rp-tissu),
+    var(--rp-tissu) auto, var(--rp-tissu) auto;
+  box-shadow: var(--charte-ombre-dure);
+  pointer-events: none;
+}
+
+/*  LA PLAQUE — le champ de papier, reculé de l'épaisseur exacte de la bande.
+    `inset` au lieu de quatre marges : si la bande change de cote, la plaque
+    suit seule. */
+.rp-entete::after {
+  content: "";
+  position: absolute;
+  inset: var(--rp-tissu);
+  z-index: -1;
+  border-radius: var(--rp-rayon-plaque);
+  background: var(--rp-panneau);
+  pointer-events: none;
+}
+
+/*  ce qui est posé sur le papier : le rythme du bloc, avec ses gouttières à
+    lui — l'étoffe, elle, respire de bord à bord */
+.rp-entete-corps {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--charte-espace-3);
   flex-wrap: wrap;
-  padding: 22px clamp(18px, 3vw, 34px) 20px;
-  border-bottom: 1px solid var(--rp-ligne);
-  background:
-    linear-gradient(180deg, rgba(23, 41, 58, 0.55), transparent 80%),
-    var(--rp-nuit);
+  padding: var(--charte-espace-4) var(--charte-espace-5);
 }
 
+/* ── 2. Ce qui est posé sur la plaque ─────────────────────── */
+
+/*  Le carré du retour : la case du kit, deux pixels d'encre, rien de plus. Il
+    portait aussi la bascule de thème (`rp-bascule`, un rond de 38 px) ; le
+    thème est parti dans le rail le 29/11, le carré reste. */
 .rp-retour {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: var(--rp-cadre);
+  height: var(--rp-cadre);
   flex: none;
   padding: 0;
-  color: var(--rp-craie-douce);
+  color: var(--rp-douce);
   background: var(--rp-panneau);
-  border: 1.5px solid var(--rp-ligne-forte);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne-forte);
+  border-radius: var(--charte-rayon-champ);
   cursor: pointer;
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease,
-    border-color 0.16s ease;
+  transition: background-color var(--charte-duree) var(--charte-easing),
+    border-color var(--charte-duree) var(--charte-easing);
 }
 
 .rp-retour:hover {
-  color: var(--rp-craie);
+  color: var(--rp-encre);
   background: var(--rp-panneau-2);
-  border-color: var(--rp-craie-douce);
+  border-color: var(--rp-douce);
+}
+
+/*  Le blason se pose TEL QUEL, sans cerclage : il est le second dessin de la
+    plaque, et le tour d'étoffe en est déjà un. Un anneau autour du sceau dans
+    un bloc cerclé d'étoffe, c'est un anneau dans un anneau — exactement ce que
+    le feutre interdit. Seule sa prise au raglan se déclare ici. */
+.rp-entete-corps > svg {
+  flex: none;
 }
 
 .rp-titre-bloc {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--charte-espace-1);
   min-width: 0;
-  flex: 1 1 260px;
+  flex: 1 1 300px;
 }
 
 .rp-eyebrow {
-  font-size: 9px;
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
-  letter-spacing: 0.19em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--rp-terre-clair);
+  color: var(--rp-ocre);
 }
 
 .rp-titre {
   margin: 0;
-  font-size: clamp(20px, 2.4vw, 27px);
+  font-size: var(--charte-taille-titre);
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
   line-height: 1.1;
-  color: var(--rp-craie);
+  color: var(--rp-encre);
 }
 
 .rp-titre span {
-  color: var(--rp-terre);
+  color: var(--rp-ocre);
 }
 
 .rp-sous-titre {
-  margin: 3px 0 0;
-  font-size: 11.5px;
+  margin: var(--charte-espace-1) 0 0;
+  max-width: 68ch;
+  font-size: var(--charte-taille-corps);
   line-height: 1.5;
-  color: var(--rp-craie-faible);
-}
-
-.rp-entete-droite {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
-}
-
-/* la bascule clair / sombre, comme sur les autres coques */
-.rp-bascule {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  color: var(--rp-craie-douce);
-  background: var(--rp-creux);
-  border: 1.5px solid var(--rp-ligne-forte);
-  border-radius: 50%;
-  cursor: pointer;
-  transition:
-    color 0.16s ease,
-    background-color 0.16s ease,
-    border-color 0.16s ease;
-}
-
-.rp-bascule:hover {
-  color: var(--rp-terre-clair);
-  background: var(--rp-panneau-2);
-  border-color: var(--rp-craie-douce);
+  color: var(--rp-douce);
 }
 
 /* ── 3. La coque ──────────────────────────────────────────── */
@@ -207,197 +302,148 @@
 .rp-coque {
   width: min(1480px, 100%);
   margin: 0 auto;
-  padding: clamp(14px, 2vw, 24px) clamp(14px, 3vw, 30px)
-    clamp(26px, 3.4vw, 44px);
+  padding: var(--charte-espace-4) var(--charte-espace-5) var(--charte-espace-6);
   flex: 1 1 auto;
 }
 
-/* ── 4. Le seuil : l'entreprise et les autres écrans ──────── */
+/* ── 4. Le seuil : ce que le rapport compte ───────────────── */
 
+/*  La rangée « Aller à » est tombée avec les raccourcis : un seuil cerclé
+    d'une règle de trois, fermé, sans gouttière de navigation. Le liseré de
+    terre de 3 px tenait le rôle du tissage sur un fond : il reste, mais
+    d'encre. */
 .rp-seuil {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px 18px;
+  gap: var(--charte-espace-3) var(--charte-espace-5);
   flex-wrap: wrap;
-  padding: 12px 14px;
+  padding: var(--charte-espace-3) var(--charte-espace-4);
   background: var(--rp-panneau);
-  border: 1px solid var(--rp-ligne);
-  border-left: 3px solid var(--rp-terre);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-top: var(--rp-regle) solid var(--rp-terre);
+  border-radius: var(--charte-rayon-carte);
+  box-shadow: var(--rp-ombre);
 }
 
 .rp-seuil-entreprise {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--charte-espace-2);
   flex-wrap: wrap;
   min-width: 0;
 }
 
 .rp-seuil-libelle {
   flex: none;
-  font-size: 9px;
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--rp-craie-faible);
+  color: var(--rp-ocre);
 }
 
 .rp-seuil-nom {
-  font-size: 13px;
+  font-size: var(--charte-taille-corps);
   font-weight: 700;
-  color: var(--rp-craie);
+  color: var(--rp-encre);
   overflow-wrap: anywhere;
 }
 
+/*  un fait du rapport : un tampon, pas une étiquette collée. Le pointillé de
+    craie est devenu un contour d'encre de deux, second passage du feutre. */
 .rp-seuil-fait {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 9px;
-  font-size: 10px;
-  font-weight: 650;
-  color: var(--rp-craie-douce);
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  color: var(--rp-douce);
   background: var(--rp-creux);
-  border: 1px dashed var(--rp-pointille);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-radius: var(--charte-rayon-badge);
   white-space: nowrap;
 }
 
-.rp-raccourcis {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-/* les raccourcis de pages, dans la matière de la page */
-.rp-raccourcis .abs-raccourcis {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  max-width: 100%;
-  padding: 3px;
-  overflow-x: auto;
-  border: 1px solid var(--rp-ligne);
-  border-radius: 1px;
-  background: var(--rp-creux);
-  scrollbar-width: none;
-}
-
-.rp-raccourcis .abs-raccourcis::-webkit-scrollbar {
-  display: none;
-}
-
-.rp-raccourcis .abs-raccourci {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 11px;
-  border: 0;
-  border-radius: 1px;
-  background: transparent;
-  color: var(--rp-craie-douce);
-  font-family: inherit;
-  font-size: 10.5px;
-  font-weight: 650;
-  line-height: 1.2;
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    color 0.14s ease,
-    background-color 0.14s ease;
-}
-
-.rp-raccourcis .abs-raccourci[data-compact='oui'] {
-  padding: 4px 9px;
-}
-
-.rp-raccourcis .abs-raccourci svg {
+.rp-seuil-fait svg {
   flex: none;
-  opacity: 0.85;
+  color: var(--rp-ocre);
 }
 
-.rp-raccourcis .abs-raccourci:hover {
-  color: var(--rp-craie);
-  background: rgba(180, 98, 42, 0.18);
-}
-
-.rp-raccourcis .abs-raccourci[data-actif='oui'],
-.rp-raccourcis .abs-raccourci[data-actif='oui']:hover {
-  color: var(--rp-craie);
-  background: var(--rp-brun);
-  cursor: default;
-}
-
-/* ── 5. La grille : composer à gauche, aperçu à droite ─────── */
+/* ── 5. L'atelier : composer à gauche, aperçu à droite ────── */
 
 .rp-atelier {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 27vw, 400px);
-  gap: clamp(12px, 1.6vw, 20px);
+  gap: var(--charte-espace-4);
   align-items: start;
-  margin-top: clamp(14px, 2vw, 20px);
+  margin-top: var(--charte-espace-4);
 }
 
 .rp-colonne {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: clamp(12px, 1.6vw, 18px);
+  gap: var(--charte-espace-4);
 }
 
-/* le cartouche : un panneau cerclé de craie */
+/*  Le cartouche : une tuile posée sur le sable. Avant, c'était un panneau
+    d'indigo cerclé d'un filet de craie à 1 px sur un fond nuit — le cerclage
+    ne se voyait pas. Il prend le rayon tuile (12), le contour d'encre de deux
+    et l'ombre dure de trois ; la règle de trois en haut est le premier passage
+    de feutre, l'ombre le second. */
 .rp-cartouche {
   position: relative;
-  padding: clamp(14px, 1.8vw, 20px);
+  padding: var(--charte-espace-4);
   background: var(--rp-panneau);
-  border: 1px solid var(--rp-ligne);
-  border-top: 2px solid var(--rp-terre);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-top: var(--rp-regle) solid var(--rp-encre);
+  border-radius: var(--charte-rayon-tuile);
+  box-shadow: var(--rp-ombre);
 }
 
 .rp-cartouche-tete {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: var(--charte-espace-3);
+  margin-bottom: var(--charte-espace-3);
 }
 
+/*  le glyphe devient un TAMPON : rayon badge 11, contour d'encre de deux,
+    lavis de surface en second passage. Il était un carré de 1 px cerclé d'un
+    filet — deux cerclages sur le même objet, ce que la double feutre interdit */
 .rp-cartouche-icone {
   display: grid;
   place-items: center;
   flex: none;
-  width: 34px;
-  height: 34px;
-  color: var(--rp-terre-clair);
+  width: var(--rp-glyphe);
+  height: var(--rp-glyphe);
+  color: var(--rp-ocre);
   background: var(--rp-creux);
-  border: 1px solid var(--rp-ligne);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-radius: var(--charte-rayon-badge);
 }
 
 .rp-cartouche-titres {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--charte-espace-1);
   min-width: 0;
 }
 
 .rp-cartouche-titre {
   margin: 0;
-  font-size: 13.5px;
+  font-size: var(--charte-taille-corps);
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: var(--rp-craie);
+  color: var(--rp-encre);
 }
 
 .rp-cartouche-note {
   margin: 0;
-  font-size: 10.5px;
-  color: var(--rp-craie-faible);
+  font-size: var(--charte-taille-micro);
+  line-height: 1.45;
+  color: var(--rp-douce);
 }
 
 /* ── 6. Les champs ────────────────────────────────────────── */
@@ -405,133 +451,138 @@
 .rp-champ {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--charte-espace-1);
   min-width: 0;
 }
 
 .rp-etiquette {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 8.5px;
+  gap: var(--charte-espace-1);
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--rp-craie-faible);
+  color: var(--rp-ocre);
+}
+
+.rp-etiquette svg {
+  flex: none;
 }
 
 .rp-champs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--charte-espace-3);
 }
 
 .rp-champ--large {
   grid-column: 1 / -1;
 }
 
+/*  un champ du kit : 38 px, rayon champ, deux pixels d'encre ; la flèche est
+    un chevron de la page, pas un dessin de système — et il se retourne avec la
+    racine (`[data-theme='dark']`), jamais avec une classe de page */
 .rp-page .rp-champ :is(input[type='date'], select) {
   width: 100%;
   min-width: 0;
-  height: 38px;
-  padding: 0 11px;
+  height: var(--rp-champ);
+  padding: 0 var(--charte-espace-3);
   font: inherit;
-  font-size: 12px;
-  color: var(--rp-craie);
+  font-size: var(--charte-taille-micro);
+  color: var(--rp-encre);
   background-color: var(--rp-creux);
-  border: 1.5px solid var(--rp-ligne-forte);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne-forte);
+  border-radius: var(--charte-rayon-champ);
   outline: none;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: border-color var(--charte-duree) var(--charte-easing);
 }
 
 .rp-page .rp-champ input[type='date'] {
   cursor: pointer;
-  color-scheme: dark;
 }
 
 .rp-page .rp-champ select {
   appearance: none;
   -webkit-appearance: none;
-  padding-right: 30px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23c9c2b0' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  padding-right: var(--charte-espace-7);
+  background-image: var(--rp-chevron);
   background-repeat: no-repeat;
-  background-position: right 11px center;
-  background-size: 10px 7px;
+  background-position: right var(--charte-espace-3) center;
+  background-size: 12px 7px;
   cursor: pointer;
   text-overflow: ellipsis;
 }
 
 .rp-page .rp-champ select option {
   background: var(--rp-panneau);
-  color: var(--rp-craie);
+  color: var(--rp-encre);
 }
 
 .rp-page .rp-champ :is(input, select):hover {
-  border-color: var(--rp-craie-douce);
+  border-color: var(--rp-douce);
 }
 
+/*  plus de halo : le champ tenu prend le trait d'encre, rien d'autre — la
+    règle de focus de la page suffit au clavier */
 .rp-page .rp-champ :is(input, select):focus {
-  border-color: var(--rp-terre);
-  box-shadow: 0 0 0 3px rgba(180, 98, 42, 0.22);
+  border-color: var(--rp-encre);
 }
 
-/* ── 6 bis. Le sujet du rapport ────────────────────────────── */
-/*  Pas un simple menu : un cartouche qui dit QUI est le rapport.
-    Le cadre se resserre d'un trait de terre dès qu'on vise une
-    personne — le document n'est plus une liste, c'est un dossier.   */
+/* ── 6 bis. Le sujet du rapport ───────────────────────────── */
 
+/*  Pas un simple menu : un cartouche qui dit QUI est le rapport. Le cadre
+    d'encre se resserre d'une règle de trois dès qu'on vise une personne — le
+    document n'est plus une liste, c'est un dossier. */
 .rp-sujet {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  padding: 11px 12px 13px;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-3);
   background: var(--rp-creux);
-  border: 1px solid var(--rp-ligne);
-  border-left: 2px solid var(--rp-terre);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-radius: var(--charte-rayon-carte);
 }
+
 
 .rp-sujet-tete {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--charte-espace-2);
   flex-wrap: wrap;
 }
 
 .rp-sujet-note {
-  font-size: 10.5px;
-  font-style: italic;
-  color: var(--rp-craie-faible);
+  font-size: var(--charte-taille-micro);
+  color: var(--rp-douce);
 }
 
 .rp-sujet-corps {
   display: grid;
   grid-template-columns: minmax(140px, 0.9fr) minmax(0, 1.6fr);
-  gap: 8px;
+  gap: var(--charte-espace-2);
 }
 
 .rp-page .rp-recherche {
   display: flex;
   align-items: center;
-  gap: 7px;
-  height: 38px;
-  padding: 0 11px;
-  color: var(--rp-craie-faible);
+  gap: var(--charte-espace-2);
+  height: var(--rp-champ);
+  padding: 0 var(--charte-espace-3);
+  color: var(--rp-douce);
   background: var(--rp-panneau);
-  border: 1.5px solid var(--rp-ligne-forte);
-  border-radius: 1px;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  border: var(--rp-trait) solid var(--rp-ligne-forte);
+  border-radius: var(--charte-rayon-champ);
+  transition: border-color var(--charte-duree) var(--charte-easing);
 }
 
 .rp-page .rp-recherche:focus-within {
-  border-color: var(--rp-terre);
-  box-shadow: 0 0 0 3px rgba(180, 98, 42, 0.22);
+  border-color: var(--rp-encre);
+}
+
+.rp-page .rp-recherche svg {
+  flex: none;
 }
 
 .rp-page .rp-recherche input {
@@ -539,61 +590,51 @@
   min-width: 0;
   height: 100%;
   font: inherit;
-  font-size: 12px;
-  color: var(--rp-craie);
+  font-size: var(--charte-taille-micro);
+  color: var(--rp-encre);
   background: none;
   border: 0;
   outline: none;
 }
 
 .rp-page .rp-recherche input::placeholder {
-  color: var(--rp-craie-faible);
-  font-style: italic;
+  color: var(--rp-faible);
 }
 
 .rp-page .rp-select-employe {
   width: 100%;
   min-width: 0;
-  height: 38px;
-  padding: 0 30px 0 11px;
+  height: var(--rp-champ);
+  padding: 0 var(--charte-espace-7) 0 var(--charte-espace-3);
   font: inherit;
-  font-size: 12px;
-  color: var(--rp-craie);
+  font-size: var(--charte-taille-micro);
+  color: var(--rp-encre);
   appearance: none;
   -webkit-appearance: none;
   background-color: var(--rp-panneau);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23c9c2b0' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: var(--rp-chevron);
   background-repeat: no-repeat;
-  background-position: right 11px center;
-  background-size: 10px 7px;
-  border: 1.5px solid var(--rp-ligne-forte);
-  border-radius: 1px;
+  background-position: right var(--charte-espace-3) center;
+  background-size: 12px 7px;
+  border: var(--rp-trait) solid var(--rp-ligne-forte);
+  border-radius: var(--charte-rayon-champ);
   outline: none;
   text-overflow: ellipsis;
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: border-color var(--charte-duree) var(--charte-easing);
 }
 
 .rp-page .rp-select-employe:hover {
-  border-color: var(--rp-craie-douce);
+  border-color: var(--rp-douce);
 }
 
 .rp-page .rp-select-employe:focus {
-  border-color: var(--rp-terre);
-  box-shadow: 0 0 0 3px rgba(180, 98, 42, 0.22);
+  border-color: var(--rp-encre);
 }
 
 .rp-page .rp-select-employe option {
   background: var(--rp-panneau);
-  color: var(--rp-craie);
-}
-
-@media (max-width: 720px) {
-  .rp-sujet-corps {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  color: var(--rp-encre);
 }
 
 /* ── 7. Les sceaux de contenu ─────────────────────────────── */
@@ -601,68 +642,73 @@
 .rp-sceaux {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 8px;
+  gap: var(--charte-espace-2);
 }
 
-/* une option est un sceau : un creux qu'on allume d'un trait de terre */
+/*  une rubrique est un SCEAU : la tuile du kit, cerclée de deux, et son état
+    dit par un liseré de trois à gauche — l'état d'un sceau, c'est son encre,
+    pas une couleur de décor. `opacity: .45` est tombé : une rubrique éteinte
+    se lit sur le lavis de surface désactivée du kit, à contraste entier. */
 .rp-page .rp-sceau {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--charte-espace-2);
   width: 100%;
-  padding: 10px 11px;
+  padding: var(--charte-espace-2) var(--charte-espace-3);
   text-align: left;
   font: inherit;
-  color: inherit;
+  color: var(--rp-douce);
   background: var(--rp-creux);
-  border: 1px solid var(--rp-ligne);
-  border-left: 2px solid var(--rp-ligne-forte);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-left: var(--rp-regle) solid var(--rp-ligne-forte);
+  border-radius: var(--charte-rayon-carte);
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
+  transition: border-color var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
 }
 
 .rp-page .rp-sceau:hover:not(:disabled) {
-  border-color: var(--rp-craie-douce);
+  border-color: var(--rp-douce);
   background: var(--rp-panneau-2);
 }
 
 .rp-page .rp-sceau[aria-pressed='true'] {
-  border-left-width: 3px;
-  background: var(--rp-panneau-2);
+  color: var(--rp-encre);
+  background: var(--rp-panneau);
+  border-left-color: var(--rp-encre);
 }
 
-/* la couleur propre à chaque type de contenu */
-.rp-page .rp-sceau[data-ton='alerte'][aria-pressed='true'] {
-  border-left-color: var(--rp-alerte-texte);
+/* la teinte propre à chaque type de contenu — des données, pas un ornement */
+.rp-page .rp-sceau[data-ton='ok'][aria-pressed='true'] {
+  border-left-color: var(--rp-ok);
 }
 
 .rp-page .rp-sceau[data-ton='attente'][aria-pressed='true'] {
-  border-left-color: var(--rp-attente-texte);
+  border-left-color: var(--rp-attente);
 }
 
-.rp-page .rp-sceau[data-ton='ok'][aria-pressed='true'] {
-  border-left-color: var(--rp-ok-texte);
+.rp-page .rp-sceau[data-ton='alerte'][aria-pressed='true'] {
+  border-left-color: var(--rp-alerte);
 }
 
 .rp-page .rp-sceau[data-ton='indigo'][aria-pressed='true'] {
-  border-left-color: var(--rp-indigo-texte);
+  border-left-color: var(--rp-onyx);
 }
 
 .rp-page .rp-sceau[data-ton='violet'][aria-pressed='true'] {
-  border-left-color: var(--rp-violet-texte);
+  border-left-color: var(--rp-nacre);
 }
 
-/* le journal des pointages porte la couleur de la page */
+/* le journal des pointages porte la teinte de la page */
 .rp-page .rp-sceau[data-ton='terre'][aria-pressed='true'] {
-  border-left-color: var(--rp-terre-clair);
+  border-left-color: var(--rp-terre);
 }
 
 .rp-page .rp-sceau:disabled {
-  opacity: 0.45;
+  color: var(--rp-faible);
+  background: var(--charte-btn-desactive);
+  border-color: var(--rp-ligne);
   cursor: not-allowed;
 }
 
@@ -670,399 +716,400 @@
   display: grid;
   place-items: center;
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: var(--rp-sceau);
+  height: var(--rp-sceau);
+  color: var(--rp-ocre);
   background: var(--rp-panneau);
-  border: 1px solid var(--rp-ligne);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-radius: var(--charte-rayon-badge);
 }
 
 .rp-sceau-texte {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--charte-espace-1);
   min-width: 0;
   flex: 1;
 }
 
 .rp-sceau-titre {
-  font-size: 11.5px;
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
-  color: var(--rp-craie-douce);
-  transition: color 0.15s ease;
-}
-
-.rp-sceau[aria-pressed='true'] .rp-sceau-titre {
-  color: var(--rp-craie);
+  line-height: 1.3;
+  color: inherit;
 }
 
 .rp-sceau-desc {
-  font-size: 9.5px;
+  font-size: var(--charte-taille-micro);
   line-height: 1.4;
-  color: var(--rp-craie-faible);
+  color: var(--rp-faible);
 }
 
-/* la pastille de coche, dessinée — jamais une case native */
+/*  la pastille de coche, dessinée — jamais une case native. Ronde, remplie de
+    la teinte de l'état, l'encre du signe dedans : un seul cerclage. */
 .rp-sceau-marque {
   display: grid;
   place-items: center;
   flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--rp-nuit);
+  width: var(--rp-marque);
+  height: var(--rp-marque);
+  color: var(--rp-panneau);
   background: transparent;
-  border: 1.5px solid var(--rp-ligne-forte);
-  border-radius: 50%;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.rp-sceau[aria-pressed='true'][data-ton='alerte'] .rp-sceau-marque {
-  background: var(--rp-alerte-texte);
-  border-color: var(--rp-alerte-texte);
-}
-
-.rp-sceau[aria-pressed='true'][data-ton='attente'] .rp-sceau-marque {
-  background: var(--rp-attente-texte);
-  border-color: var(--rp-attente-texte);
+  border: var(--rp-trait) solid var(--rp-ligne-forte);
+  border-radius: var(--rp-rond);
+  transition: background-color var(--charte-duree) var(--charte-easing),
+    border-color var(--charte-duree) var(--charte-easing);
 }
 
 .rp-sceau[aria-pressed='true'][data-ton='ok'] .rp-sceau-marque {
-  background: var(--rp-ok-texte);
-  border-color: var(--rp-ok-texte);
+  background: var(--rp-ok);
+  border-color: var(--rp-ok);
+}
+
+.rp-sceau[aria-pressed='true'][data-ton='attente'] .rp-sceau-marque {
+  background: var(--rp-attente);
+  border-color: var(--rp-attente);
+}
+
+.rp-sceau[aria-pressed='true'][data-ton='alerte'] .rp-sceau-marque {
+  background: var(--rp-alerte);
+  border-color: var(--rp-alerte);
 }
 
 .rp-sceau[aria-pressed='true'][data-ton='indigo'] .rp-sceau-marque {
-  background: var(--rp-indigo-texte);
-  border-color: var(--rp-indigo-texte);
+  background: var(--rp-onyx);
+  border-color: var(--rp-onyx);
 }
 
 .rp-sceau[aria-pressed='true'][data-ton='violet'] .rp-sceau-marque {
-  background: var(--rp-violet-texte);
-  border-color: var(--rp-violet-texte);
+  background: var(--rp-nacre);
+  border-color: var(--rp-nacre);
 }
 
 .rp-sceau[aria-pressed='true'][data-ton='terre'] .rp-sceau-marque {
-  background: var(--rp-terre-clair);
-  border-color: var(--rp-terre-clair);
+  background: var(--rp-terre);
+  border-color: var(--rp-terre);
 }
 
-/* les deux sous-options des jours fériés */
+/* les deux sous-options des jours fériées, fermées d'une règle de trois */
 .rp-sous-sceaux {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--rp-pointille);
+  gap: var(--charte-espace-2);
+  margin-top: var(--charte-espace-2);
+  padding-top: var(--charte-espace-2);
+  border-top: var(--rp-regle) solid var(--rp-ligne);
 }
 
-/* la note d'aide : un filet de craie, pas un encadré */
+/*  la note d'aide : un lavis et un liseré de trois, pas un encadré de
+    pointillés — la règle pleine est le second passage, le lavis le premier */
 .rp-note {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  margin: 10px 0 0;
-  padding: 8px 10px;
-  font-size: 10.5px;
-  line-height: 1.55;
-  color: var(--rp-craie-faible);
-  border-left: 2px solid var(--rp-pointille);
-  background: rgba(242, 232, 213, 0.03);
+  gap: var(--charte-espace-2);
+  margin: var(--charte-espace-2) 0 0;
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  font-size: var(--charte-taille-micro);
+  line-height: 1.5;
+  color: var(--rp-douce);
+  background: color-mix(in srgb, var(--rp-ocre) 6%, var(--rp-panneau));
+  border-left: var(--rp-regle) solid color-mix(in srgb, var(--rp-ocre) 45%, transparent);
+  border-radius: 0 var(--charte-rayon-champ) var(--charte-rayon-champ) 0;
 }
 
 .rp-note svg {
   flex: none;
   margin-top: 1px;
+  color: var(--rp-ocre);
 }
 
 .rp-note strong {
-  color: var(--rp-craie-douce);
+  color: var(--rp-encre);
 }
 
 /* ── 8. Les boutons d'export ──────────────────────────────── */
 
+/*  la rangée d'actions ferme le composeur d'une règle de trois, pas d'un
+    pointillé. C'est l'action principale de la page : elle est pleine, le
+    reste au contour — deux boutons pleins se disputeraient. */
 .rp-exports {
   display: flex;
-  gap: 8px;
+  gap: var(--charte-espace-2);
   flex-wrap: wrap;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--rp-pointille);
+  padding-top: var(--charte-espace-3);
+  border-top: var(--rp-regle) solid var(--rp-ligne);
 }
 
+/*  le bouton du kit : 36 px de haut au minimum, capitales à 11 px, rayon
+    champ, contour d'encre de deux, et `translate(1px, 1px)` à l'actif —
+    l'encre s'enfonce dans le papier. Les 42 px à bordure de 1,5 sont tombés. */
 .rp-page .rp-export {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: var(--charte-espace-2);
   flex: 1 1 180px;
-  height: 42px;
-  padding: 0 16px;
+  min-height: var(--rp-cadre);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
   font: inherit;
-  font-size: 11.5px;
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.2;
   white-space: nowrap;
-  color: var(--rp-craie);
-  border: 1.5px solid var(--rp-ligne-forte);
-  border-radius: 1px;
+  color: var(--rp-encre);
+  background: var(--rp-panneau);
+  border: var(--rp-trait) solid var(--rp-ligne-forte);
+  border-radius: var(--charte-rayon-champ);
   cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.rp-page .rp-export[data-ton='principal'] {
-  color: #f7efe0;
-  background: var(--rp-brun);
-  border-color: var(--rp-brun);
-}
-
-.rp-page .rp-export[data-ton='principal']:hover:not(:disabled) {
-  background: var(--rp-terre);
-  border-color: var(--rp-terre);
-}
-
-.rp-page .rp-export[data-ton='creux'] {
-  color: var(--rp-craie-douce);
-  background: var(--rp-creux);
-  border-style: dashed;
-}
-
-.rp-page .rp-export[data-ton='creux']:hover:not(:disabled) {
-  color: var(--rp-craie);
-  border-color: var(--rp-craie-douce);
-  background: var(--rp-panneau-2);
-}
-
-.rp-page .rp-export:disabled {
-  opacity: 0.55;
-  cursor: progress;
+  transition: background-color var(--charte-duree) var(--charte-easing),
+    border-color var(--charte-duree) var(--charte-easing),
+    transform var(--charte-duree) var(--charte-easing);
 }
 
 .rp-page .rp-export svg {
   flex: none;
 }
 
-/* ── 9. L'aperçu : la marge du scribe ─────────────────────── */
+.rp-page .rp-export[data-ton='principal'] {
+  color: var(--rp-sur-panneau);
+  background: var(--charte-btn-repos);
+  border-color: var(--charte-btn-repos);
+}
 
+.rp-page .rp-export[data-ton='principal']:hover:not(:disabled) {
+  background: var(--charte-btn-survol);
+  border-color: var(--charte-btn-survol);
+}
+
+.rp-page .rp-export:not([data-ton='principal']):hover:not(:disabled) {
+  background: var(--rp-panneau-2);
+  border-color: var(--rp-douce);
+}
+
+.rp-page .rp-export:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  background: var(--charte-btn-actif);
+}
+
+/*  rien n'est « à moitié là » : la page qui travaille se lit sur le fond
+    désactivé du kit et son texte doux, pas sur une `opacity` de 0,55. */
+.rp-page .rp-export:disabled {
+  color: var(--charte-btn-desactive-texte);
+  background: var(--charte-btn-desactive);
+  border-color: var(--charte-btn-desactive);
+  cursor: progress;
+}
+
+.rp-tourne {
+  animation: rp-tourne 1s linear infinite;
+}
+
+@keyframes rp-tourne {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── 9. L'aperçu : la marge du scribe ────────────────────── */
+
+/*  posée dans la même colonne, collée sous l'en-tête cerclé : le cartouche
+    du haut fait 24 px de tissu plus sa marge, l'aperçu part du même bord. */
 .rp-apercu {
   position: sticky;
-  top: 16px;
+  top: var(--charte-espace-5);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: clamp(14px, 1.8vw, 18px);
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
   background: var(--rp-panneau);
-  border: 1px solid var(--rp-ligne);
-  border-top: 2px solid var(--rp-craie-douce);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-top: var(--rp-regle) solid var(--rp-encre);
+  border-radius: var(--charte-rayon-tuile);
+  box-shadow: var(--rp-ombre);
 }
 
 .rp-apercu-tete {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--charte-espace-2);
 }
 
 .rp-apercu-titre {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--charte-espace-2);
   margin: 0;
-  font-size: 9.5px;
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--rp-terre-clair);
+  color: var(--rp-ocre);
 }
 
 .rp-actualiser {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 28px;
-  padding: 0 10px;
+  gap: var(--charte-espace-1);
+  min-height: var(--rp-cadre);
+  padding: 0 var(--charte-espace-3);
   font: inherit;
-  font-size: 10px;
-  font-weight: 650;
-  color: var(--rp-craie-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  color: var(--rp-encre);
   background: var(--rp-creux);
-  border: 1px solid var(--rp-ligne-forte);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne-forte);
+  border-radius: var(--charte-rayon-champ);
   cursor: pointer;
-  transition:
-    color 0.14s ease,
-    border-color 0.14s ease;
+  transition: border-color var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
 }
 
 .rp-actualiser:hover:not(:disabled) {
-  color: var(--rp-craie);
-  border-color: var(--rp-craie-douce);
+  border-color: var(--rp-douce);
+  background: var(--rp-panneau-2);
 }
 
 .rp-actualiser:disabled {
-  opacity: 0.6;
+  color: var(--charte-btn-desactive-texte);
+  background: var(--charte-btn-desactive);
+  border-color: var(--charte-btn-desactive);
   cursor: progress;
 }
 
 .rp-apercu-lignes {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-bottom: 10px;
-  border-bottom: 1px dashed var(--rp-pointille);
+  gap: var(--charte-espace-1);
+  padding-bottom: var(--charte-espace-3);
+  border-bottom: var(--rp-regle) solid var(--rp-ligne);
 }
 
 .rp-apercu-ligne {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--rp-craie-douce);
+  gap: var(--charte-espace-2);
+  font-size: var(--charte-taille-micro);
+  color: var(--rp-douce);
 }
 
 .rp-apercu-ligne svg {
   flex: none;
-  color: var(--rp-terre-clair);
+  color: var(--rp-ocre);
 }
 
-/* les étiquettes de ce qui sera inclus */
+/* les étiquettes de ce qui sera inclus : des tampons, cerclés d'un seul trait */
 .rp-etiquettes {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: var(--charte-espace-1);
 }
 
 .rp-etiquette-ton {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
-  font-size: 9.5px;
+  gap: var(--charte-espace-1);
+  padding: 1px var(--charte-espace-2);
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
-  border: 1px solid currentColor;
-  border-radius: 1px;
-}
-
-.rp-etiquette-ton[data-ton='alerte'] {
-  color: var(--rp-alerte-texte);
-  background: rgba(239, 68, 68, 0.1);
-}
-
-.rp-etiquette-ton[data-ton='attente'] {
-  color: var(--rp-attente-texte);
-  background: rgba(245, 158, 11, 0.1);
+  border: var(--rp-trait) solid currentColor;
+  border-radius: var(--charte-rayon-badge);
 }
 
 .rp-etiquette-ton[data-ton='ok'] {
-  color: var(--rp-ok-texte);
-  background: rgba(16, 185, 129, 0.1);
+  color: var(--rp-ok);
+}
+
+.rp-etiquette-ton[data-ton='attente'] {
+  color: var(--rp-attente);
+}
+
+.rp-etiquette-ton[data-ton='alerte'] {
+  color: var(--rp-alerte);
 }
 
 .rp-etiquette-ton[data-ton='indigo'] {
-  color: var(--rp-indigo-texte);
-  background: rgba(99, 102, 241, 0.1);
+  color: var(--rp-onyx);
 }
 
 .rp-etiquette-ton[data-ton='violet'] {
-  color: var(--rp-violet-texte);
-  background: rgba(139, 92, 246, 0.1);
+  color: var(--rp-nacre);
 }
 
 .rp-etiquette-ton[data-ton='terre'] {
-  color: var(--rp-terre-clair);
-  background: rgba(180, 98, 42, 0.12);
+  color: var(--rp-terre);
 }
 
-/* les chiffres de l'aperçu : un tableau à cinq colonnes */
+/*  les chiffres de l'aperçu : une grille serrée par un trait de deux, plus un
+    quadrillage de 1 px sur un fond — la couture disparaît, chaque mesure est
+    une case du tableau, cerclée comme le reste */
 .rp-mesures {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-  gap: 1px;
-  background: var(--rp-ligne);
-  border: 1px solid var(--rp-ligne);
+  gap: var(--charte-espace-1);
 }
 
 .rp-mesure {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 9px 10px;
-  background: var(--rp-panneau);
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-2);
+  background: var(--rp-creux);
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-radius: var(--charte-rayon-champ);
 }
 
 .rp-mesure-valeur {
-  font-size: 17px;
+  font-size: var(--charte-taille-titre);
   font-weight: 700;
   line-height: 1.05;
-  color: var(--rp-craie);
+  color: var(--rp-encre);
   font-variant-numeric: tabular-nums;
 }
 
-.rp-mesure[data-ton='alerte'] .rp-mesure-valeur {
-  color: var(--rp-alerte-texte);
+.rp-mesure[data-ton='ok'] .rp-mesure-valeur {
+  color: var(--rp-ok);
 }
 
 .rp-mesure[data-ton='attente'] .rp-mesure-valeur {
-  color: var(--rp-attente-texte);
+  color: var(--rp-attente);
+}
+
+.rp-mesure[data-ton='alerte'] .rp-mesure-valeur {
+  color: var(--rp-alerte);
 }
 
 .rp-mesure[data-ton='violet'] .rp-mesure-valeur {
-  color: var(--rp-violet-texte);
+  color: var(--rp-nacre);
 }
 
 .rp-mesure[data-ton='terre'] .rp-mesure-valeur {
-  color: var(--rp-terre-clair);
-}
-
-.rp-mesure[data-ton='ok'] .rp-mesure-valeur {
-  color: var(--rp-ok-texte);
+  color: var(--rp-terre);
 }
 
 .rp-mesure-libelle {
-  font-size: 8.5px;
-  font-weight: 650;
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--rp-craie-faible);
+  color: var(--rp-douce);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* les deux constats de l'aperçu */
+/* les deux constats de l'aperçu : un liseré de trois, un lavis, rien de plus */
 .rp-constat {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  padding: 8px 9px;
-  font-size: 10.5px;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2);
+  font-size: var(--charte-taille-micro);
   line-height: 1.5;
-  color: var(--rp-craie-douce);
-  background: var(--rp-creux);
-  border-left: 2px solid var(--rp-violet-texte);
-}
-
-.rp-constat[data-ton='neutre'] {
-  border-left-color: var(--rp-pointille);
-  color: var(--rp-craie-faible);
-}
-
-.rp-constat[data-ton='attente'] {
-  border-left-color: var(--rp-attente-texte);
-}
-
-.rp-constat[data-ton='ok'] {
-  border-left-color: var(--rp-ok-texte);
-}
-
-.rp-constat[data-ton='alerte'] {
-  border-left-color: var(--rp-alerte-texte);
+  color: var(--rp-douce);
+  background: color-mix(in srgb, var(--rp-nacre) 8%, var(--rp-panneau));
+  border-left: var(--rp-regle) solid var(--rp-nacre);
+  border-radius: 0 var(--charte-rayon-champ) var(--charte-rayon-champ) 0;
 }
 
 .rp-constat svg {
@@ -1070,26 +1117,49 @@
   margin-top: 1px;
 }
 
+.rp-constat[data-ton='neutre'] {
+  color: var(--rp-douce);
+  background: var(--rp-creux);
+  border-left-color: var(--rp-ligne-forte);
+}
+
+.rp-constat[data-ton='attente'] {
+  background: color-mix(in srgb, var(--rp-attente) 8%, var(--rp-panneau));
+  border-left-color: var(--rp-attente);
+}
+
+.rp-constat[data-ton='ok'] {
+  background: color-mix(in srgb, var(--rp-ok) 8%, var(--rp-panneau));
+  border-left-color: var(--rp-ok);
+}
+
+.rp-constat[data-ton='alerte'] {
+  background: color-mix(in srgb, var(--rp-alerte) 8%, var(--rp-panneau));
+  border-left-color: var(--rp-alerte);
+}
+
 /* ── Le registre du jour, dans l'aperçu d'une personne seule ── */
+
 .rp-journees {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 9px 10px;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
   background: var(--rp-creux);
-  border: 1px solid var(--rp-ligne);
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-radius: var(--charte-rayon-champ);
 }
 
 .rp-journees-titre {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--charte-espace-2);
   margin: 0;
-  font-size: 8.5px;
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--rp-craie-faible);
+  color: var(--rp-ocre);
 }
 
 .rp-journees-liste {
@@ -1104,13 +1174,13 @@
 
 .rp-journee {
   display: grid;
-  grid-template-columns: 62px 1fr auto;
+  grid-template-columns: 62px minmax(0, 1fr) auto;
   align-items: baseline;
-  gap: 8px;
-  padding: 4px 0;
-  font-size: 10.5px;
-  color: var(--rp-craie-douce);
-  border-top: 1px solid var(--rp-ligne);
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-1) 0;
+  font-size: var(--charte-taille-micro);
+  color: var(--rp-douce);
+  border-top: var(--rp-trait) solid var(--rp-ligne);
 }
 
 .rp-journee:first-child {
@@ -1118,67 +1188,73 @@
 }
 
 .rp-journee-date {
-  font-weight: 650;
-  color: var(--rp-craie);
+  font-weight: 700;
+  color: var(--rp-encre);
 }
 
-.rp-journee-heures {
+.rp-journee-heures,
+.rp-journee-temps {
   font-variant-numeric: tabular-nums;
 }
 
 .rp-journee-temps {
-  font-variant-numeric: tabular-nums;
-  color: var(--rp-craie-faible);
+  color: var(--rp-douce);
   white-space: nowrap;
 }
 
 .rp-journee-temps strong {
-  color: var(--rp-ok-texte);
+  color: var(--rp-ok);
 }
 
+/*  l'état vide prend la place de l'état plein : une règle de trois cerclée,
+    pas un enclos de pointillés — et surtout pas un saut de 15 px à
+    l'arrivée des données */
 .rp-apercu-vide {
   display: grid;
   place-items: center;
-  gap: 6px;
-  padding: 18px 12px;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-4) var(--charte-espace-3);
   text-align: center;
-  border: 1px dashed var(--rp-pointille);
+  background: var(--rp-creux);
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-radius: var(--charte-rayon-carte);
 }
 
 .rp-apercu-vide p {
   margin: 0;
-  font-size: 10.5px;
+  font-size: var(--charte-taille-micro);
   line-height: 1.55;
-  color: var(--rp-craie-faible);
+  color: var(--rp-douce);
 }
 
 /* ── 10. La marge : ce que contient le rapport ────────────── */
 
 .rp-marge {
-  padding: clamp(14px, 1.8vw, 18px);
+  padding: var(--charte-espace-4);
   background: var(--rp-panneau);
-  border: 1px solid var(--rp-ligne);
-  border-radius: 1px;
+  border: var(--rp-trait) solid var(--rp-ligne);
+  border-radius: var(--charte-rayon-tuile);
+  box-shadow: var(--rp-ombre);
 }
 
 .rp-marge-titre {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin: 0 0 10px;
-  padding-bottom: 8px;
-  font-size: 9px;
+  gap: var(--charte-espace-2);
+  margin: 0 0 var(--charte-espace-3);
+  padding-bottom: var(--charte-espace-2);
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--rp-terre-clair);
-  border-bottom: 1px dashed var(--rp-pointille);
+  color: var(--rp-ocre);
+  border-bottom: var(--rp-regle) solid var(--rp-ligne);
 }
 
 .rp-marge-liste {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--charte-espace-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1187,132 +1263,67 @@
 .rp-marge-ligne {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 10.5px;
+  gap: var(--charte-espace-2);
+  font-size: var(--charte-taille-micro);
   line-height: 1.45;
-  color: var(--rp-craie-douce);
+  color: var(--rp-douce);
 }
 
 .rp-marge-ligne svg {
   flex: none;
-  color: var(--rp-ok-texte);
+  color: var(--rp-ok);
 }
 
 .rp-marge-ligne[data-ton='alerte'] svg {
-  color: var(--rp-alerte-texte);
+  color: var(--rp-alerte);
 }
 
 .rp-marge-ligne[data-ton='attente'] svg {
-  color: var(--rp-attente-texte);
+  color: var(--rp-attente);
 }
 
 .rp-marge-ligne[data-ton='indigo'] svg {
-  color: var(--rp-indigo-texte);
+  color: var(--rp-onyx);
 }
 
 .rp-marge-ligne[data-ton='violet'] svg {
-  color: var(--rp-violet-texte);
+  color: var(--rp-nacre);
 }
 
 .rp-marge-ligne[data-ton='terre'] svg {
-  color: var(--rp-terre-clair);
+  color: var(--rp-terre);
 }
 
 /* ── 11. Le pied ──────────────────────────────────────────── */
 
+/*  la bande basse est au bogolan comme celle du haut — une page ne porte pas
+    deux tissus. Sa hauteur de 32 px est celle de toutes les pages, réglée par
+    la feuille partagée du bandeau : rien à redéclarer ici. */
 .rp-pied {
   margin-top: auto;
   line-height: 0;
-  background: var(--rp-nuit-2);
-  border-top: 1px dashed var(--rp-pointille);
+  background: var(--rp-nuit);
+  border-top: var(--rp-regle) solid var(--rp-ligne);
 }
 
-.rp-pied .ec-cultural-bottom[data-cultural-motif='nsibidi'] {
-  height: 32px;
-}
+/* ── 12. La double peau, morte — sauf une image ───────────── */
 
-/* ── 12. Le jour : le thème clair ─────────────────────────── */
+/*  La section 12 d'avant s'appelait « Le jour : le thème clair » : 27
+    couleurs en dur, posées par la CLASSE de la page (`.rp-clair`), avec quatre
+    règles de rattrapage dont deux flèches de select écrites deux fois. Tout
+    cela est mort : `tokens.css` retourne l'échelle à la racine et la page ne
+    commande plus aucun thème — ni hook, ni attribut, ni classe dans le JSX.
 
-.rp-page.rp-clair {
-  --rp-nuit: #f4efdf;
-  --rp-nuit-2: #ece5d1;
-  --rp-panneau: #fbf7ec;
-  --rp-panneau-2: #f6f0df;
-  --rp-creux: #ece4cf;
-
-  --rp-craie: #16222c;
-  --rp-craie-douce: #3b4a55;
-  --rp-craie-faible: #55636e;
-
-  --rp-ligne: rgba(22, 34, 44, 0.16);
-  --rp-ligne-forte: rgba(22, 34, 44, 0.3);
-  --rp-pointille: rgba(22, 34, 44, 0.22);
-  --rp-ombre: 0 14px 30px rgba(22, 34, 44, 0.14);
-
-  --rp-ok-texte: #0b5f43;
-  --rp-attente-texte: #8a5506;
-  --rp-alerte-texte: #b91c1c;
-  --rp-indigo-texte: #4338ca;
-  --rp-violet-texte: #6d28d9;
-
-  --rp-terre: #a8551f;
-  --rp-terre-clair: #96491a;
-  --rp-brun: #7a3413;
-
-  background-image:
-    radial-gradient(110% 70% at 50% -10%, rgba(180, 98, 42, 0.1), transparent 68%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(22, 34, 44, 0.02) 0 1px,
-      transparent 1px 3px
-    );
-}
-
-/* En clair, la flèche du menu passe à l'encre : la craie ne se lirait pas. */
-.rp-page.rp-clair .rp-champ select,
-.rp-page.rp-clair .rp-select-employe {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%233b4a55' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-
-.rp-page.rp-clair .rp-bordure {
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--rp-craie-douce) 0 2px,
-    transparent 2px 12px
-  );
-  opacity: 0.5;
-}
-
-.rp-page.rp-clair .rp-champ input[type='date'] {
-  color-scheme: light;
-}
-
-.rp-page.rp-clair .rp-champ select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%233b4a55' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-
-.rp-page.rp-clair .rp-export[data-ton='principal'] {
-  color: #fbf7ec;
-  background: var(--rp-terre);
-  border-color: var(--rp-terre);
-}
-
-.rp-page.rp-clair .rp-export[data-ton='principal']:hover:not(:disabled) {
-  background: var(--rp-brun);
-  border-color: var(--rp-brun);
+    Il reste UNE image, parce qu'un fond ne peut pas lire un jeton. Elle se
+    retourne donc ICI, par le même sélecteur que les tokens (`[data-theme]`,
+    posé par `ThemeProvider` sur `<html>`). Ce n'est pas une peau de rechange :
+    une seule declaration, un seul objet, et rien qui ressemble à une couleur
+    de texte ou de fond. */
+[data-theme='dark'] .rp-page {
+  --rp-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23F3E9DA' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 /* ── 13. Adaptations ──────────────────────────────────────── */
-
-@keyframes rp-tourne {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.rp-tourne {
-  animation: rp-tourne 1s linear infinite;
-}
 
 @media (max-width: 1180px) {
   .rp-atelier {
@@ -1330,80 +1341,84 @@
   }
 }
 
+/*  LA PLACE de cette règle est volontaire : la loi `rapportsDureePaie` lit
+    « le sujet se pose en pile » sur `@media (max-width: 720px) {` suivi
+    IMMÉDIATEMENT de `.rp-sujet-corps`. Un commentaire dans le bloc romprait la
+    lecture — le commentaire vit donc AU-DESSUS du bloc. C'est le seul endroit
+    de la feuille où l'ordre des règles est une information. */
 @media (max-width: 720px) {
+  .rp-sujet-corps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .rp-page {
     min-height: 100dvh;
     overflow-x: clip;
   }
 
-  /* 16 px : iOS ne zoome plus quand on touche un champ */
+  /* 16 px : iOS ne zoome plus quand on touche un champ (la seule taille
+     hors échelle de la feuille, et elle est commandée par le navigateur) */
   .rp-page .rp-champ :is(input[type='date'], select) {
     height: 44px;
     font-size: 16px;
   }
 
-  .rp-champs {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .rp-sceaux {
+  .rp-champs,
+  .rp-sceaux,
+  .rp-sous-sceaux {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .rp-page .rp-sceau {
-    padding: 11px;
+    padding: var(--charte-espace-3);
   }
 
   .rp-page .rp-export {
     flex: 1 1 100%;
-    height: 46px;
+    min-height: 44px;
   }
 
   .rp-mesures {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
 }
 
 @media (max-width: 650px) {
-  .rp-entete {
+  /*  SUR TÉLÉPHONE, SEULE LA PLAQUE SE MET EN PILE. L'étoffe ne change pas de
+      cote — pas de seuil mobile sur `--rp-tissu`, exactement comme à
+      Rémunérations dont la feuille n'a aucun point d'arrêt sur son cartouche :
+      un tour de tissu qui s'amincit d'un côté seulement se défait aux coins,
+      là où les deux fichiers se rejoignent. */
+  .rp-entete-corps {
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr);
     align-items: center;
-    padding: 16px 14px 14px;
-    gap: 10px 12px;
+    gap: var(--charte-espace-2) var(--charte-espace-3);
+    padding: var(--charte-espace-2) var(--charte-espace-3);
   }
 
-  .rp-entete > .rp-retour {
+  .rp-entete-corps > .rp-retour {
     grid-column: 1;
     grid-row: 1;
   }
 
-  .rp-entete > svg {
+  .rp-entete-corps > svg {
     grid-column: 2;
     grid-row: 1;
   }
 
-  .rp-entete > .rp-titre-bloc {
+  .rp-entete-corps > .rp-titre-bloc {
     grid-column: 3;
     grid-row: 1;
   }
 
-  .rp-entete > .rp-entete-droite {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-content: flex-end;
-  }
-
   .rp-sous-titre {
-    font-size: 11px;
+    font-size: var(--charte-taille-micro);
   }
 
   .rp-seuil {
-    padding: 11px 12px;
-  }
-
-  .rp-pied .ec-cultural-bottom[data-cultural-motif='nsibidi'] {
-    height: 28px;
+    padding: var(--charte-espace-2) var(--charte-espace-3);
   }
 }
 
@@ -1411,14 +1426,10 @@
   .rp-cartouche,
   .rp-apercu,
   .rp-marge {
-    padding: 12px;
+    padding: var(--charte-espace-3);
   }
 
   .rp-mesures {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .rp-sous-sceaux {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -1429,7 +1440,9 @@
   }
 
   .rp-page .rp-sceau,
-  .rp-page .rp-export {
+  .rp-page .rp-export,
+  .rp-actualiser,
+  .rp-retour {
     transition: none;
   }
 }
