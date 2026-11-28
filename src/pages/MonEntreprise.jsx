@@ -41,10 +41,29 @@ import {
   statutModele,
 } from '../lib/monEntreprise'
 import { dateEffetCourte } from '../lib/reglesPersonnelles'
+import { dateEffetAuLundi } from '../services/seuilsHebdoParSemaine'
 import './MonEntreprise.css'
 
 const CHAMPS_ENTREPRISE = 'id, name, code, country_code, currency, timezone, is_active'
-const AUJOURDHUI = () => new Date().toISOString().slice(0, 10)
+//  ⚠️ `AUJOURDHUI()` (date UTC du jour) a été RETIRÉE : elle servait de date
+//  d'effet au seuil, ce que la décision B0-a interdit. La date d'effet se
+//  calcule désormais avec `dateEffetAuLundi`, dans le fuseau de l'entreprise.
+
+/**
+ * La date d'effet d'une confirmation de SEUIL, au lundi (décision B0-a).
+ *
+ * ⚠️ Ce n'est PAS la date du jour : c'est le lundi où la nouvelle valeur
+ * commence à gouverner, à 04:00 dans le fuseau de l'entreprise. Une
+ * confirmation un mardi prend effet le lundi suivant.
+ *
+ * ⚠️ Sans fuseau d'entreprise, `dateEffetAuLundi` REFUSE (throw). On ne
+ * remplace jamais ce refus par la date UTC du jour : ce serait exactement le
+ * repli silencieux que la décision B0-a interdit. L'appelant doit traiter
+ * l'erreur et le dire à l'écran.
+ */
+function dateEffetSeuil(fuseau) {
+  return dateEffetAuLundi(new Date(), fuseau)
+}
 
 function lireAdmin() {
   try {
@@ -224,7 +243,36 @@ export default function MonEntreprise() {
   }, [entrepriseId, autorise, chargerRegles])
 
   //  ── 3) Écriture ──────────────────────────────────────────────
+  //  ── DATE D'EFFET, DÉCISION B0-a ─────────────────────────────
+  //  ⚠️ `dateEffetAuLundi` REFUSE sans fuseau d'entreprise (throw). On ne
+  //  remplace pas ce refus par la date UTC du jour : ce serait le repli
+  //  silencieux que la décision interdit. Le motif est mémorisé et NOMMÉ.
+  const [refusDateEffet, setRefusDateEffet] = useState('')
+
+  /** La date d'effet du seuil, ou null si elle est refusée. */
+  const calculerDateEffet = useCallback(() => {
+    try {
+      const date = dateEffetSeuil(entreprise?.timezone)
+      setRefusDateEffet('')
+      return date
+    } catch (e) {
+      //  Le refus est affiché, jamais contourné.
+      setRefusDateEffet(e?.message || 'La date d’effet ne peut pas être calculée.')
+      return null
+    }
+  }, [entreprise?.timezone])
+
+  /** Ouvre une édition : sans date d'effet valide, l'écriture est refusée. */
+  const saisirDateEffet = useCallback(() => calculerDateEffet(), [calculerDateEffet])
+
+  const dateEffetModele = useMemo(() => calculerDateEffet(), [calculerDateEffet, confirmationModele]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const appliquer = async ({ cle, valeur, dateEffet }) => {
+    //  ⚠️ Une date d'effet REFUSÉE n'est jamais remplacée par un défaut.
+    if (!dateEffet) {
+      setErreur(refusDateEffet || 'Date d’effet indisponible : enregistrement refusé.')
+      return
+    }
     setEnCours(true)
     setErreur('')
     try {
@@ -376,7 +424,9 @@ export default function MonEntreprise() {
                               setEdition({
                                 cle: regle.cle,
                                 valeur: resolution?.valeur ?? '',
-                                dateEffet: AUJOURDHUI(),
+                                //  La date d'effet n'est pas saisie : elle est
+                                //  calculée au lundi par la règle B0-a.
+                                dateEffet: saisirDateEffet(),
                                 confirme: false,
                               })
                             }}
@@ -399,12 +449,31 @@ export default function MonEntreprise() {
                                 />
                               </label>
                               <label>
-                                <span>À partir du</span>
+                                <span>À partir du lundi</span>
+                                {/*  ⚠️ Non éditable : la date d'effet est
+                                    calculée (B0-a, borne 04:00). La laisser
+                                    saisir librement permettrait de viser une
+                                    semaine déjà entamée — ce que la règle
+                                    interdit. */}
                                 <input
-                                  type="date"
-                                  value={edition.dateEffet}
-                                  onChange={(e) => setEdition({ ...edition, dateEffet: e.target.value, confirme: false })}
+                                  type="text"
+                                  value={dateEffetCourte(edition.dateEffet) || '—'}
+                                  readOnly
+                                  aria-readonly="true"
                                 />
+                                {/*  Un refus est DIT, jamais contourné. */}
+                                {!edition.dateEffet && (
+                                  <span className="me-note me-note--alerte" role="alert">
+                                    {refusDateEffet || 'Date d’effet indisponible.'}
+                                  </span>
+                                )}
+                                {edition.dateEffet && (
+                                  <span className="me-note">
+                                    C’est le lundi où la valeur commence à gouverner, à 04:00
+                                    dans le fuseau de l’entreprise. Une confirmation en
+                                    semaine vise le lundi suivant.
+                                  </span>
+                                )}
                               </label>
                             </div>
 
@@ -555,7 +624,7 @@ export default function MonEntreprise() {
             <div className="me-confirmation">
               <p>
                 Appliquer <strong>{modele.heures} h</strong> au seuil d’alerte
-                hebdomadaire, à partir du <strong>{AUJOURDHUI()}</strong>. Un
+                hebdomadaire, à partir du <strong>{dateEffetCourte(dateEffetModele) || '—'}</strong>. Un
                 changement d’avis est possible : chaque version reste dans
                 l’historique.
               </p>
@@ -571,12 +640,12 @@ export default function MonEntreprise() {
                 <button
                   type="button"
                   className="me-bouton"
-                  disabled={enCours}
+                  disabled={enCours || !dateEffetModele}
                   onClick={() =>
                     appliquer({
                       cle: 'alerte_hebdo_heures',
                       valeur: modele.heures,
-                      dateEffet: AUJOURDHUI(),
+                      dateEffet: dateEffetModele,
                     })
                   }
                 >
