@@ -97,15 +97,18 @@ it('s’ouvre au MILIEU, pas collé sur le côté', async () => {
   const { readFileSync } = await import('node:fs')
   const css = readFileSync('src/components/PaieInteriors.css', 'utf8')
 
-  //  le voile centre ses enfants, dans les deux axes
-  expect(css).toMatch(/\.pw-drawer-layer \{[^}]*justify-content: center/)
-  expect(css).toMatch(/\.pw-drawer-layer \{[^}]*align-items: center/)
+  //  Le centrage vient de `margin: auto` sur la feuille — PAS d'un
+  //  `justify-content`/`align-items` sur le voile : ceux-là rendent le haut
+  //  d'une fenêtre trop haute inatteignable au défilement (02/12).
+  expect(css).toMatch(/\.pw-drawer-layer > \.pw-drawer \{[^}]*margin: auto/)
+  expect(css).not.toMatch(/\.paie-page\.pw-drawer-layer \{[^}]*align-items: center/)
   //  et il ne reste AUCUN collage à droite sur ce voile
   expect(css).not.toMatch(/\.pw-drawer-layer \{[^}]*justify-content: flex-end/)
 
-  //  la feuille ne prend plus toute la hauteur : elle prend SA hauteur
+  //  la feuille ne prend plus toute la hauteur, et plus AUCUN plafond :
+  //  c'est le voile qui ramène l'ensemble à l'écran en défilant.
   expect(css).not.toMatch(/\.pw-drawer \{[^}]*height: 100%/)
-  expect(css).toMatch(/\.pw-drawer \{[^}]*max-height: calc\(100dvh - 48px\)/)
+  expect(css).toMatch(/\.pw-drawer \{[^}]*max-height: none/)
 
   //  et le DOM porte bien la peau et le titre
   expect(voile.className).toContain('pw-drawer-layer')
