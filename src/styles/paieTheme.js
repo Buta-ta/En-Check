@@ -931,17 +931,26 @@ export function stylesPaie(darkMode = true) {
     gap: 12,
   },
 
+  /*  « IL Y A ENCORE DES ÉCRITS ILLISIBLES » (02/12, capture du volet fiscal)
+      ─────────────────────────────────────────────────────────────────────
+      `p.contour` vaut rgba(93,66,39,0.22) — vingt-deux pour cent d'opacité.
+      C'est un jeton de BORDURE, pas une encre : posé en `color`, il compose
+      un beige sur le papier et le libellé tombe à 1,43:1. Sur la capture,
+      les cases apparaissaient plus claires que la première, simplement
+      parce que leur fond diffère de quelques unités.
+
+      Un libellé de case se lit comme du texte : encre pleine, 15,70:1. */
   checkboxLabel: {
     display: 'flex',
     alignItems: 'center',
     gap: 10,
-    color: p.contour,
+    color: 'var(--charte-encre)',
     fontSize: 13,
     cursor: 'pointer',
     padding: '10px 12px',
-    background: p.voile2,
-    borderRadius: 12,
-    border: `1px solid ${p.voile4}`,
+    background: 'color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface))',
+    borderRadius: 0,
+    border: '1px solid var(--charte-bordure)',
   },
 
   tooltip: {
