@@ -979,7 +979,14 @@ export default function Remunerations() {
             la bande est peinte par la feuille (`.rw-entete::before`, quatre
             couches aux quatre bords) et la plaque de papier est reculée de son
             épaisseur. Rien à poser ici — un `<span>` de plus serait un second
-            entourage, et c'est un seul coup de pinceau. */}
+            entourage, et c'est un seul coup de pinceau.
+
+            Le bloc reste en haut pendant que la page défile : c'est
+            `position: sticky` sur `.rw-entete`, un seul mot de la feuille. Pas
+            de porteuse ajoutée pour l'occasion, pas d'écouteur de défilement,
+            pas de mesure à rejouer au redimensionnement — et rien à
+            désactiver sur téléphone : le collage est dans la règle, pas dans
+            un seuil. */}
         <div className="rw-entete-corps">
           <button
             type="button"

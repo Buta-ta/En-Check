@@ -915,3 +915,171 @@ le sandbox : la cote de 24 px, les rayons de 6 et 8, le pas de 485 px et les
 2,5 motifs sous la colonne sont calculés depuis les fichiers et la maquette,
 pas mesurés sur écran. Et l'admin non-`super_admin` voit encore la marque de la
 maison dans le rail, pas un bandeau d'entreprises.
+
+## Le bloc est collé en haut, le reste défile dessous (8 novembre 2026)
+
+La maquette demandée, énoncée en une phrase : « je veux que tu maintiennes ce
+bloc-là fixe et tout le reste va glisser dedans quand je scrolle — le même
+comportement en desktop, mobile et tablette ». Le bloc, c'est la cage d'étoffe
+de §précédent : flèche de retour, cartouche, « CONTRATS ET MONTANTS /
+Rémunérations. », le sélecteur d'entreprise et le bouton de reprise. Le
+« dedans » du langage courant est le « dessous » du navigateur : les cartes
+passent sous le bloc, elles n'entrent pas dans sa boîte.
+
+### Le mot, et pas les trois à côté
+
+`position: sticky; top: 0` — un seul mot, aucun JS. Les quatre autres chemins,
+et pourquoi aucun :
+
+- `position: fixed` : il sortirait le bloc du flot, donc il faudrait lui
+  rendre sa hauteur en `padding-top` sur la page, la remesurer au
+  redimensionnement et au changement d'orientation, et le geste de retour du
+  navigateur ne retrouverait plus sa position. La maison l'a déjà écrit noir
+  sur blanc à `.pw-fixe` (PaieWorkspace.css, l. 413-421) ; je ne réécris pas
+  l'argument, je le reprends.
+- un habillage `<div class="rw-collant">` autour de l'en-tête : une boîte
+  défilante de plus, et c'est exactement la famille de carcans qui tue
+  `sticky` (voir la loi « aucun carcan » ci-dessous).
+- `scroll-snap` : ça aimante le défilement à des arrêts, ça ne colle pas un
+  bandeau.
+- un `IntersectionObserver` qui pose une classe au passage : trois lignes de
+  mesure qui se déracinent au redimensionnement, pour un résultat que le CSS
+  donne déjà.
+
+`top: 0`, et pas le `top: 8px` du `.paie-topbar` ni le `top: 10px` du rail :
+tout centimètre laissé entre le bord de l'écran et le bloc est un couloir où
+le contenu continue de courir. Posé à zéro, le haut du tissu fait le bord de
+l'écran.
+
+### La règle, telle qu'elle est écrite
+
+```css
+.rw-entete {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  isolation: isolate;
+  display: block;
+  width: var(--rw-colonne);
+  margin: var(--charte-espace-5) auto var(--charte-espace-4);
+  padding: var(--rw-tissu);
+  background-color: var(--rw-nuit);
+  border-radius: var(--rw-rayon-bloc);
+}
+```
+
+`position: relative` est tombé, remplacé — la cage tenait ses deux pseudo-
+enfants en absolu, `sticky` les tient de la même façon et fait le collage en
+plus. Les cotes (24 px d'étoffe, 5/4 de marges, colonne à
+`min(1280 - 48, 100% - 48)`) ne bougent pas d'un pixel, et aucune règle n'a
+été ajoutée : 317 règles parsees par postcss, autant qu'avant la passe.
+
+### Les étages, mesurés avant d'être écrits
+
+Un bloc collé est un bloc qui passe devant. J'ai relevé l'échelle déjà en
+place dans la feuille plutôt que d'inventer un chiffre :
+
+| pièce | position | étage |
+| --- | --- | --- |
+| `.rw-mois-voile` (le voile du sélecteur de mois) | `fixed` | 25 |
+| `.rw-mois-liste` (son registre) | `absolute` | 30 |
+| `.rw-barre` (la barre d'assemblage du bas) | `fixed` | 40 |
+| `.rw-voile` (la modale) | `fixed` | 80 |
+| `.coque-admin > .sb` (le rail collé de la maison) | `sticky` | 74 |
+| `.se-liste--flottante` (le registre d'entreprises du rail) | `fixed` | 78 |
+
+`z-index: 20` met donc le bloc au-dessus de la page qui défile et sous les
+quatre choses qui se posent par-dessus elle. Le rail gagne (74) — c'est le bon
+sens : un bandeau de page ne doit pas passer devant la barre de commande ; de
+toute façon ils ne se recouvrent pas, le rail est une colonne, le bloc est
+centré dans la sienne. Le registre d'entreprises est porté hors du rail en
+`fixed` à 78, il n'a rien à négocier avec nous.
+
+`isolation: isolate` n'est pas un ornement : sans contexte d'empilement propre,
+les deux pseudo-enfants en `z-index` négatif (le tissu à `-2`, la plaque à
+`-1`) glisseraient sous le fond de la page. `sticky` en crée un aussi, mais
+la raison doit rester lue et pas déduite.
+
+### Le bloc doit peindre, et c'est un arbitrage
+
+Un bloc collé est un cache. Le tissu pose ses quatre bandes mais ne remplit
+rien : sans fond sous les coins, le contenu passe VU dans les encoches des
+quatre arrondis — six pixels de mouvement dans un coin, ça se voit. La cage
+reprend donc `background-color: var(--rw-nuit)` au même `--rw-rayon-bloc`
+(6 px) que l'étoffe, un seul rayon pour les deux, sinon les encoches se
+redécalent.
+
+Ce fond est la seule couleur que la cage se donne, et le seul écart assumé de
+la passe : en haut de page, le fond n'est pas plat mais lavé
+(`linear-gradient(var(--rw-lavis), transparent 30vh)`, `--rw-lavis` = 10 % de
+cuivre dans `--rw-nuit`). Le plat du bloc diffère donc de son environnement
+tant que le lavis n'a pas défilé, et l'égale au-delà de 30 vh — là où le bloc
+vit collé. Retirer le fond pour retrouver le lavis rendrait les encoches
+transparentes : c'est le fond qui gagne, et l'écart est écrit dans le
+commentaire de la règle.
+
+### Les trois tailles, sans opt-out
+
+C'est le point où la maison et la demande divergent. `.pw-fixe`, le bandeau
+collant de l'espace paie, se décollait lui-même sous `@media` (l. 459 :
+`position: static`) — sur téléphone le bandeau mangeait la moitié de l'écran.
+Ici l'utilisateur a demandé **le même comportement** en desktop, tablette et
+mobile, donc aucun palier ne décolle le bloc :
+
+- `@media (max-width: 1180px)` et `(max-width: 520px)` ne touchent pas
+  `.rw-entete` ;
+- `@media (max-width: 760px)` ne lui retouche que sa `width`
+  (`calc(100% - 2 × 12px)`, soit 12 px de gouttière contre 24 px pour la
+  colonne) et ses deux marges — ni `position`, ni `top`, ni `z-index`, ni
+  `overflow`. Le bloc garde donc 12 px de jeu de chaque côté : il est plus
+  large que le contenu qu'il masque, sinon des cartes continueraient de
+  courir à sa droite et à sa gauche ;
+- le seul autre bloc qui nomme la cage est `@media (prefers-reduced-motion)`,
+  et il ne touche que des durées d'animation.
+
+Il n'y a rien à surveiller au redimensionnement, parce qu'il n'y a rien à
+calculer : `sticky` vit dans le défilement de la page, la page garde sa
+hauteur naturelle.
+
+### Ce qui est puni, et ce qui ne l'est pas
+
+§12 amendée : la cage, qui devait « ne rien peindre », se punit maintenant de
+ne peindre QUE le fond du cache — `background-color: var(--rw-nuit)` exigé,
+`background(?!-color)|linear-gradient` défendu, pour que le raccourci
+`background:` ne passe plus sous la maille.
+
+§14, six lois nouvelles : `sticky` à zéro sans `fixed` et sans `-webkit-` de
+rattrapage ; le collage écrit dans la feuille et pas monté (aucune porteuse
+ajoutée entre `className="rw-page">` et `<header className="rw-entete">`,
+aucun `onScroll` / `addEventListener('scroll')` / `IntersectionObserver` /
+`getBoundingClientRect` / `scrollTop` dans la page) ; le cache opaque au
+jeton, son rayon lié à celui du bloc ; l'étage 20 sous les quatre superposées
+de la page et sous le rail ; l'absence de carcan — `.rw-page/.rw-chargement`,
+`.rw-coque`, `.rw-vide`, `.coque-admin`, `.coque-admin-page` vérifiés sans
+`overflow`, `contain:`, `filter:`, `transform:`, `will-change` ni hauteur
+bornée (le `min-height: 100vh` de la coque est un plancher, il ne coupe rien) ;
+et les trois tailles, en balayant **tous** les blocs `@media` de la feuille
+accolade par accolade pour vérifier qu'aucun ne redéclare `position`, `top`,
+`z-index` ou `overflow` sur `.rw-entete*`.
+
+Au crible à mutations, 17 cas écrits contre la passe, 17 tués, la feuille
+rendue à l'identique après chaque coup : `sticky → relative`, `top: 0 → 8px`,
+`fixed` à la place, étage effacé, étage à 90, `isolation` retirée, fond du
+cache retiré, fond passé au raccourci en dégradé, rayon du cache décalé sur
+celui du papier, `-webkit-sticky` de rattrapage ajouté, palier mobile qui
+décolle le bloc, palier mobile qui met `.rw-page` en boîte, `.rw-coque` mise
+en boîte, gouttière mobile rognée à `width: 100%`, marge haute effacée, et une
+`<div className="rw-collant">` ajoutée autour de l'en-tête dans le JSX. Trois
+ratés de mesure au passage, corrigés depuis : un `/position|top:/` qui
+punissait `margin-top:` — `t` est bien une frontière de mot après l'espace
+qui suit le tiret, il a fallu `(?<![-\w])top:` — ; un
+`not.toMatch(/background/)` qui se mordait la queue sur le
+`background-color` que la même loi exige ; et une ancre
+`background-color: var(--rw-nuit)` qui se rencontrait deux fois dans la feuille
+(la page et la cage), donc à écrire avec l'accolade fermante du bloc.
+
+Ce qui n'est pas vérifié : rien à l'œil. Toujours pas de Chromium ni de
+Playwright dans le sandbox, donc le collage est prouvé par la règle, par les
+carcans absents et par les paliers balayés — pas par une capture. Un défilement
+réel reste à faire sur poste, avec un mois ouvert pour l'étage et un pouce sur
+téléphone pour la gouttière.

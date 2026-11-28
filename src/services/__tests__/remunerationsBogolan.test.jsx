@@ -978,7 +978,12 @@ describe('12. l’enveloppe : le tissu fait le tour du bloc', () => {
     expect(CAGE).not.toMatch(/border-bottom/)
     //  LE tissu EST la marge intérieure : une seule cote pour les quatre côtés
     expect(CAGE).toContain('padding: var(--rw-tissu)')
-    expect(CAGE).not.toMatch(/\bbackground/)
+    //  le fond plat est la seule chose que la cage peigne, et il est là pour
+    //  le collage : sans lui, le contenu passerait VU dans les encoches des
+    //  quatre coins (la loi est à §14). Pas d'image, pas de dégradé ici —
+    //  le raccourci `background` suffirait à en poser un.
+    expect(CAGE).toContain('background-color: var(--rw-nuit)')
+    expect(CAGE).not.toMatch(/\bbackground(?!-color)|linear-gradient/)
     //  et la cage ne rogne rien : `.empv3-entete` le dit en toutes lettres,
     //  un `overflow: hidden` ici couperait l'ombre dure du bloc
     expect(CAGE).not.toMatch(/overflow:\s*hidden/)
@@ -1137,5 +1142,182 @@ describe('13. la page est montée dans la fabrique de la maison', () => {
     expect(PAGE).not.toContain('data-theme=')
     expect(PAGE).not.toContain('encheck.theme')
     expect(PAGE).not.toMatch(/<button[^>]*onClick=\{toggleTheme\}/)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════
+// 14. LE BLOC RESTE EN HAUT, LE RESTE GLISSE DESSOUS
+//     8/12 : « je veux que tu maintiennes ce bloc-là fixe et tout le reste va
+//     glisser dedans quand je scrolle — en desktop, mobile et tablette ».
+//     Une seule façon de le tenir sans se mentir : le coller EN CSS, et
+//     vérifier que rien, dans la page ni autour, ne peut défaire le collage.
+// ═══════════════════════════════════════════════════════════
+describe('14. le bloc est collé en haut, le reste défile dessous', () => {
+  const DECL14 = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+  const regle14 = (source, selecteur) => {
+    const i = source.indexOf(`\n${selecteur} {`)
+    if (i < 0) return null
+    return source.slice(i, source.indexOf('}', i))
+  }
+  const CAGE = regle14(DECL14, '.rw-entete')
+  //  tous les blocs @media de la feuille, avec leur corps borné à la main :
+  //  `indexOf('}')` rendrait un tronc dès qu'une règle imbriquée (`@supports`,
+  //  `@media` dans `@media`) apparaît dans le palier
+  const MEDIAS = []
+  for (const m of DECL14.matchAll(/@media[^{]+\{/g)) {
+    let profondeur = 1
+    let i = m.index + m[0].length
+    while (i < DECL14.length && profondeur > 0) {
+      if (DECL14[i] === '{') profondeur += 1
+      else if (DECL14[i] === '}') profondeur -= 1
+      i += 1
+    }
+    MEDIAS.push({ tete: m[0].trim(), corps: DECL14.slice(m.index + m[0].length, i) })
+  }
+  const etages = (selecteur) => {
+    const r = regle14(DECL14, selecteur)
+    return r ? parseInt(/z-index:\s*(\d+)/.exec(r)[1], 10) : null
+  }
+
+  it('collé en CSS : sticky, à zéro, pas fixed', () => {
+    expect(CAGE, 'la cage').not.toBeNull()
+    expect(CAGE).toMatch(/position:\s*sticky/)
+    expect(CAGE).toContain('top: 0')
+    //  `fixed` aurait demandé trois choses en double : la hauteur à compenser
+    //  sur le contenu, la mesure au redimensionnement, et le geste du retour
+    expect(CAGE).not.toMatch(/position:\s*fixed/)
+    //  et `top: 0` et pas 8 px : tout centimètre laissé entre le bord de
+    //  l'écran et le bloc est un couloir où le contenu continue de courir
+    expect(CAGE).not.toMatch(/top:\s*(?!0)[1-9]/)
+    //  à `sticky` seulement — ni `scroll-snap`, ni `position: -webkit-sticky`
+    //  de rattrapage : la propriété est tenue depuis 2017
+    expect(CSS).not.toMatch(/-webkit-sticky|scroll-snap/)
+  })
+
+  it('le collage est un mot de la feuille, pas un montage', () => {
+    //  pas de porteuse ajoutée pour l'occasion autour de l'en-tête
+    expect(PAGE).toMatch(/<div className="rw-page">\s*\{\/\*[\s\S]*?\*\/\}\s*<header className="rw-entete">/)
+    //  pas d'écouteur de défilement, pas d'observateur, pas de mesure : ce
+    //  qu'on ne calcule pas ne se déracine pas au redimensionnement
+    for (const interdit of ['onScroll', "addEventListener('scroll'", 'IntersectionObserver',
+      'getBoundingClientRect', 'scrollTop']) {
+      expect(PAGE, interdit).not.toContain(interdit)
+    }
+    //  et le bloc reste un seul enfant, collé avec son propre contenu
+    expect(PAGE).toContain('<div className="rw-entete-corps">')
+    //  la marge haute est gardée : au repos le bloc n'est pas collé, il est
+    //  posé — c'est le défilement qui l'amène au bord
+    expect(CAGE).toMatch(/margin: var\(--charte-espace-\d\) auto/)
+  })
+
+  it('le cache est opaque, et au jeton', () => {
+    //  sans fond, le contenu passe dans les six pixels des encoches arrondies
+    expect(CAGE).toContain('background-color: var(--rw-nuit)')
+    //  le fond est celui de la page, pas une couleur écrite à la main
+    expect(CSS).toMatch(/--rw-nuit: var\(--charte-sable\);/)
+    //  et le rayon du cache est LE RAYON DU BLOC : une seule mesure pour
+    //  l'étoffe et pour son fond, sinon les encoches se redécalent
+    expect(CAGE).toContain('border-radius: var(--rw-rayon-bloc)')
+    expect(regle14(DECL14, '.rw-entete::before')).toContain('border-radius: var(--rw-rayon-bloc)')
+    expect(CSS).toMatch(/--rw-rayon-bloc: var\(--charte-rayon-champ\)/)
+  })
+
+  it('coller le bloc ne le fait pas passer devant ce qui se pose dessus', () => {
+    const ETAGE = etages('.rw-entete')
+    expect(CAGE, "coller, c'est aussi se donner un étage").toContain('z-index: 20')
+    expect(Number.isInteger(ETAGE), 'un étage explicite, sinon le voile du mois '
+      + 'passerait devant un bloc collé sans étage').toBe(true)
+    //  l'île que la cage se donne — les enfants de l'en-tête ne montent pas
+    //  plus haut que lui, et lui ne monte pas plus haut qu'un autre îlot
+    expect(CAGE).toContain('isolation: isolate')
+    //  l'échelle déjà écrite par la page : voile du mois, registre, barre
+    //  d'assemblage, modale — le bloc collé reste SOUS les quatre
+    for (const dessus of ['.rw-mois-voile', '.rw-mois-liste', '.rw-barre', '.rw-voile']) {
+      expect(etages(dessus), `${dessus} doit rester au-dessus du bloc collé`)
+        .toBeGreaterThan(ETAGE)
+    }
+    //  et le rail : collé lui aussi, à 74, plus haut que nous — c'est le bon
+    //  sens, et c'est la correction d'un accident déjà vécu (à 2, le bandeau
+    //  collant du Planning, à 60, passait devant le registre ouvert). Les
+    //  deux ne se recouvrent pas — le rail est une colonne, le bloc est centré
+    //  dans la sienne —, mais sur téléphone replié le rail commande le bas de
+    //  l'écran : si l'un des deux devait passer devant l'autre, ce n'est pas
+    //  l'en-tête. Le registre d'entreprises, lui, est PORTÉ HORS DU RAIL
+    //  (`.se-liste--flottante`, `fixed`, à 78) et n'a donc rien à négocier.
+    const rail = readFileSync('src/components/SidebarUnique.css', 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+    const iRail = rail.indexOf('.coque-admin > .sb,')
+    expect(iRail).toBeGreaterThan(-1)
+    const regleRail = rail.slice(iRail, rail.indexOf('}', iRail))
+    expect(regleRail, 'le rail est collé, lui aussi').toContain('position: sticky')
+    const ETAGE_RAIL = parseInt(/z-index:\s*(\d+)/.exec(regleRail)[1], 10)
+    expect(ETAGE_RAIL, 'le rail ne doit pas passer SOUS un bloc collé de la page')
+      .toBeGreaterThan(ETAGE)
+    expect(rail).toMatch(/\.se-liste--flottante \{[^}]*z-index: 78/)
+    expect(rail).toMatch(/\.se-liste--flottante \{[^}]*position: fixed/)
+  })
+
+  it('aucun carcan au-dessus de lui', () => {
+    //  `sticky` ne survit pas dans un ancêtre qui défile à la place de la
+    //  page, ni derrière un `overflow: hidden`, une `contain`, un `filter` ou
+    //  un `transform` posés sur le chemin : les quatre portent un contexte de
+    //  position, et le premier ou le dernier coupent la page en deux
+    const PORTEURS = [
+      //  le porteur de page est la ligne d'alias des jetons ; sa règle finit
+      //  au premier `}` + retombée et pas au premier `}` venu : `.rw-coque` a
+      //  un `padding` écrit sur deux lignes
+      { nom: 'la page', source: DECL14, index: DECL14.indexOf('.rw-page,\n.rw-chargement {') },
+      { nom: 'la colonne', source: DECL14, index: DECL14.indexOf('.rw-coque {') },
+      { nom: 'la boîte vide', source: DECL14, index: DECL14.indexOf('.rw-vide {') },
+    ]
+    const coque = readFileSync('src/components/coque/CoqueAdmin.css', 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+    for (const selecteur of ['.coque-admin {', '.coque-admin-page {']) {
+      PORTEURS.push({ nom: selecteur, source: coque, index: coque.indexOf(selecteur) })
+    }
+    const vus = []
+    for (const { nom, source, index } of PORTEURS) {
+      expect(index, `la règle ${nom} a disparu de la feuille`).toBeGreaterThan(-1)
+      const avant = index + 1
+      const debut = source.lastIndexOf('{', avant - 1) + 1
+      const fin = source.indexOf('}\n', avant)
+      const r = source.slice(debut, fin)
+      vus.push(`${nom} (${r.split('\n').filter((l) => l.includes(':')).length} déclarations)`)
+      expect(r, `${nom} ne met pas la page en boîte`).not.toMatch(/overflow|contain:|filter:|transform:|will-change/)
+      //  et ne la borne pas non plus en hauteur : une page à hauteur fixe
+      //  n'a plus rien qui défile, le collage n'a donc plus de sens
+      expect(r, `${nom} a une hauteur bornée`).not.toMatch(/(^|[\s;])height:|max-height:/)
+    }
+    //  preuve que la loi porte : les cinq porteurs de la page sont bien vus
+    expect(vus).toHaveLength(5)
+    //  la seule hauteur que la coque se donne est un plancher — un plancher
+    //  ne coupe rien, il ne fait que garantir la taille de la feuille
+    expect(coque).toMatch(/\.coque-admin \{[^}]*min-height: 100vh;/)
+  })
+
+  it('aux trois tailles : desktop, tablette, mobile', () => {
+    expect(MEDIAS.length).toBeGreaterThan(2)
+    const casseurs = []
+    for (const { tete, corps } of MEDIAS) {
+      for (const r of corps.matchAll(/\n\s*(\.rw-entete[^{,]*)\s*\{([^}]*)\}/g)) {
+        if (/\bposition|(?<![-\w])top:|\bz-index|\boverflow/.test(r[2])) {
+          casseurs.push(`${tete} → ${r[1].trim()} { ${r[2].trim()} }`)
+        }
+      }
+      //  et aucun palier ne met la page en boîte, ce qui tuerait le collage
+      if (/\.rw-page[^{]*\{[^}]*(overflow|height:)/.test(corps)) {
+        casseurs.push(`${tete} → .rw-page en boîte`)
+      }
+    }
+    expect(casseurs, 'un palier décollerait le bloc : ' + casseurs.join(' · ')).toEqual([])
+    //  la preuve inverse : le palier mobile retouche bien l'en-tête (largeur,
+    //  marges) — s'il ne le faisait plus, la loi du dessus serait vide
+    const sept = MEDIAS.find((m) => m.tete.includes('max-width: 760px'))
+    expect(sept.corps).toMatch(/\.rw-entete \{[^}]*width: calc/)
+    //  et sur téléphone le bloc reste plus large que le contenu qu'il cache :
+    //  12 px de gutter pour lui, 24 pour la coque — sinon des cartes
+    //  continueraient de courir à sa droite et à sa gauche
+    expect(sept.corps).toMatch(/\.rw-entete \{[^}]*var\(--charte-espace-3\)/)
+    expect(regle14(DECL14, '.rw-coque')).toMatch(/padding: [^}]*var\(--charte-espace-5\)/)
   })
 })
