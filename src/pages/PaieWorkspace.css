@@ -452,9 +452,19 @@
      titre des volets colle au filet des médaillons. */
 .pw-defile > *:first-child { margin-top: 0; }
 
-@media (max-width: 820px) {
-  /*  Sur téléphone, la barre collante mangerait la moitié de l'écran. Elle
-      redevient un bloc normal : on lit la page, on ne la pilote pas du pouce
-      depuis un bandeau qui prendrait le dessus sur le contenu. */
-  .pw-fixe { position: static; }
-}
+/*  ELLE COLLE PARTOUT (28/11)
+   ───────────────────────────────────────────────────────────────────────
+   Ce palier disait : « sur téléphone, la barre collante mangerait la moitié
+   de l'écran », et remettait le bloc dans le flux sous 820 px. C'était un
+   choix de ma part, pas une demande — et il a été corrigé.
+
+   « Je veux ce même comportement en desktop, mobile, tablette (peu importe
+   portrait ou paysage). » Il n'y a donc PLUS de palier pour `.pw-fixe` :
+   aucun `@media` ne le remet en `static`, quelle que soit la largeur.
+
+   ⚠️ Ne pas réintroduire ici une exception « sur petit écran ». Si la barre
+   gêne un jour sur téléphone, cela se règle en la RÉDUISANT (masquer le
+   sous-titre et l'étiquette pays, garder le titre et les médaillons), jamais
+   en lui retirant son collage — sinon on revient exactement au défaut
+   constaté le 28/11.
+*/

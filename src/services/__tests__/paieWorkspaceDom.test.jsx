@@ -119,11 +119,33 @@ it('le bloc de tête est collant, et seul le contenu défile dessous', async () 
   expect(css).toMatch(/\.pw-fixe \{[^}]*background: var\(--paie-bg\);/)
   expect(css).toMatch(/\.pw-fixe \.pw-tabs \{[^}]*background: var\(--paie-bg-elevated\);/)
 
-  //  Sur téléphone, la barre rendrait l'écran au bandeau : elle redevient normale.
-  //  On lit la DERNIÈRE règle du fichier : plusieurs paliers 820 existent
-  //  depuis les débuts de la page, c'est celui-ci qui décide.
-  const dernierPalier = css.slice(css.lastIndexOf('@media (max-width: 820px)'))
-  expect(dernierPalier).toMatch(/\.pw-fixe \{\s*position: static;\s*\}/)
+  //  Et elle colle PARTOUT : desktop, tablette, téléphone, portrait comme
+  //  paysage. Sa demande du 28/11 : « je veux ce même comportement en
+  //  desktop, mobile, tablette ». Aucun palier ne doit donc la remettre dans
+  //  le flux — un `static` sous 820 px rouvrirait exactement le défaut.
+  //
+  //  On lit le CSS DÉPLIÉ, commentaires retirés : sans cela, le commentaire
+  //  ci-dessus (qui cite `position: static`) se ferait passer pour la règle.
+  const cssNu = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  expect(cssNu).not.toMatch(/\.pw-fixe\s*\{\s*position:\s*static/)
+})
+
+it('la barre de tête colle à toutes les largeurs, sans exception', () => {
+  const css = readFileSync('src/pages/PaieWorkspace.css', 'utf8')
+  const cssNu = css.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  //  On découpe le fichier en blocs `@media (...) { ... }` et l'on regarde
+  //  chacun : le collage ne doit être annulé nulle part.
+  const paliers = cssNu.match(/@media[^{]*\{[\s\S]*?\n\}/g) || []
+  expect(paliers.length).toBeGreaterThan(5)
+  for (const palier of paliers) {
+    expect(palier).not.toMatch(/\.pw-fixe\s*\{[^}]*position:\s*(static|relative|absolute)/)
+  }
+
+  //  La règle de base, elle, est bien collante et sur toute la largeur
+  //  (aucune largeur minimale qui la réserverait au desktop).
+  expect(cssNu).toMatch(/\.pw-fixe \{[^}]*position: sticky;/)
+  expect(cssNu).toMatch(/\.pw-fixe \{[^}]*top: 0;/)
 })
 
 it('la sidebar et son rail sont revenus, avec les logos des entreprises', async () => {
