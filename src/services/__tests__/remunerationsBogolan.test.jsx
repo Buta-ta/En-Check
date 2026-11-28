@@ -1402,9 +1402,11 @@ describe('15. le logo de l’entreprise remplace l’immeuble, aux deux icônes'
 
   it('la page ne se refait pas un chargeur d’image', () => {
     //  signer, cacher, retomber sur l'initiale : c'est `PhotoSignee`, le même
-    //  que les avatars. Une page qui reprendrait `adresseSignee` aurait deux
-    //  règles de cache à caler l'une contre l'autre.
-    expect(PAGE).not.toMatch(/createSignedUrl|adresseSignee|PhotoSignee/)
+    //  que les avatars. Ce qui est défendu, c'est de REFAIRE le chargeur —
+    //  pas de l'emprunter : la page l'importe, et c'est même obligatoire
+    //  (§16), pour qu'il n'y ait qu'un chemin d'image dans la page.
+    expect(PAGE).not.toMatch(/createSignedUrl|adresseSignee\(/)
+    expect(PAGE).toContain("import PhotoSignee from '../components/PhotoSignee'")
     expect(PAGE).not.toMatch(/function PastilleEntreprise|const PastilleEntreprise/)
     expect(PAGE).toContain("import PastilleEntreprise from '../components/paie/PastilleEntreprise'")
     //  le composant est celui de la maison, importé comme à `FichesPaie` et à
@@ -1414,5 +1416,126 @@ describe('15. le logo de l’entreprise remplace l’immeuble, aux deux icônes'
     expect(commun).toContain('const logo = entreprise?.logo_url')
     expect(commun).toMatch(/if \(logo\) \{/)
     expect(commun).toContain('fallback={repli}')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════
+// 16. LE VISAGE DU SALARIÉ DANS LE SCEAU
+//     28/11, après la pastille d'entreprise : « fais apparaître l'image profil
+//     des employés partout où l'icône profil apparaît dans cette page ». Dans
+//     cette page, l'icône profil du salarié, c'est le sceau : losange de
+//     bogolan et initiales posées dessus, une fois par ligne dans chaque vue.
+//     Ce que la page doit tenir : le visage vient de LA requête des salariés
+//     et rejoint la ligne de coût par `employe_id` ; il ne remplace pas les
+//     initiales, il se pose dessus ; et il ne redessine pas le sceau.
+// ═══════════════════════════════════════════════════════════
+describe('16. la photo du salarié se pose dans le sceau, sans l’effacer', () => {
+  const Sceaux = () => [...PAGE.matchAll(/<PhotoSignee[\s\S]*?\/>/g)].map(m => m[0])
+  const DECL16 = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+  const regle16 = (selecteur) => {
+    const i = DECL16.indexOf(`\n${selecteur} {`)
+    if (i < 0) return null
+    return DECL16.slice(i, DECL16.indexOf('}', i))
+  }
+
+  it('deux sceaux, deux visages, et pas de troisième figure', () => {
+    const sceaux = Sceaux()
+    expect(sceaux, 'un sceau par vue : les contrats et le coût').toHaveLength(2)
+    for (const s of sceaux) {
+      expect(s).toContain('className="rw-medaillon-photo"')
+      //  l'image est DÉCORATIVE : le nom est écrit à côté dans `.rw-nom`, un
+      //  `alt` le ferait lire deux fois — et la ligne garde son `aria-label`
+      expect(s, 'la page n’invente pas de nom accessible par-dessus le nom écrit').toContain('alt=""')
+      expect(s).toContain('aria-hidden="true"')
+      //  une ligne par salarié, parfois cent : le visuel ne se charge que
+      //  quand la ligne approche du bord de l'écran
+      expect(s).toContain('loading="lazy"')
+      expect(s).toContain('decoding="async"')
+      //  et le repli est EXPLICITE, dans le même appel : pas de cadran vide
+      expect(s, 'le sceau sans photo reste un sceau').toContain('fallback={(')
+    }
+    //  les deux replis sont les deux AideS que la page avait avant, pas une
+    //  lettre inventée par le composant : la vue coût n'a qu'un nom complet
+    expect(sceaux[0]).toContain('initiales(e.first_name, e.last_name)')
+    expect(sceaux[1]).toContain('initialesNom(l.nom)')
+    expect((PAGE.match(/className="rw-medaillon-initiales"/g) || [])).toHaveLength(2)
+    //  et le sceau lui-même n'a pas changé de taille pour loger une photo
+    expect(regle16('.rw-medaillon')).toContain('width: var(--rw-sceau)')
+    expect(regle16('.rw-medaillon'), 'un sceau rogné par un cadrage').not.toMatch(/overflow|clip-path/)
+  })
+
+  it('la colonne vient de la requête, et la vue coût la rejoint par l’identifiant', () => {
+    //  `photo_url` n'est sélectionné qu'une fois — par la requête des salariés,
+    //  qui nourrit les deux vues. Le RPC de coût, lui, ne rend pas l'image.
+    const avecPhoto = [...PAGE.matchAll(/\.select\('([^']*)'\)/g)]
+      .filter(m => m[1].includes('photo_url')).map(m => m[1])
+    expect(avecPhoto, 'une seule requête porte la colonne').toEqual([
+      'id, first_name, last_name, matricule, position, department, contract_type, photo_url',
+    ])
+    //  la jointure est écrite sur la CLÉ DU RPC : `l.employe_id`. Un `l.id`,
+    //  et la ligne de coût chercherait sa photo dans un champ qu'elle n'a pas.
+    expect(PAGE).toContain('url={photoParId.get(l.employe_id)}')
+    expect(PAGE, 'la vue contrats, elle, lit sa propre ligne').toContain('url={e.photo_url}')
+    //  et la carte est bornée aux salariés qui ONT une photo : un `get` qui
+    //  manque rend `undefined`, et `PhotoSignee` rend le repli — pas un `<img>`
+    //  sans `src`
+    const d = PAGE.indexOf('const photoParId')
+    const fin = PAGE.indexOf('), [', d)
+    const carte = PAGE.slice(d, fin)
+    expect(carte).toContain('employes.filter(e => e.photo_url)')
+    expect(carte).toContain('new Map(')
+    //  la dépendance est `[employes]`, pas `[]` : une carte figée à la
+    //  première réponse afficherait les initiales pour toujours
+    expect(PAGE.slice(fin, fin + 16)).toMatch(/^\), \[employes\]\)/)
+  })
+
+  it('le mémo des visages vit avant la sortie de chargement', () => {
+    //  un hook posé APRÈS un `return` conditionnel n'est pas un style : React
+    //  compte ses hooks par position, et au second render il en trouve plus
+    //  qu'au premier — « Rendered more hooks than during the previous render »,
+    //  la page entière rougeoyée. C'est la panne que la passe a faite, ici
+    //  même, et la loi la punit pour tous les hooks, pas seulement le mien.
+    const hook = PAGE.indexOf('const photoParId = useMemo')
+    const sortie = PAGE.indexOf('if ((loading && employes.length === 0) || !minLoadingDone) {')
+    expect(hook, 'le mémo a disparu de la page').toBeGreaterThan(-1)
+    expect(sortie, "l'écran de chargement ne se saute plus ?").toBeGreaterThan(-1)
+    expect(hook).toBeLessThan(sortie)
+    const entre = PAGE.slice(sortie, PAGE.indexOf('\n  return (', sortie))
+    expect(entre.match(/\buse[A-Z]\w*\(/g) || [],
+      'un hook après la sortie conditionnée, et le compte de React diverge').toEqual([])
+    //  et la loi porte : la page a bien quatre mémos en amont de la sortie
+    expect((PAGE.slice(0, sortie).match(/\buse[A-Z]\w*\(/g) || []).length)
+      .toBeGreaterThan(6)
+  })
+
+  it('le sceau garde son œil : la photo se pose en retrait, ronde, sans rien peindre', () => {
+    const regle = regle16('.rw-medaillon-photo')
+    expect(regle, 'la règle du visage dans le sceau').not.toBeNull()
+    //  la cote est DÉDUITE du sceau, pas écrite en dur : le sceau change, le
+    //  visage suit. Et le retrait vaut l'anneau où le cadre et les quatre
+    //  points de la croix restent lisibles (mesuré dans la feuille) : posé à
+    //  4 px, le visage remplissait la boîte et le sceau n'était plus un sceau.
+    expect(regle).toContain('width: calc(var(--rw-sceau) - 2 * var(--charte-espace-2))')
+    expect(regle).toContain('height: calc(var(--rw-sceau) - 2 * var(--charte-espace-2))')
+    expect(regle).not.toMatch(/calc\(var\(--rw-sceau\) - 2 \* var\(--charte-espace-1\)/)
+    //  rond, comme toute figure de personne de l'application
+    expect(regle).toContain('border-radius: var(--rw-rond)')
+    //  une photo n'est pas recadrée par la page : elle REMPLIT le rond
+    expect(regle).toContain('object-fit: cover')
+    //  centrage par `inset: 0` + `margin: auto` : sur un élément remplacé,
+    //  les quatre bornes seules ne l'étirent pas
+    expect(regle).toContain('inset: 0')
+    expect(regle).toContain('margin: auto')
+    expect(regle).toContain('position: absolute')
+    //  le sceau n'est pas un bouton : le visage ne capte pas le geste
+    expect(regle).toContain('pointer-events: none')
+    //  et la photo ne peint PAS l'assiette : c'est le tissu du sceau qui la
+    //  fait, avec ou sans visage
+    expect(regle, 'le sceau aurait un fond par-dessus son propre fond')
+      .not.toMatch(/background|box-shadow|border:/)
+    //  un seul chemin d'image dans la page : le sceau du salarié et la pastille
+    //  de l'entreprise passent par le même chargeur
+    expect(PAGE).toContain("import PhotoSignee from '../components/PhotoSignee'")
+    expect(PAGE).not.toMatch(/createSignedUrl|new Image\(|<img/)
   })
 })

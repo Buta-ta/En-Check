@@ -1239,3 +1239,167 @@ fond `--rw-panneau`, personne ne l'a regardé. Un liseré autour du rond
 (1 px de `--rw-ligne`) se discuterait pour les logos blancs qui se perdent
 sur le panneau : il appartient au composant partagé, pas à la feuille de la
 page, et je ne l'ai pas posé.
+
+## Le visage du salarié se pose dans le sceau (28 novembre 2026)
+
+La demande, au lendemain de la pastille d'entreprise : « fais apparaître
+l'image profil des employés partout où l'icône profil apparait dans cette
+page ».
+
+### L'inventaire, d'abord
+
+Dans cette page, l'icône de profil du salarié, c'est le **sceau** :
+`BogolanMedaillonSvg` de 42 px et ses initiales posées dessus. Il y en a un
+par ligne, une fois dans la vue Contrats, une fois dans la vue Coût — deux
+sceaux, et rien d'autre. Trois choses ont été regardées et laissées :
+l'`Users` de 12 px de la rangée « Salariés actifs » (il compte, il n'identifie
+personne) ; les coches de la modale « Reprendre les valeurs » (une case à
+cocher n'est pas une figure de personne) ; et le cartouche d'étoffe de
+l'en-tête, qui est la marque de la page, pas une fiche de salarié.
+
+### Le sceau n'est pas remplacé, il est occupé
+
+Le visage se pose DANS l'œil du sceau, et les initiales restent dessous — pas
+à côté, pas en concurrence : `PhotoSignee` ne montre l'image que lorsqu'elle
+est réellement peinte, et rend le repli sur adresse absente, refusée ou image
+morte. C'est la leçon du 26/11, écrite dans son en-tête, qui est rejouée ici
+sur les salariés.
+
+La cote est mesurée sur le dessin, pas choisie. Le sceau fait 42 px
+(`--rw-sceau`) et le SVG est gravé dans un `viewBox` de 46 — échelle 0,913 :
+
+| pièce du sceau | dans le `viewBox` | dans la boîte de 42 px |
+| --- | --- | --- |
+| cadre arrondi | `x 0,75`, `rx 9` | à ~0,7 px du bord |
+| pointe du losange de réserve | 13,5 unités du centre | 12,3 px |
+| centre des quatre points de la croix | 17,6 unités | 16,1 px (r 1,25 → 1,1 px) |
+
+Le premier jet posait le visage à 4 px de retrait : 34 px de diamètre, rayon
+17 px — soit plus que les 16,1 px des points de la croix. Le visage
+bouchait tout l'intérieur du sceau, cadre à peine visible, et la ligne
+ressemblait à une photo cerclée de cuivre. La cote retenue est donc
+`calc(var(--rw-sceau) - 2 * var(--charte-espace-2))`, soit **26 px**, rayon
+13 px : un anneau de 3,1 px où le cadre et les quatre points se lisent
+toujours. La réserve losangée, elle, est recouverte — exactement comme les
+initiales la recouvraient déjà, puisque le losange est à 12,3 px du centre et
+les lettres posées `inset: 0`.
+
+Ronde et pas losange : une photo tronquée en pointe ne se lit pas à cette
+taille, et la figure de personne est ronde partout dans l'application (rail,
+absences, heures supplémentaires, et la pastille d'entreprise posée la veille).
+Elle ne peint rien non plus : ni fond, ni liseré, ni ombre — l'assiette, c'est
+le tissu du sceau, avec ou sans visage.
+
+Enfin, la photo est centrée par `inset: 0` + `margin: auto` avec une largeur
+écrite, et non par les quatre bornes seules : sur un élément remplacé comme
+`img`, `left` ET `right` posés avec `width: auto` ne l'étirent pas, la cote
+intrinsèque gagne et la borne de droite est abandonnée. La même écriture tient
+pour le `<span>` du repli, qui n'est pas un élément remplacé.
+
+### D'où vient l'image, et comment elle rejoint la ligne de coût
+
+`employees.photo_url`, sélectionnée par l'unique requête de salariés de la page
+(`chargerTout`) — celle qui nourrit les DEUX vues. La vue Contrats lit la
+photo sur la ligne du salarié (`url={e.photo_url}`) ; la vue Coût, elle, ne
+reçoit de `encheck_cout_periode` qu'un nom, un matricule et un `employe_id` :
+elle passe par une carte `photoParId`, indexée sur cette clé, bornée aux
+salariés qui ont une photo (`filter(e => e.photo_url)`) et recalculée sur
+`[employes]`. Un `get` qui manque rend `undefined`, et `PhotoSignee` rend le
+repli — jamais un `<img>` sans `src`.
+
+### La panne que la passe a faite, et qui est devenue une loi
+
+Le mémo `photoParId` avait été posé près des deux sceaux qui le lisent — donc
+SOUS la sortie conditionnelle sur l'écran de chargement. React compte ses
+hooks par position : au second render il en trouvait un de plus que au premier,
+« Rendered more hooks than during the previous render », et la page ne montait
+plus — dix-huit tests du fichier de rendu rougeoyaient. Ce que je retiens :
+**la grille de lint ne l'a pas dit.** `react-hooks/rules-of-hooks` est bien en
+`error` dans `eslint.gate.config.js` (l. 30), et il est resté muet sur un hook
+placé après un `return` conditionnel ; c'est le montage en jsdom qui a crié.
+La règle est donc écrite en loi (§16) : le mémo vit avant la sortie, et AUCUN
+hook n'apparaît entre la sortie et le `return` de la page — la loi compte le
+corps de la page, pas seulement le cas de la passe.
+
+### Ce que la passe d'hier défendait de trop
+
+Deux lois écrites la veille punitaient des choses que la page doit faire
+aujourd'hui, et elles ont été resserrées sur leur objet réel plutôt
+que retirées :
+
+- « la page ne se refait pas un chargeur d'image » interdisait le mot
+  `PhotoSignee` dans la page. Ce qui était défendu, c'était de REFAIRE le
+  chargeur (`createSignedUrl`, `adresseSignee(`) — pas de l'emprunter. La loi
+  exige maintenant que la page L'IMPORTE, et qu'il n'y ait qu'un chemin
+  d'image dans la page : le sceau du salarié et la pastille de l'entreprise
+  passent par le même composant.
+- « la feuille ne re-stylle pas le rond » défendait `object-fit` dans toute la
+  feuille, alors que son objet était le rond de l'entreprise. Elle ne porte
+  plus que sur `paie-pastille-entreprise` : le sceau, lui, est un objet de la
+  page, donc sa géométrie se cadre dans sa feuille — et c'est puni en sens
+  inverse (§16 exige la cote déduite, le rayon, `object-fit`, le
+  `pointer-events: none`, et interdit fond, liseré, `overflow` et `clip-path`
+  sur le sceau).
+
+### Ce que la base réelle montre
+
+Compté en lecture seule sur le projet (les chiffres bougent, ils datent du
+28/11) : 16 salariés, 14 actifs, **2 photographiés**. Sur l'entreprise du
+ruban, EN-NOUS : 6 actifs dont 2 avec photo — deux visages sur la page, quatre
+sceaux qui gardent leurs initiales ; sur Pharmacie Blanche Gomes, 6 actifs et
+aucune photo, la page est identique à la veille. Et les deux seules adresses
+réelles sont les deux formes que le chargeur doit connaître : l'une est un
+`data:image/svg+xml` (une fiche de recette), l'autre une adresse
+`/storage/v1/object/public/photos/…` — `PhotoSignee` court-circuite l'une et
+l'autre sans aller quémander une signature. Même mesure pour hier :
+`enterprises.logo_url` est plein pour EN-NOUS et la Pharmacie, VIDE pour
+l'Épicerie du Port — le repli sur l'immeuble n'est pas un ornement, il sert.
+
+### Ce qui est puni
+
+§16 (4 lois de source) : deux sceaux, deux visages, pas de troisième figure
+(`alt=""`, `aria-hidden`, `loading="lazy"`, `decoding="async"`, repli explicite
+aux deux initiales de la page, sceau jamais rogné ni mis en boîte) ; la
+colonne portée par la seule requête qui lit les salariés, et la jointure écrite
+sur `l.employe_id` ; la cote de l'œil déduite du sceau, ronde, `object-fit`,
+sans fond ; et l'ordre des hooks. §5 du fichier de rendu (3 lois sur le DOM
+monté) : dans la vue Contrats, le visage de celui qui a une photo et les deux
+lettres de celle qui n'en a pas — sans photo, **aucun** `<img>` et non un
+`src` vide — ; dans la vue Coût, exactement un visage sur deux lignes, ce qui
+prouve le rapprochement par l'identifiant du RPC ; un sceau par ligne, un
+losange toujours dessiné dessous, une seule lecture de salariés dans la page.
+
+Au crible à mutations, 18 cas écrits, **18 tués**, les deux fichiers rendus à
+l'identique après chaque coup : visage retiré d'un sceau, `loading` sauté,
+`alt` écrit, repli disparu (les trois joués aux deux sceaux à la fois), colonne
+lâchée, jointure sur `l.id`, carte prenant tous les salariés, carte figée à
+`[]`, mémo descendu sous la sortie de chargement, chargeur réécrit à la main,
+visage à 100 % du sceau, retrait ramené à 4 px, rayon carré, `object-fit` sauté,
+centrage aux quatre bornes, fond posé sur le visage, `overflow: hidden` sur le
+sceau, `pointer-events: auto`. Les huit cas écrits sur la
+page font tous rougeoier une loi de DOM (§5), et pas seulement le texte de la
+source ; les dix cas de la feuille tombent sur la loi de géométrie.
+
+### Mesures
+
+`npx vitest run src/services/__tests__/remunerations` : 109/109 (71 + 38),
+soit +7 sur la veille (67 + 35) — 4 en §16, 3 en §5. Suite complète :
+3076/3076 sur 216 fichiers (le compte global n'est pas attribuable à la seule
+passe : la PR #417 est entrée sur `main` entre les deux mesures).
+`npm run build` : 14,49 s. `npx eslint --config eslint.gate.config.js src` :
+0 erreur, 6 avertissements, ceux de la base. `npm run charte` : rapport
+identique au caractère près sur deux exécutions ; la feuille fait 2617 lignes
+comptées par `grep -c ''` (2581 avant la passe, même instrument), **une règle
+de plus, 318**, aucune ligne au-delà de 100
+caractères, 8 `box-shadow` (inchangé), 2 `url()`, zéro `rgba()`, zéro couleur
+en dur, 39 jetons `--rw-*` tous consommés — `--rw-rond` sert deux fois
+désormais.
+
+### Non fait
+
+Aucun regard : `jsdom` ne peint pas. Le cadrage d'une photo de visage à 26 px
+dans un rond, la ligne de 3 px où le sceau respire encore, et le rendu d'un
+`data:image/svg+xml` de 295 caractères restent à vérifier sur écran. Et si la
+page doit finir par montrer une figure aussi dans la modale « Reprendre les
+valeurs », c'est un troisième sceau — donc une autre cote, une autre loi, pas
+une reprise.

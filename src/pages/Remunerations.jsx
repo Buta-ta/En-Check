@@ -64,6 +64,7 @@ import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import { useTheme } from '../contexts/ThemeContext'
 import RemunerationsLoading from '../components/RemunerationsLoading'
 import PastilleEntreprise from '../components/paie/PastilleEntreprise'
+import PhotoSignee from '../components/PhotoSignee'
 import {
   BogolanMedaillonSvg, BogolanTeinture, BogolanLosangeSvg, BogolanPanSvg,
 } from '../components/RemunerationsBogolan'
@@ -340,9 +341,14 @@ export default function Remunerations() {
         .select('id, name, code, currency, country_code, logo_url')
         .eq('id', entId)
         .maybeSingle(),
+      /*  `photo_url` joint les deux vues : la vue contrats lit la colonne sur
+          la ligne du salarié, la vue coût ne reçoit du RPC qu'un
+          `employe_id` — c'est donc ICI que la photo existe, et de là qu'elle
+          est retrouvée (`photoParId`). Sans la colonne, les deux sceaux
+          retombent sur les initiales et la page croit n'avoir rien à montrer. */
       supabase
         .from('employees')
-        .select('id, first_name, last_name, matricule, position, department, contract_type')
+        .select('id, first_name, last_name, matricule, position, department, contract_type, photo_url')
         .eq('enterprise_id', entId)
         .eq('is_active', true)
         .order('last_name'),
@@ -736,6 +742,21 @@ export default function Remunerations() {
         .some(v => String(v).toLowerCase().includes(q))
     })
   }, [employes, etatBande, filtre, recherche])
+
+  /*  LE VISAGE PAR IDENTIFIANT. Les lignes de coût viennent de
+      `encheck_cout_periode`, qui ne rend qu'un nom, un matricule et un
+      `employe_id` : la photo ne peut arriver que par cette clé. Le filtre sur
+      `photo_url` tient la carte petite — un salarié sans photo n'y figure pas,
+      et l'appelant retombe sur les initiales sans avoir à le demander.
+
+      ⚠️ Elle est LÀ, et pas près des deux sceaux qui la lisent : le hook doit
+      vivre AVANT la sortie sur l'écran de chargement. Posé en dessous — ce
+      que l'ordre de lecture suggère —, React répond « Rendered more hooks than
+      during the previous render » et la page ne monte plus : trois renders sur
+      quatre rougeoyaient avant que la suite le dise. */
+  const photoParId = useMemo(() => new Map(
+    employes.filter(e => e.photo_url).map(e => [e.id, e.photo_url]),
+  ), [employes])
 
   // ─────────────────────────────────────────────────────────
   //  ENREGISTRER
@@ -1351,7 +1372,29 @@ export default function Remunerations() {
                           <div className="rw-bande-tete">
                             <span className="rw-medaillon">
                               <BogolanMedaillonSvg taille={46} ton={etat === 'incomplet' ? 'cuivre' : 'craie'} />
-                              <span className="rw-medaillon-initiales">{initiales(e.first_name, e.last_name)}</span>
+                              {/*  le visage du salarié posé dans l'œil du sceau,
+                                  et les initiales en dessous — pas à la place.
+                                  `PhotoSignee` ne montre l'image que quand elle
+                                  est vraiment peinte : photo absente, adresse
+                                  morte ou réseau coupé, c'est le sceau d'avant
+                                  qui reste à l'écran, jamais un rond vide (la
+                                  leçon du 26/11, écrite dans son en-tête). Le
+                                  même chargeur que la pastille de
+                                  l'entreprise : un seul chemin d'image dans la
+                                  page. */}
+                              <PhotoSignee
+                                url={e.photo_url}
+                                alt=""
+                                aria-hidden="true"
+                                loading="lazy"
+                                decoding="async"
+                                className="rw-medaillon-photo"
+                                fallback={(
+                                  <span className="rw-medaillon-initiales">
+                                    {initiales(e.first_name, e.last_name)}
+                                  </span>
+                                )}
+                              />
                             </span>
 
                             <div className="rw-identite">
@@ -1964,7 +2007,25 @@ export default function Remunerations() {
                           <div className="rw-bande-tete">
                             <span className="rw-medaillon">
                               <BogolanMedaillonSvg taille={46} ton={declare ? 'craie' : 'cuivre'} />
-                              <span className="rw-medaillon-initiales">{initialesNom(l.nom)}</span>
+                              {/*  le même visage, venu de l'autre bout de la
+                                  page : la ligne de coût ne connaît que
+                                  `employe_id`, c'est `photoParId` qui fait le
+                                  rapprochement. Un salarié sorti du champ de
+                                  la requête (inactif, muté) montre ses
+                                  initiales — pas le visage d'un homonyme. */}
+                              <PhotoSignee
+                                url={photoParId.get(l.employe_id)}
+                                alt=""
+                                aria-hidden="true"
+                                loading="lazy"
+                                decoding="async"
+                                className="rw-medaillon-photo"
+                                fallback={(
+                                  <span className="rw-medaillon-initiales">
+                                    {initialesNom(l.nom)}
+                                  </span>
+                                )}
+                              />
                             </span>
 
                             <div className="rw-identite">

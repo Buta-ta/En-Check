@@ -77,6 +77,11 @@ const { etat, appels, toasts } = vi.hoisted(() => ({
 const LOGO = 'https://demo.supabase.co/storage/v1/object/public/logos/kandi.png'
 const SOCIETE = { id: 'ent1', name: 'Kandi SARL', code: 'KANDI', currency: 'XOF', country_code: 'BJ', logo_url: LOGO }
 
+/*  La photo du premier salarié : une adresse PUBLIQUE de bucket — la 
+    forme réelle de `employees.photo_url` dans ce dépôt. Le second salarié n'en a 
+    pas : c'est lui qui prouve que le sceau sait s'en passer. */
+const PHOTO = 'https://demo.supabase.co/storage/v1/object/public/photos/kossi.png'
+
 const EMPLOYES = [
   { id: 'e1', first_name: 'Kossi', last_name: 'ALABI', matricule: 'E-001', position: 'Chauffeur', department: 'Logistique', contract_type: 'CDI' },
   { id: 'e2', first_name: 'Awa', last_name: 'DOSSOU', matricule: 'E-002', position: 'Couturière', department: 'Atelier', contract_type: 'CDI' },
@@ -808,15 +813,129 @@ describe('4. le logo de l’entreprise signe la page', () => {
     //  la signature de l'adresse, le cache, le repli sur erreur : tout est
     //  dans `PhotoSignee`, via `PastilleEntreprise`. Une page qui reprendrait
     //  `createSignedUrl` aurait deux règles de rafraîchissement à caler.
-    expect(PAGE).not.toMatch(/createSignedUrl|adresseSignee|PhotoSignee/)
+    expect(PAGE).not.toMatch(/createSignedUrl|adresseSignee\(/)
     expect(PAGE).not.toMatch(/function PastilleEntreprise|const PastilleEntreprise/)
     expect(PAGE).toContain("import PastilleEntreprise from '../components/paie/PastilleEntreprise'")
-    //  et la page ne peaufine pas le rond dans son coin : la feuille ne
+    //  et la page ne peaufine pas CE rond-là dans son coin : la feuille ne
     //  re-stylle PAS le composant partagé. (`pastille` se rencontre déjà dans
     //  la feuille, pour les filtres ronds — la loi porte donc sur la classe du
-    //  composant, pas sur le mot.)
+    //  composant, pas sur le mot. Le sceau du salarié, lui, se cadre dans la
+    //  feuille : c'est la géométrie du sceau, pas celle d'un composant
+    //  partagé — la loi est à §16 de `remunerationsBogolan`.)
     const DECL4 = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
-    expect(DECL4, 'le rond est dessiné par le composant, pas par la page')
-      .not.toMatch(/paie-pastille-entreprise|object-fit/)
+    expect(DECL4, 'le rond de l’entreprise est dessiné par le composant, pas par la page')
+      .not.toMatch(/paie-pastille-entreprise/)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════
+// 5. LE VISAGE DU SALARIÉ, DANS LE SCEAU RENDERU
+//     28/11 : « fais apparaître l'image profil des employés partout où
+//     l'icône profil apparaît dans cette page ». Deux sceaux — un par vue.
+//     La loi est jouée sur le DOM monté, dans les DEUX vues : la vue coût ne
+//     reçoit du RPC qu'un `employe_id`, et c'est précisément là que le
+//     rapprochement peut mentir sans que le texte de la source le dise.
+// ═══════════════════════════════════════════════════════════
+describe('5. le sceau du salarié porte sa photo, dans les deux vues', () => {
+  let hote
+  let racine
+
+  const monter = async (adresse = '/remunerations') => {
+    hote = document.createElement('div')
+    document.body.append(hote)
+    racine = createRoot(hote)
+    await act(async () => {
+      racine.render(
+        <MemoryRouter initialEntries={[adresse]}><Remunerations /></MemoryRouter>
+      )
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600)
+    })
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem('admin', JSON.stringify({ role: 'super_admin' }))
+    etat.profils = profilsDeBase()
+    etat.lignes = lignesDeBase()
+    etat.pointages = [{ mois: `${MOIS_PRECEDENT}-01`, nb_pointages: 12 }]
+    etat.projection = null
+    etat.budget = null
+    etat.cotisations = 0
+    etat.erreurPeriode = null
+    etat.erreurProjection = false
+    etat.lent = false
+    EMPLOYES[0].photo_url = PHOTO
+    delete EMPLOYES[1].photo_url
+  })
+
+  afterEach(() => {
+    racine?.unmount?.()
+    if (hote) hote.remove()
+    racine = null
+    hote = null
+    vi.useRealTimers()
+    //  la fixture est rendue telle qu'elle est écrite ailleurs dans le
+    //  fichier : les autres describes ne doivent pas hériter d'un visage
+    delete EMPLOYES[0].photo_url
+  })
+
+  const sceaux = () => [...hote.querySelectorAll('.rw-medaillon')]
+
+  it('la vue contrats : le visage là où la photo existe, les initiales où elle manque', async () => {
+    await monter('/remunerations')
+    const lignes = [...hote.querySelectorAll('.rw-bande')]
+    expect(lignes.length).toBeGreaterThan(1)
+    const kossi = lignes.find(b => texte(b).includes('Kossi ALABI'))
+    const awa = lignes.find(b => texte(b).includes('Awa DOSSOU'))
+    expect(kossi, 'la ligne de Kossi est montée').toBeTruthy()
+    expect(awa, 'la ligne d’Awa est montée').toBeTruthy()
+
+    const img = kossi.querySelector('.rw-medaillon img')
+    expect(img, 'le salarié photographié a son visage dans le sceau').not.toBeNull()
+    expect(img.getAttribute('src')).toBe(PHOTO)
+    expect(img.getAttribute('alt')).toBe('')
+    expect(img.getAttribute('loading')).toBe('lazy')
+
+    //  sans photo : AUCUN `<img>` — pas une image à `src` vide — et les deux
+    //  initiales d'avant, telles que la page les calculait
+    expect(awa.querySelector('.rw-medaillon img'), 'un cadre sans photo ne se fabrique pas une image').toBeNull()
+    expect(texte(awa.querySelector('.rw-medaillon-initiales'))).toBe('AD')
+    //  et le sceau reste un sceau : le losange est toujours dessous
+    expect(kossi.querySelectorAll('.rw-medaillon svg').length).toBe(1)
+  })
+
+  it('la vue coût : le visage rejoint la ligne par l’identifiant du RPC', async () => {
+    await monter('/remunerations?vue=cout')
+    const lignes = [...hote.querySelectorAll('.rw-bande')]
+    expect(lignes.length).toBeGreaterThan(1)
+    const avecPhoto = lignes.filter(b => b.querySelector('.rw-medaillon img'))
+    expect(avecPhoto, 'la ligne de coût ne connaît qu’un `employe_id` : c’est '
+      + 'par lui que la photo arrive').toHaveLength(1)
+    expect(avecPhoto[0].querySelector('.rw-medaillon img').getAttribute('src')).toBe(PHOTO)
+    //  la seconde ligne est `e2`, sans photo : ses initiales viennent du nom
+    //  complet que le RPC rend, pas d'un prénom qu'il ne rend pas
+    const sansPhoto = lignes.find(b => !b.querySelector('.rw-medaillon img'))
+    expect(texte(sansPhoto.querySelector('.rw-medaillon-initiales'))).toBe('AD')
+  })
+
+  it('la photo ne se substitue pas au sceau, et ne repasse pas par la case requête', async () => {
+    await monter('/remunerations')
+    const lignes = [...hote.querySelectorAll('.rw-bande')]
+    //  un seul élément d'image par sceau, posé DANS le sceau
+    for (const s of sceaux()) {
+      expect(s.querySelectorAll('img').length, 'au plus une image par sceau').toBeLessThanOrEqual(1)
+      expect(s.querySelector('.rw-bogolan'), 'le losange est toujours dessiné').not.toBeNull()
+    }
+    //  et la page ne redemande pas les photos ligne à ligne : UNE seule
+    //  lecture de salariés, qui nourrit les deux vues. (La seconde adresse
+    //  `from('employees')` de la page est une écriture — `contract_type` à la
+    //  sauvegarde — et n'a rien à voir avec le visuel.)
+    const lectures = [...PAGE.matchAll(/from\('employees'\)\s*\.select/g)]
+    expect(lectures, 'une lecture de salariés, pas une par vue').toHaveLength(1)
+    expect(lignes.every(b => b.querySelectorAll('.rw-medaillon').length === 1),
+      'un sceau par ligne, pas un second venu chercher une photo').toBe(true)
   })
 })

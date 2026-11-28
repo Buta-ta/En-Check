@@ -151,7 +151,7 @@
   --rw-trame: 3px;
   --rw-barre: 7px;
   --rw-reserve: 104px;
-  --rw-rond: 50%;
+  --rw-rond: 50%;   /*  la figure de personne — sceau, pastille, avatar */
   --rw-largeur: 1280px;
 
   display: flex;
@@ -964,6 +964,42 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--rw-encre);
+  pointer-events: none;
+}
+
+/*  LA PHOTO DU SALARIÉ, posée DANS l'œil du sceau — pas par-dessus.
+
+      Le sceau fait 42 px (`--rw-sceau`) et le dessin est gravé dans un
+      `viewBox` de 46 : le cadre à `x 0,75 / rx 9`, le losange de réserve à
+      13,5 du centre, les quatre points de la croix à 17,6 — soit, à
+      l'échelle de la boîte, 12,3 px pour la pointe du losange et 16 px pour
+      les points. Le visage se donne donc UN RAYON DE 13 px (26 px de
+      diamètre, `--rw-sceau` moins deux fois `--charte-espace-2`) : il
+      recouvre la réserve, comme les initiales la recouvrent déjà, mais il
+      laisse l'anneau de 3 px où le cadre et les quatre points se lisent. Un
+      visage à 4 px de retrait remplissait la boîte, et le sceau devenait un
+      rond de photo cerclé de cuivre : ce n'était plus un sceau.
+
+      RONDE, et pas losange : la pointe ne se lit pas à cette taille, et la
+      figure de personne est ronde dans toute l'application — rail, absences,
+      heures supplémentaires, et la pastille d'entreprise posée hier.
+
+      Centrée par `inset: 0` + `margin: auto` et non par les quatre bornes
+      seules : sur un élément remplacé comme `img`, `left` ET `right` posés
+      avec `width: auto` ne l'étirent pas — la cote intrinsèque gagne et la
+      borne de droite est abandonnée. Une largeur écrite tient aussi pour
+      l'`<span>` du repli, qui n'est pas un élément remplacé.
+
+      Et elle ne peint pas : ni fond, ni liseré, ni ombre. C'est le tissu du
+      sceau qui fait l'assiette, avec ou sans visage. */
+.rw-medaillon-photo {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: calc(var(--rw-sceau) - 2 * var(--charte-espace-2));
+  height: calc(var(--rw-sceau) - 2 * var(--charte-espace-2));
+  border-radius: var(--rw-rond);
+  object-fit: cover;
   pointer-events: none;
 }
 
