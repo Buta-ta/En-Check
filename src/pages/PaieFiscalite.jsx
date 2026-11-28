@@ -6,6 +6,9 @@ import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import PaieCoin from '../components/PaieCoin'
 import PageCulturalBand from '../components/PageCulturalBand'
+import CoqueAdmin from '../components/coque/CoqueAdmin'
+import SidebarUnique from '../components/SidebarUnique'
+import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import PaieEntreprises from '../components/PaieEntreprises'
 import ConfigurationFiscale from './ConfigurationFiscale'
@@ -27,10 +30,10 @@ export function paieAccess(enterprise, superAdmin) {
 
 export default function PaieFiscalite() {
   const navigate = useNavigate()
-  /*  Le thème n'est plus piloté d'ici : le bouton clair / sombre a quitté
-      le bandeau le 27/11, il vit dans le rail, une seule fois. On ne garde
-      que la valeur, pour l'attribut `data-theme` de la page. */
-  const { darkMode } = useTheme()
+  /*  Le thème n'est plus dans le bandeau (27/11) : il vit dans le rail, une
+      seule fois pour toute l'application. La page ne fait que le LIRE, pour
+      son `data-theme`, et le PASSER au rail qui l'affiche. */
+  const { darkMode, toggleTheme } = useTheme()
   const [params, setParams] = useSearchParams()
   const [context, setContext] = useState(null)
   const [enterpriseId, setEnterpriseId] = useState(null)
@@ -57,7 +60,11 @@ export default function PaieFiscalite() {
         const admin = JSON.parse(localStorage.getItem('admin') || 'null')
         if (!admin) { navigate('/login'); return }
         const { data, error: failure } = await supabase.from('enterprises')
-          .select('id, name, country_code, currency, module_config_fiscale, module_fiches_paie')
+          /*  `logo_url` n'est pas décoratif : c'est lui que la bande
+              d'entreprise du rail affiche en pastille. Sans lui, la barre
+              retombe sur l'initiale — la leçon du 26/11 sur la page Pauses,
+              où la barre montrait des lettres au lieu des logos. */
+          .select('id, name, country_code, currency, logo_url, module_config_fiscale, module_fiches_paie')
           .eq('is_active', true).order('name')
         if (failure) throw failure
         // Server RLS remains the authority; the local membership list only narrows the selector.
@@ -97,98 +104,149 @@ export default function PaieFiscalite() {
     if (window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) navigate('/dashboard')
   }
 
-  return <div className="paie-page paie-workspace" data-theme={darkMode ? 'dark' : 'light'}>
-    {/* ═══ LE BLOC DE TÊTE : un cadre bogolan, comme la page Retards ═══
+  /*  LA BARRE DE LA PAGE — le même rail que les autres pages de la coque.
+      Sa demande du 27/11 : « ramène aussi la sidebar + son rail avec les
+      images profil des entreprises affichées ». Les entreprises viennent de
+      la MÊME lecture que le reste de la page, `logo_url` compris, donc les
+      pastilles du rail montrent les logos et non des initiales. */
+  const sectionsNav = context
+    ? sectionsNavAdmin({
+        admin: context.admin,
+        moduleActif: (champ) => context.admin.role === 'super_admin'
+          || Boolean(enterprise?.[champ]),
+      })
+    : []
+  const nomAdmin =
+    `${context?.admin?.first_name || ''} ${context?.admin?.last_name || ''}`.trim()
+    || context?.admin?.name || context?.admin?.email || 'Administrateur'
 
-        Sa demande du 27/11 : « transforme ce bloc qu'il ressemble exactement
-        comme au bloc de la page retards, un bloc encerclé du bandeau bogolan ».
-        Et deux retraits dans la même phrase : les raccourcis de pages, et le
-        bouton clair / sombre.
+  /*  ═══ CE QUI DÉFILE, ET CE QUI NE DÉFILE PAS (27/11) ═══
 
-        Ce ne sont pas deux oublis, c'est la même leçon qu'aux Retards le
-        25/11 : une page n'a pas à se refaire menu — le rail s'en charge — et
-        le thème est un choix de l'application, pas d'une page. Le bouton de
-        thème vivait ici en double ; il reste au rail, une seule fois.
+      « Je ne veux pas que ce bloc bouge quand je scrolle, mais que tout le
+      reste puisse glisser sous lui. »
 
-        Le motif ne se pose plus AU-DESSUS de la page : il l'ENTOURE. Une
-        seule toile, `placement="cadre"`, et la planche posée par-dessus —
-        c'est elle qui masque le milieu, donc le bogolan ne se voit qu'en
-        lisière. Une seule bande par page : celle du haut, qui ouvrait la
-        page, disparaît avec ce placement. */}
-    <div className="pw-cadre">
-      <PageCulturalBand pathname="/paie" placement="cadre" />
-      <div className="pw-planche">
-        <header className="pw-bandeau">
-          <button
-            type="button"
-            className="pw-retour"
-            onClick={confirmerSortie}
-            title="Retour au tableau de bord"
-            aria-label="Retour au tableau de bord"
-          >
-            <ArrowLeft size={17} aria-hidden="true" />
-          </button>
+      D'où deux étages, et pas un seul :
 
-          <span className="pw-marque" aria-hidden="true">
-            <EnCheckBrandMark size={34} />
-          </span>
+        · `.pw-fixe` porte le cadre bogolan, les onglets et les médaillons.
+          Il est COLLANT (`position: sticky; top: 0`) dans la colonne de la
+          coque : il reste à l'écran pendant que le reste passe dessous.
 
-          <div className="pw-bandeau-titre">
-            <h1>En-Check · Paie &amp; Fiscalité</h1>
-            <p>Vos équipes. Votre rythme.</p>
-          </div>
+        · `.pw-defile` porte tout ce qui doit glisser — les erreurs, l'attente,
+          les volets de saisie et le pied de page.
 
-          {/*  L'entreprise reste ICI : c'est elle qui décide de tout ce que la
-              page montre ensuite, et la changer abandonne les saisies. Elle
-              prend la place de la période des Retards, à droite du bandeau. */}
-          {context && (
-            <label className="pw-bandeau-entreprise">
-              <span className="pw-bandeau-entreprise-icone" aria-hidden="true">
-                <Building2 size={17} />
-              </span>
-              <span className="pw-bandeau-entreprise-corps">
-                <span className="pw-eyebrow">Entreprise</span>
-                <select
-                  aria-label="Entreprise"
-                  value={enterpriseId || ''}
-                  disabled={busy}
-                  onChange={e => changeEnterprise(e.target.value)}
-                >
-                  {context.enterprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
-              </span>
-              <ChevronDown size={15} aria-hidden="true" />
-            </label>
-          )}
+      L'ordre du DOM est celui de l'écran : ce qui est fixe vient d'abord, ce
+      qui défile ensuite. Le défilement reste celui de la PAGE, pas d'un
+      carcan interne : la barre collante n'a donc rien à mesurer, et le
+      bouton « retour » du navigateur continue de rendre le geste attendu.
 
-          {/*  Le pays fiscal et la devise restent affichés : ils ne se règlent
-              pas ici, mais ils décident de tout ce qui se calcule. Ils
-              prennent la seconde place à droite, comme la période des
-              Retards — une étiquette, une valeur, rien de plus. */}
-          {context && (
-            <div className="pw-bandeau-pays" aria-label="Pays fiscal et devise">
-              <span className="pw-bandeau-pays-icone" aria-hidden="true">
-                <Globe2 size={17} />
-              </span>
-              <span className="pw-bandeau-entreprise-corps">
-                <span className="pw-eyebrow">Pays · devise</span>
-                <strong>
-                  {enterprise?.country_code || 'Non défini'}
-                  <span aria-hidden="true"> / </span>
-                  {enterprise?.currency || 'Non définie'}
-                </strong>
-              </span>
+      ⚠️ Le cadre et les barres ont un fond OPAQUE. Sans lui, le contenu qui
+      passe dessous se verrait à travers le bogolan. */
+
+  return <CoqueAdmin
+    sidebar={context ? (
+      <SidebarUnique
+        sections={sectionsNav}
+        nomAdmin={nomAdmin}
+        initialeAdmin={(context.admin?.first_name || nomAdmin || 'A').charAt(0).toUpperCase()}
+        darkMode={darkMode}
+        surTheme={toggleTheme}
+        surDeconnexion={() => {
+          localStorage.removeItem('admin')
+          localStorage.removeItem('last_enterprise_id')
+          navigate('/login')
+        }}
+        entreprises={context.enterprises}
+        entrepriseActive={enterprise || null}
+        surEntreprise={(e) => {
+          const id = typeof e === 'string' ? e : e?.id || null
+          if (id) changeEnterprise(id)
+        }}
+      />
+    ) : null}
+  >
+  <div className="paie-page paie-workspace" data-theme={darkMode ? 'dark' : 'light'}>
+    <div className="pw-fixe">
+      <div className="pw-cadre">
+        <PageCulturalBand pathname="/paie" placement="cadre" />
+        <div className="pw-planche">
+          <header className="pw-bandeau">
+            <button
+              type="button"
+              className="pw-retour"
+              onClick={confirmerSortie}
+              title="Retour au tableau de bord"
+              aria-label="Retour au tableau de bord"
+            >
+              <ArrowLeft size={17} aria-hidden="true" />
+            </button>
+
+            <span className="pw-marque" aria-hidden="true">
+              <EnCheckBrandMark size={34} />
+            </span>
+
+            <div className="pw-bandeau-titre">
+              <h1>En-Check · Paie &amp; Fiscalité</h1>
+              <p>Vos équipes. Votre rythme.</p>
             </div>
-          )}
-        </header>
+
+            {/*  L'entreprise reste ICI : c'est elle qui décide de tout ce que la
+                page montre ensuite, et la changer abandonne les saisies. Elle
+                prend la place de la période des Retards, à droite du bandeau. */}
+            {context && (
+              <label className="pw-bandeau-entreprise">
+                <span className="pw-bandeau-entreprise-icone" aria-hidden="true">
+                  <Building2 size={17} />
+                </span>
+                <span className="pw-bandeau-entreprise-corps">
+                  <span className="pw-eyebrow">Entreprise</span>
+                  <select
+                    aria-label="Entreprise"
+                    value={enterpriseId || ''}
+                    disabled={busy}
+                    onChange={e => changeEnterprise(e.target.value)}
+                  >
+                    {context.enterprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  </select>
+                </span>
+                <ChevronDown size={15} aria-hidden="true" />
+              </label>
+            )}
+
+            {/*  Le pays fiscal et la devise restent affichés : ils ne se règlent
+                pas ici, mais ils décident de tout ce qui se calcule. Ils
+                prennent la seconde place à droite, comme la période des
+                Retards — une étiquette, une valeur, rien de plus. */}
+            {context && (
+              <div className="pw-bandeau-pays" aria-label="Pays fiscal et devise">
+                <span className="pw-bandeau-pays-icone" aria-hidden="true">
+                  <Globe2 size={17} />
+                </span>
+                <span className="pw-bandeau-entreprise-corps">
+                  <span className="pw-eyebrow">Pays · devise</span>
+                  <strong>
+                    {enterprise?.country_code || 'Non défini'}
+                    <span aria-hidden="true"> / </span>
+                    {enterprise?.currency || 'Non définie'}
+                  </strong>
+                </span>
+              </div>
+            )}
+          </header>
+        </div>
       </div>
+      {!error && context && section && (
+        <>
+          <nav className="pw-tabs" aria-label="Paie et fiscalité">{visible.map(s => { const Icon = s.icon; return <button key={s.id} aria-current={section.id === s.id ? 'page' : undefined} onClick={() => go(s.tabs[0][0])}><Icon size={20}/>{s.label}</button> })}</nav>
+          <nav className="pw-subtabs" aria-label={`Rubriques ${section.label}`}>{section.tabs.map(([id, label], index) => { const Icon = TAB_ICONS[id] || FileText; return <button key={id} className="pw-coin-tab" aria-current={tab === id ? 'page' : undefined} onClick={() => go(id)}><PaieCoin variant={index}><Icon size={21}/></PaieCoin><span className="pw-coin-label">{label}</span><span className="pw-tab-active-mark" aria-hidden="true"/></button> })}</nav>
+        </>
+      )}
     </div>
-    {error ? <div className="pw-error" role="alert">{error}<button className="paie-btn" onClick={() => setRetry(n => n + 1)}>Réessayer</button></div>
+
+    <div className="pw-defile">
+      {error ? <div className="pw-error" role="alert">{error}<button className="paie-btn" onClick={() => setRetry(n => n + 1)}>Réessayer</button></div>
       : !context ? <PaieWalletLoader label="Chargement de votre espace Paie & Fiscalité…"/>
       : !section ? <p className="pw-loading">Les modules Paie et Fiscalité ne sont pas activés pour cette entreprise.</p>
       : <>
-        <nav className="pw-tabs" aria-label="Paie et fiscalité">{visible.map(s => { const Icon = s.icon; return <button key={s.id} aria-current={section.id === s.id ? 'page' : undefined} onClick={() => go(s.tabs[0][0])}><Icon size={20}/>{s.label}</button> })}</nav>
-        <nav className="pw-subtabs" aria-label={`Rubriques ${section.label}`}>{section.tabs.map(([id, label], index) => { const Icon = TAB_ICONS[id] || FileText; return <button key={id} className="pw-coin-tab" aria-current={tab === id ? 'page' : undefined} onClick={() => go(id)}><PaieCoin variant={index}><Icon size={21}/></PaieCoin><span className="pw-coin-label">{label}</span><span className="pw-tab-active-mark" aria-hidden="true"/></button> })}</nav>
         <main className="pw-main" key={enterpriseId}>
           {/* Keep both editors mounted across tabs: drafts and the chosen period survive navigation.
               A new enterprise gets a fresh keyed subtree; stale responses cannot paint into it. */}
@@ -201,6 +259,8 @@ export default function PaieFiscalite() {
           </div>}
         </main>
       </>}
-    <footer className="pw-footer"><div className="pw-bogolan pw-bogolan-bottom" aria-hidden="true"/><p>En-Check · Gestion des équipes</p></footer>
-  </div>
+        <footer className="pw-footer"><div className="pw-bogolan pw-bogolan-bottom" aria-hidden="true"/><p>En-Check · Gestion des équipes</p></footer>
+      </div>
+    </div>
+  </CoqueAdmin>
 }

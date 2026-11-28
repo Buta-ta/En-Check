@@ -16,7 +16,7 @@ import PaiePreparation, { resumePreparation, grouperControles } from '../../comp
 let host, root
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
-  state.enterprises = [{ id: 'A', name: 'Entreprise A', country_code: 'COG', currency: 'XAF', module_fiches_paie: true, module_config_fiscale: true }, { id: 'B', name: 'Entreprise B', module_fiches_paie: false, module_config_fiscale: true }]
+  state.enterprises = [{ id: 'A', name: 'Entreprise A', country_code: 'COG', currency: 'XAF', logo_url: 'https://exemple/logo-a.png', module_fiches_paie: true, module_config_fiscale: true }, { id: 'B', name: 'Entreprise B', module_fiches_paie: false, module_config_fiscale: true }]
   state.error = null
   localStorage.setItem('admin', JSON.stringify({ id: 'admin', role: 'admin', enterprise_id: 'A', entreprises: [{ id: 'A' }, { id: 'B' }] }))
   host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host)
@@ -85,6 +85,65 @@ it('le bloc de tête est celui des Retards : cadre bogolan, ni raccourcis ni bou
   expect(host.querySelector('.pw-bandeau-titre h1').textContent).toContain('Paie & Fiscalité')
   expect(host.querySelector('.pw-bandeau-titre p').textContent).toBe('Vos équipes. Votre rythme.')
   expect(host.querySelector('.pw-bandeau-entreprise select')).toBeTruthy()
+})
+
+it('le bloc de tête est collant, et seul le contenu défile dessous', async () => {
+  await render(<MemoryRouter><PaieFiscalite/></MemoryRouter>)
+  const css = readFileSync('src/pages/PaieWorkspace.css', 'utf8')
+
+  //  « Je ne veux pas que ce bloc bouge quand je scrolle, mais que tout le
+  //  reste puisse glisser dessous. » Deux étages, dans cet ordre.
+  const fixe = host.querySelector('.pw-fixe')
+  const defile = host.querySelector('.pw-defile')
+  expect(fixe).toBeTruthy()
+  expect(defile).toBeTruthy()
+  expect(fixe.compareDocumentPosition(defile) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  //  Le cadre bogolan et les DEUX barres sont dans la partie fixe…
+  expect(fixe.querySelector('.pw-cadre')).toBeTruthy()
+  expect(fixe.querySelector('.ec-cultural-cadre')).toBeTruthy()
+  expect(fixe.querySelector('.pw-tabs')).toBeTruthy()
+  expect(fixe.querySelector('.pw-subtabs')).toBeTruthy()
+
+  //  …et le contenu des volets dans celle qui défile.
+  expect(defile.querySelector('.pw-main')).toBeTruthy()
+  //  (`closest` marche pour les deux cas : un `.pw-main` même caché est
+  //  toujours rattaché à SON étage, quel que soit celui qui est monté.)
+  expect(defile.querySelector('.pw-main').closest('.pw-fixe')).toBeNull()
+  expect(defile.querySelector('.pw-main').closest('.pw-defile')).toBe(defile)
+
+  //  Collant, pas figé : le défilement reste celui de la page.
+  expect(css).toMatch(/\.pw-fixe \{[^}]*position: sticky;/)
+  expect(css).toMatch(/\.pw-fixe \{[^}]*top: 0;/)
+  //  Un fond opaque, sans quoi le contenu se verrait à travers le bogolan.
+  expect(css).toMatch(/\.pw-fixe \{[^}]*background: var\(--paie-bg\);/)
+  expect(css).toMatch(/\.pw-fixe \.pw-tabs \{[^}]*background: var\(--paie-bg-elevated\);/)
+
+  //  Sur téléphone, la barre rendrait l'écran au bandeau : elle redevient normale.
+  //  On lit la DERNIÈRE règle du fichier : plusieurs paliers 820 existent
+  //  depuis les débuts de la page, c'est celui-ci qui décide.
+  const dernierPalier = css.slice(css.lastIndexOf('@media (max-width: 820px)'))
+  expect(dernierPalier).toMatch(/\.pw-fixe \{\s*position: static;\s*\}/)
+})
+
+it('la sidebar et son rail sont revenus, avec les logos des entreprises', async () => {
+  await render(<MemoryRouter><PaieFiscalite/></MemoryRouter>)
+  const source = readFileSync('src/pages/PaieFiscalite.jsx', 'utf8')
+
+  //  « Ramène aussi la sidebar + son rail » : la coque partagée, pas une
+  //  barre réécrite pour cette page.
+  expect(host.querySelector('.coque-admin')).toBeTruthy()
+  expect(host.querySelector('.coque-admin > .sb')).toBeTruthy()
+  expect(host.querySelector('.sb-rail')).toBeTruthy()
+  expect(source).toContain('<CoqueAdmin')
+  expect(source).toContain('<SidebarUnique')
+
+  //  « avec les images profil des entreprises affichées » : sans `logo_url`
+  //  dans la lecture, la bande du rail retombe sur l'initiale.
+  expect(source).toContain('logo_url')
+
+  //  Le rail s'allume sur Paie & fiscalité, et les autres rubriques sont là.
+  expect(host.querySelector('.sb-rail').textContent.length).toBeGreaterThan(0)
 })
 
 it('une erreur réseau ne devient pas un zéro salarié', async () => {
