@@ -226,6 +226,8 @@ it('les actions intégrées sont branchées au vrai moteur et à l’historique'
   const source = readFileSync('src/pages/FichesPaie.jsx', 'utf8')
   expect(source).toContain('onGenerate={handleTryGenerate}')
   expect(source).toContain('onHistory={() => { loadHistory(); setShowHistoryModal(true) }}')
+  expect(source).toContain("select('period_start, period_end, employee_id, net_salary, gross_salary, sent_at, currency')")
+  expect(source).toContain("slip.currency || 'unknown'")
   expect(source).toContain("integre && activeTab === 'preview'")
   expect(source).toContain('settings: persistedSettings')
 })
