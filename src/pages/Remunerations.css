@@ -165,24 +165,58 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── 1. La planche : l'en-tête rogné en billet ──────────── */
+/* ── 1. L'en-tête : le bloc cerclé d'étoffe, collé en haut ── */
 
-/*  Le contenant ne peint pas : il tient le bloc à distance des bords de la
-      coque, et il donne son épaisseur au tissu. C'est `padding`, pas un
-      habillage posé par-dessus — la bande et la marge intérieure sont la même
-      mesure, donc elles ne peuvent plus diverger. Et surtout PAS
-      `overflow: hidden` : `.empv3-entete` le dit en toutes lettres, ça
-      couperait l'ombre dure du bloc. */
+/*  LE BLOC COLLÉ. Le contenant tient le bloc à distance des bords de la
+      coque, lui donne son épaisseur de tissu — et le maintient en haut de
+      l'écran pendant que le reste de la page défile dessous.
+
+      `sticky`, pas `fixed` : le défilement reste celui de la page. Aucune
+      hauteur à compenser sur le contenu, aucune mesure à refaire au
+      redimensionnement, le retour du navigateur garde son geste — et sur
+      téléphone, où le bloc occupe une bonne part de l'écran, un `fixed`
+      aurait demandé les trois en double. C'est la raison écrite à
+      `.pw-fixe` de l'espace paie ; la cote aussi vient de là.
+
+      `top: 0`, et pas `top: 8px` : tout centimètre laissé entre le bord de
+      l'écran et le bloc serait un couloir où le contenu continue de courir.
+      Posé à zéro, le haut du tissu fait le bord de l'écran.
+
+      Et il peint, lui, le fond plat de la page. Un bloc collé est un cache :
+      sans fond, le contenu passe VU dans les encoches des quatre coins
+      arrondis — six pixels de mouvement dans un coin, ça se voit. La cage
+      reprend donc `--rw-nuit` au même rayon, et l'étoffe posée dessus ne
+      change rien. C'est le seul fond que la cage se donne, et le seul
+      arbitrage qui va avec : en haut de page, le fond est lavé d'un voile
+      (`linear-gradient(var(--rw-lavis), transparent 30vh)`) que le plat de
+      `--rw-nuit` ne reproduit pas — 10 % de cuivre d'écart sur six pixels,
+      et le voilé disparaît au-delà de 30 vh, là où le bloc vit collé.
+
+      Et surtout PAS `overflow: hidden` : `.empv3-entete` le dit en toutes
+      lettres, ça couperait l'ombre dure du bloc. */
 .rw-entete {
-  position: relative;
+  position: sticky;
+  top: 0;
+  /*  l'étage du bloc, dans l'échelle DÉJÀ écrite par la page : sous le voile
+      du sélecteur de mois (25) et son registre (30), sous la barre
+      d'assemblage (40), sous la modale (80) — coller le bloc ne doit pas le
+      faire passer devant ce qui se pose par-dessus la page. Le rail, lui, est
+      collé à 74 et son registre d'entreprises est PORTÉ hors de lui, en
+      `fixed`, à 78 : aucune recouvrance à négocier, les deux sont ailleurs
+      et plus haut — c'est le bon sens, un bandeau de page ne doit pas
+      passer devant la barre de commande. */
+  z-index: 20;
   /*  l'isolation est obligatoire : sans contexte d'empilement propre, les deux
       pseudos en `z-index` négatif glisseraient sous le fond de la page et le
-      bloc disparaîtrait derrière le lavis. */
+      bloc disparaîtrait derrière le lavis. `sticky` en crée un aussi ; on le
+      dit, pour que la raison reste lue et pas déduite. */
   isolation: isolate;
   display: block;
   width: var(--rw-colonne);
   margin: var(--charte-espace-5) auto var(--charte-espace-4);
   padding: var(--rw-tissu);
+  background-color: var(--rw-nuit);
+  border-radius: var(--rw-rayon-bloc);
 }
 
 /*  LE TISSU — une seule bande, qui fait le tour. Deux couches horizontales
