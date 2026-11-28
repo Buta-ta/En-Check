@@ -338,3 +338,64 @@ it('36. les deux boutons de pied de fenêtre se lisent, dans les deux thèmes', 
   expect(contraste(jetons('blanc'), jetons('aplat'))).toBeGreaterThanOrEqual(4.5)
   expect(contraste(jetons('encre'), jetons('surface'))).toBeGreaterThanOrEqual(4.5)
 })
+
+// ── 02/12 (2) : « Toujours la même chose » — les boutons du pied fiscal ──
+
+it('37. cancelBtn et saveBtn portent une encre OPAQUE, jamais un voile', () => {
+  const theme = lire('src/styles/paieTheme.js')
+  const styles = lire('src/styles/paieThemeBulletins.js')
+
+  //  LA CAUSE EXACTE de la capture du 02/12, telle qu'elle était écrite :
+  //
+  //    cancelBtn : color: p.contour     → rgba(93,66,39,0.22)
+  //                background: p.voile3 → rgba(93,66,39,0.04)
+  //    saveBtn   : color: p.overlayFond → rgba(35,25,17,0.45)
+  //
+  //  Mesuré sur l'image : 1,51:1 pour « Annuler », 2,55:1 pour
+  //  « Enregistrer », et AUCUNE bordure (1,16:1 d'écart avec le fond).
+  //  Un bouton doit se voir avant de se lire.
+  const bloc = (nom) => {
+    const debut = theme.indexOf(`${nom}: {`)
+    return theme.slice(debut, theme.indexOf('},', debut))
+  }
+  const annuler = bloc('cancelBtn')
+  const enregistrer = bloc('saveBtn')
+
+  //  plus aucune valeur translucide en encre ou en fond
+  expect(annuler).not.toMatch(/color:\s*p\.(contour|voile\d|overlayFond)/)
+  expect(annuler).not.toMatch(/background(Color)?:\s*p\.voile\d/)
+  expect(enregistrer).not.toMatch(/color:\s*p\.(overlayFond|contour|voile\d)/)
+
+  //  et un contour qui les détache du papier
+  expect(annuler).toContain('var(--charte-trait) solid var(--charte-encre)')
+  expect(enregistrer).toContain('var(--charte-trait) solid var(--charte-encre)')
+
+  //  La feuille a suivi la maquette D : coin carré, ombre dure, perforation.
+  const contenu = bloc('modalContent')
+  expect(contenu).toContain('borderRadius: 0')
+  expect(contenu).toContain('8px 8px 0 0 var(--charte-encre)')
+  //  et plus d'ombre floue de 60 px (C9)
+  expect(contenu).not.toContain('0 20px 60px')
+
+  //  Le sous-titre existe : la fenêtre dit de quoi elle parle.
+  expect(theme).toContain('modalSousTitre')
+  expect(theme).toContain('modalGlyphe')
+
+  //  Enfin, la règle de fond : le papier de la charte et l'encre tiennent
+  //  4,5:1. C'est la paire sur laquelle ces boutons s'appuient.
+  const jetons = (nom) => {
+    const m = lire('src/styles/tokens.css').match(new RegExp(`--charte-${nom}: (#[0-9A-Fa-f]{6})`))
+    return m ? m[1] : null
+  }
+  const lum = (hex) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)))
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+  }
+  const contraste = (a, b) => {
+    const x = lum(a), y = lum(b)
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+  expect(contraste(jetons('encre'), jetons('surface'))).toBeGreaterThanOrEqual(4.5)
+  void styles
+})

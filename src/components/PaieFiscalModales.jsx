@@ -47,9 +47,13 @@ export function ContributionModal({ contribution, currency, onSave, onClose, sav
     <PaieDrawer title="Cotisation" onClose={onClose} busy={saving} help="Définissez qui cotise, sur quelle base et à quel taux." example="À 5 % sur une base de 100 000, la cotisation vaut 5 000 avant application des plafonds.">
       <div style={S.modalContent} onClick={e => e.stopPropagation()}>
         <div style={S.modalHeader}>
-          <h2 style={S.modalTitle}>
-            {contribution ? 'Modifier la cotisation' : 'Nouvelle cotisation'}
-          </h2>
+          <span aria-hidden="true" style={S.modalGlyphe}>%</span>
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <h2 style={S.modalTitle}>
+              {contribution ? 'Modifier la cotisation' : 'Nouvelle cotisation'}
+            </h2>
+            <p style={S.modalSousTitre}>COTISATION SOCIALE</p>
+          </div>
           <button aria-label="Fermer le tiroir" disabled={saving} onClick={onClose} style={S.modalCloseBtn}>
             <X size={20} />
           </button>
@@ -285,9 +289,15 @@ export function BracketModal({ bracket, currency, nextOrder, onSave, onClose, sa
     <PaieDrawer title="Tranche fiscale" onClose={onClose} busy={saving} help="Le taux porte sur la part du revenu comprise dans cette tranche, en mode progressif." example="Une tranche de 50 000 à 100 000 à 10 % taxe au maximum 50 000 × 10 % = 5 000.">
       <div style={S.modalContent} onClick={e => e.stopPropagation()}>
         <div style={S.modalHeader}>
-          <h2 style={S.modalTitle}>
-            {bracket ? 'Modifier la tranche' : 'Nouvelle tranche fiscale'}
-          </h2>
+          <span aria-hidden="true" style={S.modalGlyphe}>%</span>
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <h2 style={S.modalTitle}>
+              {bracket ? 'Modifier la tranche' : 'Nouvelle tranche fiscale'}
+            </h2>
+            <p style={S.modalSousTitre}>
+              {bracket ? `TRANCHE FISCALE ${form.bracket_order || ''}`.trim() : 'NOUVELLE TRANCHE'}
+            </p>
+          </div>
           <button aria-label="Fermer le tiroir" disabled={saving} onClick={onClose} style={S.modalCloseBtn}>
             <X size={20} />
           </button>
