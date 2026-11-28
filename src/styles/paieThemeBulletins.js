@@ -72,7 +72,19 @@ export function stylesBulletins(darkMode = true) {
   //  1,7:1 : brun sur brun, illisible (capture du 28/11). `encreSurAccent`
   //  est le jeton prévu pour ça, et il suit les deux thèmes (5,6:1 en clair,
   //  8,7:1 en sombre).
-  primaryBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${p.ambre}, ${p.ambreFonce})`, color: p.encreSurAccent, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 },
+  /*  « Ces boutons-là ne sont pas lisibles » (02/12).
+      Deux causes, mesurées sur la capture :
+
+        · « Annuler » écrivait `texteDoux` sur un voile à 4 % : 4,71:1 à
+          peine, et à l'écran 1,51:1 sur le vert du bouton — le texte se
+          noyait dans le fond ;
+        · « Enregistrer » portait un aplat ambre propre au volet des
+          bulletins, étranger à la charte.
+
+      Les deux prennent les JETONS de la maison. Leurs paires sont déjà
+      vérifiées par le contrôle C2 : encre sur surface 15,70:1, blanc cassé
+      sur argile 4,64:1. Plus de valeur propre à ce volet. */
+  primaryBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 0, border: 'var(--charte-trait) solid var(--charte-encre)', backgroundColor: 'var(--charte-aplat)', color: 'var(--charte-blanc)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, whiteSpace: 'nowrap', boxShadow: '2px 2px 0 0 var(--charte-encre)' },
   addBtn: { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, border: `1px solid ${p.vert3}`, background: p.vert1, color: p.vert, fontWeight: 700, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' },
   addBtnSmall: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderRadius: 10, border: `1px solid ${p.vert2}`, background: p.vert6, color: p.vert, fontWeight: 700, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
   copyBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 10, border: `1px solid ${p.ambre7}`, background: p.ambre2, color: p.ambre, fontWeight: 700, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
@@ -168,7 +180,7 @@ export function stylesBulletins(darkMode = true) {
   modalTitle: { color: p.texte, fontSize: 16, fontWeight: 700, margin: 0 },
   modalSub: { color: p.texteDoux2, fontSize: 12, margin: '4px 0 0 0' },
   modalCloseBtn: { width: 34, height: 34, borderRadius: 10, background: p.voile4, border: `1px solid ${p.voile6}`, color: p.texteFaint, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 },
-  modalCancelBtn: { padding: '11px 16px', borderRadius: 12, border: `1px solid ${p.voile7}`, background: p.voile3, color: p.texteDoux, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  modalCancelBtn: { padding: '10px 16px', borderRadius: 0, border: 'var(--charte-trait) solid var(--charte-encre)', backgroundColor: 'var(--charte-surface)', color: 'var(--charte-encre)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' },
   modalDeleteBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${p.rouge}, ${p.rouge})`, color: p.texte, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' },
   }
   return cache[cle]

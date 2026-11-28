@@ -300,3 +300,41 @@ it('35. la devise d’un bulletin ne s’invente jamais', () => {
   // et l'envoi groupé s'arrête net plutôt que de produire un bulletin faux
   expect(lire('src/services/payrollDelivery.js')).toContain('if (!payload.currency')
 })
+
+// ── 02/12 : « Ces boutons-là ne sont pas lisibles » ──────────────────────
+
+it('36. les deux boutons de pied de fenêtre se lisent, dans les deux thèmes', () => {
+  const styles = lire('src/styles/paieThemeBulletins.js')
+
+  //  Utilitaires de contraste WCAG.
+  const lum = (hex) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)))
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+  }
+  const contraste = (a, b) => {
+    const x = lum(a), y = lum(b)
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+
+  //  CE QUI ÉTAIT CASSÉ, et qui ne doit pas revenir :
+  //   · « Annuler » écrivait `texteDoux` sur un voile à 4 % — 4,71:1 à peine,
+  //     et le voile se composait sur le fond de la modale, pas sur le papier ;
+  //   · « Enregistrer » portait un aplat ambre propre au volet des bulletins,
+  //     étranger à la charte.
+  expect(styles).not.toMatch(/primaryBtn: \{[^}]*p\.ambre/)
+  expect(styles).not.toMatch(/modalCancelBtn: \{[^}]*background: p\.voile/)
+
+  //  Les deux prennent maintenant les jetons de la maison.
+  expect(styles).toMatch(/primaryBtn: \{[^}]*var\(--charte-aplat\)/)
+  expect(styles).toMatch(/primaryBtn: \{[^}]*var\(--charte-blanc\)/)
+  expect(styles).toMatch(/modalCancelBtn: \{[^}]*var\(--charte-encre\)/)
+
+  //  Et le contrôle chiffré : les paires de la charte tiennent 4,5:1.
+  const jetons = (nom) => {
+    const m = lire('src/styles/tokens.css').match(new RegExp(`--charte-${nom}: (#[0-9A-Fa-f]{6})`))
+    return m ? m[1] : null
+  }
+  expect(contraste(jetons('blanc'), jetons('aplat'))).toBeGreaterThanOrEqual(4.5)
+  expect(contraste(jetons('encre'), jetons('surface'))).toBeGreaterThanOrEqual(4.5)
+})
