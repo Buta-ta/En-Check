@@ -401,3 +401,63 @@
 @media (max-width: 820px) {
   .pw-bandeau-pays { flex: 1 1 auto; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA BARRE NE BOUGE PAS, LE RESTE GLISSE DESSOUS (27/11)
+   ═══════════════════════════════════════════════════════════════════════════
+
+   « Je ne veux pas que ce bloc bouge quand je scrolle, mais que tout le reste
+   puisse glisser sous lui. »
+
+   Son choix, quand les deux options ont été posées : le CADRE et les DEUX
+   BARRES (les trois sections, puis les cinq médaillons) restent à l'écran ;
+   seul le contenu des volets défile.
+
+   Pourquoi `sticky` et pas `fixed` : le défilement reste celui de la page. La
+   barre n'a donc aucune hauteur à compenser sur le contenu, aucune mesure à
+   refaire au redimensionnement, et le bouton « retour » du navigateur continue
+   de rendre le geste attendu. `fixed` aurait demandé les trois, en double.
+
+   ⚠️ Les fonds sont OPAQUES, et c'est la seule chose qui rend le collage
+   lisible : sans eux, les cartes qui passent dessous se verraient à travers
+   le bogolan. Le cadre garde donc `--charte-surface`, les deux barres leur
+   `--paie-bg-elevated` — les valeurs qu'elles avaient déjà. On ne fait que
+   les rendre vraiment opaques, et l'on ajoute au cadre une marge basse qui
+   est la respiration entre la barre et le premier contenu. */
+
+.pw-fixe {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  /*  Le fond de la page derrière la barre : quand le contenu arrive sous le
+      cadre, il ne doit pas apparaître dans les 26 px de marge du haut, ni
+      dans les coins arrondis. */
+  background: var(--paie-bg);
+  padding-bottom: 10px;
+}
+
+/* le cadre garde sa forme ; il perd seulement sa marge haute, devenue inutile */
+.pw-fixe .pw-cadre { margin-top: 0; }
+
+/* les deux barres sont opaques : rien ne les traverse */
+.pw-fixe .pw-tabs {
+  background: var(--paie-bg-elevated);
+}
+
+.pw-fixe .pw-subtabs {
+  background: var(--paie-bg-elevated);
+  /*  Le bandeau des médaillons ferme la barre : son filet bas est la limite
+      sous laquelle le contenu disparaît. */
+  border-bottom: 1px solid var(--paie-border);
+}
+
+/*  Le contenu commence SOUS la barre : un peu d'air, sans quoi le premier
+     titre des volets colle au filet des médaillons. */
+.pw-defile > *:first-child { margin-top: 0; }
+
+@media (max-width: 820px) {
+  /*  Sur téléphone, la barre collante mangerait la moitié de l'écran. Elle
+      redevient un bloc normal : on lit la page, on ne la pilote pas du pouce
+      depuis un bandeau qui prendrait le dessus sur le contenu. */
+  .pw-fixe { position: static; }
+}
