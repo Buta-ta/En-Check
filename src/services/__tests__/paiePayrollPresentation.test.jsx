@@ -6,7 +6,7 @@ const mock = vi.hoisted(() => ({ pages: [], calls: [], dark: false }))
 vi.mock('../../contexts/ThemeContext', () => ({ useTheme: () => ({ darkMode: mock.dark }) }))
 vi.mock('../../lib/supabase', () => ({ supabase: { from(table) {
   const call = { table }; mock.calls.push(call)
-  return { select() { return this }, eq(key, value) { call[key] = value; return this }, gte() { return this }, lt() { return this }, or() { return this }, order() { return this }, range(a, b) { call.range = [a, b]; return this }, abortSignal() { return Promise.resolve(mock.pages.shift() || { data: [], error: null }) } }
+  return { select() { return this }, eq(key, value) { call[key] = value; return this }, gte(key, value) { call[`gte_${key}`] = value; return this }, lt(key, value) { call[`lt_${key}`] = value; return this }, or() { return this }, order() { return this }, range(a, b) { call.range = [a, b]; return this }, abortSignal() { return Promise.resolve(mock.pages.shift() || { data: [], error: null }) } }
 } } }))
 import { FieldHelp } from '../../components/PaieFiscalChamps'
 import PaiePayrollChart, { payrollMonths, aggregatePayroll } from '../../components/PaiePayrollChart'
@@ -15,8 +15,14 @@ beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true; mock.pages = []; 
 afterEach(async () => { await act(async () => root.unmount()); host.remove() })
 const render = async element => { await act(async () => root.render(element)) }
 const slip = overrides => ({ id: '1', period_start: '2026-10-01', gross_salary: '100000', employer_contributions: '15000', currency: 'XOF', ...overrides })
-it('les six mois traversent une année sans dépendre du fuseau local', () => {
+it('les périodes proposées traversent une année sans dépendre du fuseau local', () => {
   expect(payrollMonths('2026-02-28').map(m => m.key)).toEqual(['2025-09','2025-10','2025-11','2025-12','2026-01','2026-02'])
+  expect(payrollMonths('2026-02-28', 1).map(m => m.key)).toEqual(['2026-02'])
+  expect(payrollMonths('2026-02-28', 2).map(m => m.key)).toEqual(['2026-01','2026-02'])
+  expect(payrollMonths('2026-02-28', 3).map(m => m.key)).toEqual(['2025-12','2026-01','2026-02'])
+  expect(payrollMonths('2026-02-28', 8).map(m => m.key)).toHaveLength(8)
+  expect(payrollMonths('2026-02-28', 12).map(m => m.key)).toEqual(['2025-03','2025-04','2025-05','2025-06','2025-07','2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02'])
+  expect(payrollMonths('2026-02-28', 4).map(m => m.key)).toHaveLength(6)
   expect(payrollMonths('')).toEqual([])
 })
 it('additionne les montants numériques, sépare devises et bulletins retirés', () => {
@@ -47,6 +53,16 @@ it('pagine et filtre explicitement l’entreprise et la devise', async () => {
   await render(<PaiePayrollChart enterpriseId="entreprise-a" currency="XOF" end="2026-10-31"/>)
   expect(mock.calls).toHaveLength(2); expect(mock.calls[0]).toMatchObject({ enterprise_id: 'entreprise-a', currency: 'XOF', range: [0,499] }); expect(mock.calls[1].range).toEqual([500,999])
   expect(host.textContent).toContain('501 bulletins')
+})
+it('la période d’historique est sélectionnable et recharge la bonne plage', async () => {
+  await render(<PaiePayrollChart enterpriseId="entreprise-a" currency="XOF" end="2026-10-31"/>)
+  expect(host.textContent).toContain('6 mois')
+  expect(mock.calls[0]).toMatchObject({ gte_period_start: '2026-05-01', lt_period_start: '2026-11-01' })
+  const select = host.querySelector('[aria-label="Période de l’historique"]')
+  expect([...select.options].map(option => option.value)).toEqual(['1','2','3','6','8','12'])
+  await act(async () => { select.value = '12'; select.dispatchEvent(new Event('change', { bubbles: true })) })
+  expect(host.textContent).toContain('12 mois')
+  expect(mock.calls.at(-1)).toMatchObject({ gte_period_start: '2025-11-01', lt_period_start: '2026-11-01' })
 })
 it('une erreur réseau donne une erreur et un bouton de reprise, pas une masse nulle', async () => {
   mock.pages = [{ data: null, error: { message: 'indisponible' } }]
