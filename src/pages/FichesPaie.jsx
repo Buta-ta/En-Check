@@ -417,14 +417,14 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     setLoadingHistory(true)
     try {
       const { data, error } = await supabase.from('employee_payslips')
-        .select('period_start, period_end, employee_id, net_salary, gross_salary, sent_at')
+        .select('period_start, period_end, employee_id, net_salary, gross_salary, sent_at, currency')
         .eq('enterprise_id', enterpriseId).or('is_deleted.is.null,is_deleted.eq.false')
         .order('period_start', { ascending: false })
       if (error) throw error
       const periodsMap = new Map()
         ; (data || []).forEach(slip => {
-          const key = `${slip.period_start}_${slip.period_end}`
-          if (!periodsMap.has(key)) periodsMap.set(key, { period_start: slip.period_start, period_end: slip.period_end, count: 0, totalNet: 0, totalGross: 0, lastSent: slip.sent_at })
+          const key = `${slip.period_start}_${slip.period_end}_${slip.currency || 'unknown'}`
+          if (!periodsMap.has(key)) periodsMap.set(key, { period_start: slip.period_start, period_end: slip.period_end, currency: slip.currency || null, count: 0, totalNet: 0, totalGross: 0, lastSent: slip.sent_at })
           const p = periodsMap.get(key); p.count++; p.totalNet += slip.net_salary || 0; p.totalGross += slip.gross_salary || 0
           if (slip.sent_at > p.lastSent) p.lastSent = slip.sent_at
         })
@@ -904,7 +904,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     return { totalNet, totalGross, totalCost, totalEmployees, alreadySent, paidCount }
   }, [previewRows, sentSlips, paidSlips])
 
-  const fmt = (amount) => PayrollService.formatMoney(amount, settings.currency); const payrollCurrency = CurrencyService.resolveCurrency({ enterprise: enterpriseData, settings })
+  const fmt = (amount, currency = settings.currency) => PayrollService.formatMoney(amount, currency); const payrollCurrency = CurrencyService.resolveCurrency({ enterprise: enterpriseData, settings })
 
   // ═══════════════════════════════════════════════════════════
   // PRÉ-VALIDATION
@@ -1951,7 +1951,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {showHistoryModal && (
             <div style={S.modalOverlay} onClick={() => setShowHistoryModal(false)}>
               <div style={{ ...S.modalContent, maxWidth: 600 }} onClick={e => e.stopPropagation()}>
-                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: P.indigo3, border: `1px solid ${P.indigo9}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><History size={22} color={P.indigoClair} /></div><div><h3 style={S.modalTitle}>Historique des périodes</h3><p style={S.modalSub}>Cliquez sur une période pour la sélectionner</p></div></div><button onClick={() => setShowHistoryModal(false)} style={S.modalCloseBtn}><X size={18} /></button></div>
+                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: P.indigo3, border: `1px solid ${P.indigo9}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><History size={22} color={P.indigoClair} /></div><div><h3 style={S.modalTitle}>Historique des périodes</h3><p style={S.modalSub}>Les totaux sont séparés par devise (XOF ≠ XAF). Cliquez pour sélectionner une période.</p></div></div><button onClick={() => setShowHistoryModal(false)} style={S.modalCloseBtn}><X size={18} /></button></div>
                 <div style={{ padding: 20, maxHeight: '60vh', overflowY: 'auto' }}>
                   {loadingHistory ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 40 }}><RefreshCw size={20} color={P.ambre} style={{ animation: 'spin 0.9s linear infinite' }} /><span style={{ color: P.texteDoux2 }}>Chargement...</span></div>
                     : historyPeriods.length === 0 ? <div style={S.emptyMini}><History size={20} color={P.texteFaint} /><span>Aucune fiche envoyée</span></div>
@@ -1960,7 +1960,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                           const isCurrentPeriod = period.period_start === periodStart && period.period_end === periodEnd
                           const periodLabel = new Date(period.period_start + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
                           return (<div key={i} onClick={() => handleSelectHistoryPeriod(period)} style={{ padding: '14px 16px', borderRadius: 14, background: isCurrentPeriod ? P.indigo2 : P.voile2, border: isCurrentPeriod ? `1px solid ${P.indigo11}` : `1px solid ${P.voile5}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, transition: 'all 0.2s' }}>
-                            <div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><span style={{ color: P.texte, fontSize: 14, fontWeight: 700, textTransform: 'capitalize' }}>{periodLabel}</span>{isCurrentPeriod && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: P.indigo5, color: P.indigoClair }}>Période actuelle</span>}</div><div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}><span style={{ color: P.texteDoux2, fontSize: 12 }}><span style={{ color: P.vert, fontWeight: 700 }}>{period.count}</span> fiche(s)</span><span style={{ color: P.texteDoux2, fontSize: 12 }}>Net: <span style={{ color: P.ambre, fontWeight: 700 }}>{fmt(period.totalNet)}</span></span></div></div>
+                            <div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><span style={{ color: P.texte, fontSize: 14, fontWeight: 700, textTransform: 'capitalize' }}>{periodLabel}</span>{isCurrentPeriod && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: P.indigo5, color: P.indigoClair }}>Période actuelle</span>}</div><div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}><span style={{ color: P.texteDoux2, fontSize: 12 }}><span style={{ color: P.vert, fontWeight: 700 }}>{period.count}</span> fiche(s)</span><span style={{ color: P.texteDoux2, fontSize: 12 }}>Net: <span style={{ color: P.ambre, fontWeight: 700 }}>{period.currency ? `${fmt(period.totalNet, period.currency)} (${period.currency})` : 'Devise inconnue'}</span></span></div></div>
                             <ArrowRight size={16} color={P.texteFaint} />
                           </div>)
                         })}

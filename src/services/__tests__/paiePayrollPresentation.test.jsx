@@ -56,6 +56,7 @@ it('ancre l’historique au dernier bulletin et pagine les données de l’entre
   expect(mock.calls[1]).toMatchObject({ enterprise_id: 'entreprise-a', currency: 'XOF', gte_period_start: '2026-05-01', lt_period_start: '2026-11-01', range: [0,499] })
   expect(mock.calls[2].range).toEqual([500,999])
   expect(host.textContent).toContain('501 bulletins')
+  expect(host.querySelector('.pw-payroll-bars > div:first-child strong').textContent).toContain('oct. 26')
 })
 it('la période d’historique est sélectionnable et recharge la bonne plage depuis le dernier bulletin', async () => {
   mock.pages = [
@@ -63,12 +64,12 @@ it('la période d’historique est sélectionnable et recharge la bonne plage de
     { data: [{ period_start: '2026-10-01' }] }, { data: [slip({ period_start: '2026-10-01' })] },
   ]
   await render(<PaiePayrollChart enterpriseId="entreprise-a" currency="XOF"/>)
-  expect(host.textContent).toContain('6 mois jusqu’au mois du bulletin le plus récent')
+  expect(host.textContent).toContain('6 mois, du plus récent au plus ancien')
   expect(mock.calls[1]).toMatchObject({ gte_period_start: '2026-05-01', lt_period_start: '2026-11-01' })
   const select = host.querySelector('[aria-label="Période de l’historique"]')
   expect([...select.options].map(option => option.value)).toEqual(['1','2','3','6','8','12'])
   await act(async () => { select.value = '12'; select.dispatchEvent(new Event('change', { bubbles: true })) })
-  expect(host.textContent).toContain('12 mois jusqu’au mois du bulletin le plus récent')
+  expect(host.textContent).toContain('12 mois, du plus récent au plus ancien')
   expect(mock.calls.at(-1)).toMatchObject({ gte_period_start: '2025-11-01', lt_period_start: '2026-11-01' })
 })
 it('recharge l’historique après publication, même pour des salariés déjà envoyés', async () => {
