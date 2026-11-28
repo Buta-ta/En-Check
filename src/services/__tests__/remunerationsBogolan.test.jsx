@@ -1428,6 +1428,16 @@ describe('15. le logo de l’entreprise remplace l’immeuble, aux deux icônes'
 //     Ce que la page doit tenir : le visage vient de LA requête des salariés
 //     et rejoint la ligne de coût par `employe_id` ; il ne remplace pas les
 //     initiales, il se pose dessus ; et il ne redessine pas le sceau.
+//     Le 29/11, le fondateur signale que rien ne se peint : « on ne voit pas
+//     l'image de profil de chaque employé qui en a ». Cause unique, mesurée
+//     dans le DOM : le `loading="lazy"` que cette passe exigeait. Le chargeur
+//     cache son image tant qu'elle n'est pas peinte, et une image lazy cachée
+//     n'est jamais demandée : ici, l'attribut n'est pas une prudence, c'est un
+//     cadenas.
+//     La loi est donc écrite EN CREUX — aucun attribut `loading` —,
+//     couplée au cache de `PhotoSignee.jsx` (si le cache change de nature, la
+//     loi tombe avec lui et le dit), et lue aussi sur le DOM monté. Un seul
+//     de ces filets qui lâche, et la page revient aux initiales éternelles.
 // ═══════════════════════════════════════════════════════════
 describe('16. la photo du salarié se pose dans le sceau, sans l’effacer', () => {
   const Sceaux = () => [...PAGE.matchAll(/<PhotoSignee[\s\S]*?\/>/g)].map(m => m[0])
@@ -1447,15 +1457,33 @@ describe('16. la photo du salarié se pose dans le sceau, sans l’effacer', () 
       //  `alt` le ferait lire deux fois — et la ligne garde son `aria-label`
       expect(s, 'la page n’invente pas de nom accessible par-dessus le nom écrit').toContain('alt=""')
       expect(s).toContain('aria-hidden="true"')
-      //  une ligne par salarié, parfois cent : le visuel ne se charge que
-      //  quand la ligne approche du bord de l'écran
-      expect(s).toContain('loading="lazy"')
+      //  JAMAIS `loading` sur un `PhotoSignee` : le chargeur cache son `<img>`
+      //  en `display: none` tant qu'il n'est pas peint, et une image lazy que
+      //  rien ne rend n'est jamais demandée — la panne du 29/11, qui montrait
+      //  des initiales à la place de deux visages pourtant en base. Ce qui est
+      //  défendu est la DEMANDE reportée, pas le décodage : `decoding` reste.
+      expect(s, 'un `loading` sur une image cachée jusqu’à sa peinture ne se '
+        + 'charge jamais : ' + s.slice(0, 60)).not.toMatch(/\sloading=["{]/)
       expect(s).toContain('decoding="async"')
+      //  et le couple tient parce que le chargeur cache : la loi est lue À
+      //  DEUX, sur la source de `PhotoSignee`. S'il change de cache
+      //  (`visibility`), ce `not.toMatch` devient caduc et tombe avec lui.
+      const CHARGEUR = readFileSync('src/components/PhotoSignee.jsx', 'utf8')
+      expect(CHARGEUR, 'le chargeur n\'est plus le même : la loi du '
+        + '`loading` interdit est à revoir avec lui')
+        .toMatch(/display:\s*peinte \? undefined : 'none'/)
+      //  et la loi porte sur la PAGE ENTIÈRE : un report de demande ailleurs
+      //  dans la page retomberait sur le même cache
+      //  (les `loading` de l'état React ne comptent pas : c'est la balise
+      //  d'image qui est en cause — d'où `loading=["{]`, pas `/loading=/`)
+      expect(PAGE.match(/\sloading=["{]/g) || [], 'aucun attribut `loading` dans la page')
+        .toEqual([])
       //  et le repli est EXPLICITE, dans le même appel : pas de cadran vide
       expect(s, 'le sceau sans photo reste un sceau').toContain('fallback={(')
     }
-    //  les deux replis sont les deux AideS que la page avait avant, pas une
-    //  lettre inventée par le composant : la vue coût n'a qu'un nom complet
+    //  les deux replis sont les deux calculs d'initiales que la page faisait
+    //  déjà, pas une lettre inventée par le composant : la vue coût n'a qu'un
+    //  nom complet, elle n'a pas de prénom à couper
     expect(sceaux[0]).toContain('initiales(e.first_name, e.last_name)')
     expect(sceaux[1]).toContain('initialesNom(l.nom)')
     expect((PAGE.match(/className="rw-medaillon-initiales"/g) || [])).toHaveLength(2)

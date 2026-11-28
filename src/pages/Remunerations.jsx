@@ -1373,7 +1373,7 @@ export default function Remunerations() {
                             <span className="rw-medaillon">
                               <BogolanMedaillonSvg taille={46} ton={etat === 'incomplet' ? 'cuivre' : 'craie'} />
                               {/*  le visage du salarié posé dans l'œil du sceau,
-                                  et les initiales en dessous — pas à la place.
+                                  et les initiales EN DESSOUS — pas à la place.
                                   `PhotoSignee` ne montre l'image que quand elle
                                   est vraiment peinte : photo absente, adresse
                                   morte ou réseau coupé, c'est le sceau d'avant
@@ -1381,12 +1381,30 @@ export default function Remunerations() {
                                   leçon du 26/11, écrite dans son en-tête). Le
                                   même chargeur que la pastille de
                                   l'entreprise : un seul chemin d'image dans la
-                                  page. */}
+                                  page.
+
+                                  ⚠️ ET SURTOUT PAS `loading="lazy"` ici, ni
+                                  dans aucun `PhotoSignee` — la panne du 29/11,
+                                  signalée par le fondateur : « on ne voit pas
+                                  l'image de profil de chaque employé qui en
+                                  a ». Un appel différé dans un cadre que le
+                                  chargeur retire du rendu tant que l'image
+                                  n'est pas peinte (`display: none`) n'est
+                                  JAMAIS demandée : donc `onLoad` ne vient
+                                  jamais, donc le cache ne se lève jamais, donc
+                                  la page conclut à la photo absente et rend
+                                  les initiales pour l'éternité — sans un seul
+                                  refus réseau. Le `data:` de la fiche de
+                                  recette, lui, ne quémande pas de signature :
+                                  c'est par là que la panne a pu se croire une
+                                  adresse morte plutôt qu'un attribut faux.
+                                  `decoding="async"` reste, lui, sans risque :
+                                  il reporte le DÉCODAGE d'une image déjà
+                                  téléchargée, pas la demande. */}
                               <PhotoSignee
                                 url={e.photo_url}
                                 alt=""
                                 aria-hidden="true"
-                                loading="lazy"
                                 decoding="async"
                                 className="rw-medaillon-photo"
                                 fallback={(
@@ -2010,14 +2028,16 @@ export default function Remunerations() {
                               {/*  le même visage, venu de l'autre bout de la
                                   page : la ligne de coût ne connaît que
                                   `employe_id`, c'est `photoParId` qui fait le
-                                  rapprochement. Un salarié sorti du champ de
-                                  la requête (inactif, muté) montre ses
-                                  initiales — pas le visage d'un homonyme. */}
+                                  rapprochement. Un salarié sorti du champ de la
+                                  requête (inactif, muté) montre ses initiales —
+                                  pas le visage d'un homonyme. Et mêmes
+                                  précautions qu'à l'autre sceau : un seul des
+                                  deux appels qui reporte la demande suffit à ne
+                                  jamais peindre le visage. */}
                               <PhotoSignee
                                 url={photoParId.get(l.employe_id)}
                                 alt=""
                                 aria-hidden="true"
-                                loading="lazy"
                                 decoding="async"
                                 className="rw-medaillon-photo"
                                 fallback={(

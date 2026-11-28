@@ -1358,11 +1358,15 @@ l'Épicerie du Port — le repli sur l'immeuble n'est pas un ornement, il sert.
 ### Ce qui est puni
 
 §16 (4 lois de source) : deux sceaux, deux visages, pas de troisième figure
-(`alt=""`, `aria-hidden`, `loading="lazy"`, `decoding="async"`, repli explicite
-aux deux initiales de la page, sceau jamais rogné ni mis en boîte) ; la
+(`alt=""`, `aria-hidden`, `decoding="async"`, repli explicite aux deux initiales
+de la page, sceau jamais rogné ni mis en boîte ; la
 colonne portée par la seule requête qui lit les salariés, et la jointure écrite
 sur `l.employe_id` ; la cote de l'œil déduite du sceau, ronde, `object-fit`,
-sans fond ; et l'ordre des hooks. §5 du fichier de rendu (3 lois sur le DOM
+sans fond ; et l'ordre des hooks. La liste de props comptait ce jour-là un
+`loading="lazy"` en plus, tenu pour un mérite : c'est de là qu'est venue la
+panne du 29/11, chap. 23 — la même loi punit maintenant sa présence aux deux
+sceaux, et l'écrit dans l'en-tête du chargeur.
+§5 du fichier de rendu (3 lois sur le DOM
 monté) : dans la vue Contrats, le visage de celui qui a une photo et les deux
 lettres de celle qui n'en a pas — sans photo, **aucun** `<img>` et non un
 `src` vide — ; dans la vue Coût, exactement un visage sur deux lignes, ce qui
@@ -1370,8 +1374,9 @@ prouve le rapprochement par l'identifiant du RPC ; un sceau par ligne, un
 losange toujours dessiné dessous, une seule lecture de salariés dans la page.
 
 Au crible à mutations, 18 cas écrits, **18 tués**, les deux fichiers rendus à
-l'identique après chaque coup : visage retiré d'un sceau, `loading` sauté,
-`alt` écrit, repli disparu (les trois joués aux deux sceaux à la fois), colonne
+l'identique après chaque coup : visage retiré d'un sceau, `loading` sauté —
+seul des dix-huit dont l'oracle pointait à l'envers, payé le lendemain, voir
+chap. 23 —, `alt` écrit, repli disparu (les trois joués aux deux sceaux à la fois), colonne
 lâchée, jointure sur `l.id`, carte prenant tous les salariés, carte figée à
 `[]`, mémo descendu sous la sortie de chargement, chargeur réécrit à la main,
 visage à 100 % du sceau, retrait ramené à 4 px, rayon carré, `object-fit` sauté,
@@ -1403,3 +1408,145 @@ dans un rond, la ligne de 3 px où le sceau respire encore, et le rendu d'un
 page doit finir par montrer une figure aussi dans la modale « Reprendre les
 valeurs », c'est un troisième sceau — donc une autre cote, une autre loi, pas
 une reprise.
+
+## La photo ne venait pas : le cache mange le lazy (29 novembre 2026)
+
+Une capture, une phrase : une ligne du ruban avec son sceau portant **HB** à la
+place du visage, et « On ne voit pas l'image de profil de chaque employé qui en
+a ». Hippo BIYOKILA a bien une photo en base ; la veille, la page avait été
+écrite pour l'afficher. Le code était bon, la base était bonne — et rien ne se
+peignait.
+
+### Ce que la base a dit, avant de toucher au code
+
+Trois lectures en requêtes seules, dans l'ordre, pour savoir si c'était
+l'adresse, le bucket ou la balise :
+
+| ce qu'on craignait | la mesure | verdict |
+| --- | --- | --- |
+| la colonne n'est pas remontée jusqu'à la page | `photo_url` en bout de `.select(...)` (l. 351), carte `photoParId` l. 757, deux `url={…}` l. 1403 / 2036 | câblage intact |
+| l'adresse est tronquée | `ENN-0002-1792617256342.png`, **99 caractères**, sous `…/storage/v1/object/public/photos/…` | adresse complète |
+| le bucket `photos` est privé, l'URL publique fait 403 | `public = true`, et l'objet **est** dans le bucket (14 objets) | passe-part, signature inutile |
+
+Restait la balise. Et c'est elle.
+
+### Le mécanisme, en trois lignes
+
+`PhotoSignee` n'affiche l'image que quand elle est **peinte** : tant que
+`onLoad` n'a pas répondu, son image est tenue en `display: none` — c'est la
+garantie du 26/11, « jamais de rond vide ». Une image marquée
+`loading="lazy"` **dans un sous-arbre caché n'est jamais demandée**. Donc
+`onLoad` ne vient pas, donc le cache ne se lève pas, donc la page conclut
+« photo absente » et rend les initiales — pour toujours, sans une erreur
+réseau, sans un 404, sans rien dans la console.
+
+La page, hier, demandait le lazy **au bon endroit pour la mauvaise raison** : « une
+ligne par salarié, parfois cent : le visuel ne se charge que quand la ligne
+approche du bord de l'écran ». Sur une `<img>` ordinaire, c'est exactement ça.
+Sur une `<img>` que le chargeur retire du rendu, reporter la demande ferme la
+seule porte par laquelle la demande pouvait passer.
+
+### Pourquoi personne ne l'avait vu
+
+Trois hasards se sont ligués :
+
+- **Le `data:` de la fiche de recette** (`RECETTE A`, un SVG de 295 caractères
+  en dur dans la colonne) traverse le chargeur par la branche de court-circuit :
+  il ne quémande aucune signature. On en a conclu trop vite que la page
+  « affichait bien un visage sur la base de recette ». Cette croyance n'a pas
+  été remesurée seule, et il faut l'écrire comme ce qu'elle est : la raison la
+  plus plausible pour laquelle un attribut faux a survécu à une passe criblée.
+- **`jsdom` ne peint pas.** Les deux montages réels vérifient `src`, `alt`, la
+  présence de l'image et du losange — mais `onLoad` n'y sonne jamais, alors le
+  `loading` ne changeait rien à l'affaire. La loi de rendu passait sur un DOM
+  qui n'aurait pas pu montrer la panne.
+- **La loi de source la récompensait.** Le §16 exigeait
+  `expect(s).toContain('loading="lazy"')` : retirer l'attribut faisait rougir
+  un test. Le crible à mutations avait même joué ce coup, « `loading` sauté »,
+  et l'avait « tué » — c'est le seul des dix-huit dont l'oracle pointait à
+  l'envers. Une loi d'homogénéité (« une image de liste se charge en lazy, comme
+  ailleurs ») qui énonce l'inverse du vrai n'est pas une absence de test : c'est
+  un test qui ment.
+
+### La correction, et où elle devait être écrite
+
+Retirer `loading` des deux sceaux, et de rien d'autre. La raison est écrite là
+où elle sert, deux fois :
+
+- **à l'appel**, dans le commentaire du sceau de la vue Contrats : *ET SURTOUT
+  PAS `loading` ici, ni dans aucun `PhotoSignee`* — parce que c'est au moment
+  de retoucher la page que l'attribut revient, par mimétisme avec les autres
+  images du projet (`BulletinChamps`, `EmpreinteDigitale`,
+  `EmployeeProfilePhoto` le portent tous, et eux n'ont pas de cache).
+- **dans l'en-tête du chargeur**, en face du protocole : treize lignes qui
+  disent à l'appelant ce que le cache interdit. Le texte du cache n'en comptait
+  que trois, et `PhotoSignee.jsx` n'était lu par AUCUN test — le §16 est le
+  premier à le relire. Les autres appels du projet, eux, n'avaient jamais
+  demandé le lazy : c'est la page seule qui l'avait ajouté.
+- `decoding="async"` reste : il reporte le **décodage** d'une image déjà
+  téléchargée, pas la demande. La nuance est écrite dans les deux fichiers,
+  sinon la prochaine passe « d'optimisation » remet le `loading` et enlève le
+  `decoding`, les deux d'un geste, sous le même mot.
+
+### Ce qui est puni maintenant
+
+Loi de source (§16), aux **deux** sceaux : `not.toMatch(/\sloading=["{]/)` —
+seule la balise est en cause. La loi est rejouée sur la page entière (aucun
+attribut `loading` nulle part dans `Remunerations.jsx`) : un report de demande
+ailleurs dans la page retomberait sur le même cache. Et un `toContain` sur la
+page ne suffisait pas, **la loi est lue à deux fichiers** : elle relit la
+source de `PhotoSignee.jsx` et exige que le cache y soit encore
+`display: peinte ? undefined : 'none'`. Si quelqu'un remplace ce cache par un
+`visibility: hidden` — ce qui rendrait le lazy de nouveau possible — la loi
+tombe en même temps et dit pourquoi, au lieu de défendre une interdiction devenue
+sans objet.
+
+Loi de rendu (§5), sur l'image réellement montée : `getAttribute('loading')` est
+`null` **et** `style.display` vaut `'none'`. La seconde assertion est la
+signature du mécanisme : elle prouve que le composant monté est bien celui qui
+cache, sinon la première ne veut plus rien dire.
+
+Crible, deux coups rejoués sur l'arbre final : `loading="lazy"` remis aux deux
+sceaux → **2 lois rouges**, une de source et une de rendu ; cache du chargeur
+passé à `visibility` → **la loi de couple rouge**, avec son mode d'emploi. Les
+deux fichiers rendus à l'identique après chaque coup.
+
+### Une loi qui criait sur du vide, corrigée dans la foulée
+
+Le premier jet de la loi page entière écrivait `/\bloading=/`. Il levait la
+chaîne `loading="lazy"` du commentaire que je venais d'écrire pour interdire
+l'attribut : la loi passait son temps à se plaindre de sa propre documentation,
+et elle rougissait avant toute mutation. D'où l'espace exigé avant l'attribut.
+La leçon dépasse ce fichier : **un crible sur du texte source qui ne distingue
+pas le code du commentaire finit amendé pour se taire**, et une loi amendée
+pour se taire ne prévient plus jamais — c'est exactement comment la première
+loi du `loading` a survécu à une panne qu'elle récompensait.
+
+### Mesures
+
+`npx vitest run src/services/__tests__/remunerations` : **109/109** (71 + 38),
+le même compte que la veille — la passe n'a ajouté **aucune** loi, elle en a
+retourné une et en a couplé deux. Suite complète : **3076/3076** sur 216
+fichiers (180,8 s). `npm run build` : ✓ 17,38 s. `npx eslint --config
+eslint.gate.config.js src` : 0 erreur, 6 avertissements, ceux de la base.
+`npm run charte` : rapport identique au caractère près sur deux exécutions
+(NON CONFORME à la baseline, 318 règles, 307 rayons — comme la veille). Page :
+2290 lignes (`grep -c ''`, 2270 avant, tout en commentaires) ;
+`PhotoSignee.jsx` : 134 (120) ; feuille CSS : **2617, intouchée** — la panne
+n'était pas dans la cote, et elle ne se réglait donc pas là.
+
+### Non fait
+
+Toujours aucun regard sur écran : `jsdom` ne peint pas, et cette fois c'est lui
+qui avait masqué la panne. Reste à vérifier sur la page, à l'œil : que le
+visage de BIYOKILA remplace bien les deux lettres dans un sceau de 42 px ; que
+la croix du sceau se lit toujours autour (l'anneau de 3,1 px calculé au
+chap. 22 n'a jamais été vu peint avec une photo dedans) ; et que les lignes sans
+photo gardent leurs initiales. Deuxième laisse ouverte, écrite pour ne pas être
+perdue : si le lazy redevient nécessaire ici (cent lignes, photos de 2 Mo), ce
+n'est pas l'attribut qu'il faudra retirer mais le cache du chargeur qu'il
+faudra repenser — `visibility`, ou une requête préalable ; la loi de couple est
+là pour le rappeler. Enfin, `loading` n'est pas devenu interdit dans
+l'application : il est interdit **sur une image que quelque chose cache jusqu'à
+sa peinture**. Les trois autres porteurs du projet n'ont pas de cache et n'ont
+rien à changer.
