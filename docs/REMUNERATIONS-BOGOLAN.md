@@ -765,3 +765,153 @@ Et rien n'a été vu à l'œil : le sandbox n'a ni Chromium ni Playwright, la
 géométrie de la bande est tenue par la loi, pas par une capture. La hauteur
 cumulée du bloc (10 + 18 + 16 de rythme avant le contenu, autant en bas) est
 calculée, pas mesurée sur écran.
+
+## Le tissu fait le tour du bloc (8 novembre 2026)
+
+« quand je disais entourer, je veux que ça ressemble à ça ». La maquette
+corrige ma lecture de la passe dernière : entourer, ce n'est pas poser deux
+bandes de 18 px sur les deux bords longs d'une planche. C'est **un cercle
+d'étoffe à cru sur les quatre côtés**, et le champ de papier reculé dedans.
+C'est exactement ce que fait déjà `.e360-tete` de la fiche salarié — la
+maquette est ce traitement-là, pas le mien.
+
+### Ce que la maquette dit, mesuré
+
+Elle fait 2724 × 262 px, posée sur le fond de page `(249, 246, 240)` ; le bloc
+la remplit tout entière, x = 0..2721, y = 0..261. Le premier pixel de papier
+crème tombe à y = 54 en haut, et le dernier à y = 202 : le champ fait 149 px de
+haut, 2611 de large (x = 53..2664). Les quatre retombées d'étoffe, mesurées
+chacune sur leur bord :
+
+| bord | tissu, en px de maquette | /2 |
+|---|---|---|
+| haut | 54 | 27 |
+| bas | 59 | 29 |
+| gauche | 53 | 26 |
+| droite | 59 | 29 |
+
+La maquette est rendue à un facteur qu'aucune de ses mesures ne fixe : lue à
+1× la bande ferait 54 px de CSS, lue à 2× 27. Je n'ai pas pris ce chiffre-là,
+j'ai pris **la cote de la maison pour ce traitement** : 24 px, qui est aussi
+un pas d'échelle du kit (`--charte-espace-5`) et laisse au motif sa période de
+485 px. Ce qui se vérifie, c'est le rapport : 54 pour 149 de champ chez elle,
+soit 0,36 ; chez nous 24 de bande pour un champ haut du contenu plus deux fois
+16 px de corps, soit ~0,30 — un cinquième d'écart, dans le sens où notre
+titre est plus haut que le sien. Les coins, eux, sont nets : le bord du champ
+avance de 6, 4, 3, 2, 1 px sur cinq lignes de 2 — un arc, pas une coupe ;
+rayon ≈ 14 px de maquette, soit 7 à 8 px en CSS, le `--charte-rayon-carte`. Le
+coin extérieur du bloc se cintre sur ~10 px de maquette, soit le
+`--charte-rayon-champ`. Et il n'y a **ni biseau, ni carré de cuivre, ni trait
+d'encre** sur le papier : la maquette ne montre pas ma planche meublée, elle
+montre un rectangle de papier adouci dans une bande tissée.
+
+### Le code : une bande, quatre couches
+
+- `--rw-tissu: var(--charte-espace-5)` — la cote est un pas d'échelle de la
+  maison, pas un chiffre de la page, et **c'est elle qui devient la marge
+  intérieure du bloc** : `.rw-entete { padding: var(--rw-tissu) }`. La bande et
+  la réserve sont la même mesure, donc elles ne peuvent plus diverger.
+- `.rw-entete::before`, à `inset: 0` : quatre couches, une par bord — deux
+  `repeat-x` calées sur la hauteur (`auto 24px`), deux `repeat-y` calées sur la
+  largeur (`24px auto`), aux positions `left top, left bottom, left top,
+  right top`. Les deux fichiers sont ceux de la maison :
+  `paie-bogolan-haut.webp` à l'horizontale, `bogolan-vertical.webp` à la
+  verticale.
+- `background-color: var(--charte-tissu)` remplit les quatre coins, là où les
+  deux fichiers se rejoignent : pas de trou, pas de couche de raboutage.
+- `.rw-entete::after`, à `inset: var(--rw-tissu)` : le champ. `--rw-panneau`,
+  rayon `carte`, aucune bordure, aucun `clip-path`, aucune ombre à lui.
+- L'ombre dure du kit est sur le calque du tissu, et nulle part ailleurs : la
+  plaque est reculée dans l'étoffe, son ombre y serait mangée.
+- Les deux `<span className="rw-entete-bandeau">` sont sortis du JSX. Le DOM du
+  bloc ne porte plus qu'un enfant, `.rw-entete-corps` — la loi le vérifie, le
+  tissu n'est pas un objet.
+
+Sont tombés avec la planche meublée : `--rw-coupe`, `--rw-billet`,
+`--rw-coings`, `--rw-coing`, `--rw-filetage`, `--rw-chute`, `--rw-agrafe`,
+`--rw-tissu-bas`. Zéro occurrence de chacun dans la feuille, vérifié au texte.
+
+### Pourquoi pas `border-image`, ni l'astuce de la fiche
+
+`border-image` découpe et **étire** les arêtes : le tissage perdrait son pas
+en haut et en bas d'un bloc large, et C4 (« aucun motif étiré ») tombe. Le
+quatre-couches ne connaît qu'`auto` sur un axe.
+
+`.e360-tete` peint sa bande en `inset: -24px`, donc hors de son conteneur, et
+son conteneur lui donne 28 px de respiration. Ici la gouttière de la coque vaut
+`--charte-espace-5`, soit 24 px exactement : déborder de 24 plus les 3 de
+l'ombre sortirait de l'écran dès que la page est à 100 %. La bande est donc
+**dans** la colonne : le bloc garde `--rw-colonne` (1232 px au max de
+`--rw-largeur: 1280px`), et c'est le papier qui rétrécit à 1184 px.
+
+### L'échelle est uniforme, et c'est mesuré
+
+Les deux fichiers font 1536 × 76 et 76 × 1536 (lus dans les en-têtes,
+`identify`-confirmés) : ils sont la transposition l'un de l'autre. Ramenés à
+24 px d'épaisseur, ils donnent **le même pas de 485 px** dans les deux sens
+(1536 × 24 / 76). Sous la bande de 1232 px, le motif tombe 2,5 fois en
+horizontale comme en verticale — c'est pour ça que les losanges se suivent
+d'un bord à l'autre et que le coin ne se voit pas. Descendre à 18 px, comme la
+page Employés, garder 24 : l'uniformité de l'échelle est la seule chose que C4
+regarde, et le pas de 24 est celui du kit comme celui de la fiche.
+
+### Ce que la loi refuse, et par quoi elle l'a prouvé
+
+Section 12 réécrite, sept cas : le bloc est cerclé et non souligné (la cage ne
+peint rien, ne rogne rien, `isolation` posée, le DOM sans span) ; quatre côtés
+et pas deux (les quatre couches, deux par fichier, `inset: 0`) ; le motif est
+celui de la maison à échelle uniforme (les deux fichiers cités aussi dans
+`Employee360.css`, chaque couche bornée à `--rw-tissu` sur un axe, jamais de
+`100%`) ; les quatre coins pleins et une seule ombre, à flou zéro ; la plaque
+est du papier reculé, sans coupe ni clou ni trait, et les jetons de la planche
+ont disparu (six aiguilles dans la loi, huit au texte) ; le cartouche reste
+entouré et la souche tombe à 760 px ;
+et **l'étoffe ne maigrit pas** sur petit écran — aucune règle du média-query ne
+redescend `--rw-tissu`, c'est le rythme du papier qui se serre à `espace-3`.
+Section 13 réduite au rail (trois cas). La liste des ombres de la section 11 a
+perdu son unique exception : les trois traits internes du cadre billet
+n'existant plus, elle n'admet plus que le jeton dur et les anneaux `inset`.
+
+Dix-neuf mutations jouées, **dix-neuf rougies** : le tour qui redevient deux
+bandes, les deux liserés peints du même côté, l'étoffe étirée pour remplir, la
+cote écrite en chiffre, le tissu qui cesse d'être la marge intérieure, la
+plaque qui n'est plus reculée, les coins qui se vident, l'ombre dure qui saute,
+une seconde ombre avec du flou, la cage qui rogne, une bordure d'encre sur le
+papier, la planche meublée qui revient, les calques qui se retournent, le
+tissu qui maigrit à 760 px, un span de bandeau qui revient dans le DOM, et les
+quatre verrous du rail. La première passe du harnais en comptait une de moins :
+« l'ombre dure saute » n'avait pas d'effet (l'ancre ne tombait pas là où je
+croyais) et restait verte pour la mauvaise raison — le harnais refuse
+désormais toute mutation qui ne change rien au fichier.
+
+### Compteurs
+
+`npx vitest run src/services/__tests__/remunerations` : 88/88 (57 + 31). Suite
+complète, variables Supabase posées : 202 fichiers, 2914 tests passés. Le
+compte de la veille était 2913 sur 202 fichiers : les deux n'ont pas été pris
+sur la même base (#405 est entré depuis, et il a ajouté `paieWorkspaceDom` et
+`planningPayslips` en rebrassant d'autres fichiers de test) — je ne peux pas
+attribuer le +1 à une pièce précise sans rejouer la suite sur l'autre base, et
+je ne le fais pas. Ce qui tient des deux côtés : la page, 88 (57 + 31), et le
+vert. `npm run build` : 18,9 s. `npm run eslint` sur `src` : 0 erreur, 6
+avertissements, ceux de la base. `npm run charte` : 119 ombres floues / 307
+rayons sur 17 valeurs, et le rapport avant/après est identique au caractère
+près — le diff des deux sorties est vide. La feuille fait 2548 lignes (2582
+avant), aucune au-delà de 100 caractères, 317 règles parsees par postcss (320
+avant : les trois règles du bandeau sont tombées, les deux de base et celle du
+seuil de 760 px), 8 `box-shadow` dont 0 avec un flou et 6 le jeton dur du kit,
+2 `url()` seulement, zéro couleur en dur, zéro `rgba()`, zéro jeton `--rw-*`
+orphelin ou non consommé.
+
+### Ce qui n'a pas été fait
+
+La silhouette rognée de la passe dernière n'est pas conservée : la maquette
+montre un champ aux coins arrondis, mesuré ci-dessus, et je l'ai codée telle
+quelle. Si les huit onglets de 14 px et les carrés de cuivre doivent revenir
+**sous** l'étoffe, c'est un polygone et une loi, pas une reprise.
+
+Toujours aucune vérification à l'œil — pas de Chromium ni de Playwright dans
+le sandbox : la cote de 24 px, les rayons de 6 et 8, le pas de 485 px et les
+2,5 motifs sous la colonne sont calculés depuis les fichiers et la maquette,
+pas mesurés sur écran. Et l'admin non-`super_admin` voit encore la marque de la
+maison dans le rail, pas un bandeau d'entreprises.
