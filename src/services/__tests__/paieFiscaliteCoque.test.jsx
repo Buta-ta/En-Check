@@ -426,13 +426,27 @@ it('38. les libellés de cases se lisent, et la fenêtre peut défiler', () => {
   const drawer = interiors.slice(debutDrawer, interiors.indexOf('}', debutDrawer) + 1)
   expect(drawer).toContain('flex: 0 0 auto')
 
-  const fieldset = interiors.slice(
-    interiors.indexOf('fieldset.pw-drawer-content'),
-    interiors.indexOf('}', interiors.indexOf('fieldset.pw-drawer-content')),
+  //  LE DÉFILEMENT NE SE RÈGLE PLUS À L'INTÉRIEUR.
+  //  Deux modèles se sont succédé, et seul le second marche :
+  //  faire défiler le voile, la feuille gardant sa hauteur naturelle.
+  //  Le modèle « carcan intérieur » échouait parce qu'un conteneur flex qui
+  //  CENTRE un enfant plus grand que lui déborde des deux côtés, et la zone
+  //  défilable ne va que vers le bas.
+  //  `.paie-page.pw-drawer-layer` apparaît plusieurs fois : on prend la
+  //  DERNIÈRE définition, celle qui gagne dans la cascade.
+  const voile = interiors.slice(
+    interiors.lastIndexOf('.paie-page.pw-drawer-layer {'),
+    interiors.indexOf('}', interiors.lastIndexOf('.paie-page.pw-drawer-layer {')),
   )
-  expect(fieldset).toContain('overflow-y: auto')
-  expect(fieldset).toContain('min-height: 0')
-  expect(fieldset).toContain('flex: 1 1 auto')
+  expect(voile).toContain('overflow-y: auto')
+  //  aucun centrage flex : c'est `margin: auto` qui centre, et il tombe à 0
+  //  quand la place manque — c'est ce qui rend le haut atteignable.
+  expect(voile).not.toContain('align-items: center')
+  expect(voile).not.toContain('justify-content: center')
+
+  //  et la feuille n'a plus de plafond, sans quoi il faudrait rogner
+  expect(drawer).toContain('max-height: none')
+  expect(drawer).toContain('margin: auto')
 
   //  Et la règle de fond sur l'encre : elle tient largement 4,5:1.
   const jeton = (nom) => {

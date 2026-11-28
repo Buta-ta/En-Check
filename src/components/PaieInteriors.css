@@ -48,7 +48,39 @@
     Le voile centre donc, et ne défile pas : c'est la feuille qui tient dans
     la place ou qui défile. `padding` symétrique — aucun rembourrage
     asymétrique qui pousserait la fenêtre vers le bas (la faute de #415). */
-.pw-drawer-layer { position: fixed; inset: 0; z-index: 11000; display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; box-sizing: border-box; background: var(--charte-modale-voile); }
+/*  « JE NE PEUX TOUJOURS PAS SCROLLER » (02/12, troisième fois)
+    ─────────────────────────────────────────────────────────────────────
+    Deux modèles s'opposent :
+
+      · faire défiler l'INTÉRIEUR de la fenêtre (carçan = le fieldset) ;
+      · faire défiler LE VOILE, la fenêtre gardant sa hauteur naturelle.
+
+    J'ai essayé le premier deux fois. Il échoue pour une raison mécanique
+    et non négociable : un conteneur flex qui CENTRE un enfant plus grand
+    que lui produit un débordement des DEUX côtés, et la zone défilable ne
+    s'étend que vers le bas. Le haut de la fenêtre est hors d'atteinte.
+
+    On passe donc au second, celui de la modale des profils manquants qui,
+    elle, défile :
+
+      · le voile défile (`overflow-y: auto`) ;
+      · il ne centre PAS (`justify-content` et `align-items` disparaissent) ;
+      · c'est `margin: auto` sur la feuille qui la centre — et quand la
+        place manque, une marge automatique vaut zéro : la feuille se
+        colle en haut, et tout est atteignable au défilement.
+
+    Rien à mesurer, rien à deviner : le comportement est celui du moteur. */
+.pw-drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: flex;
+  padding: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  background: var(--charte-modale-voile);
+}
 /*  le tiroir porte la bande de colle de la carte-post-it sur ses 14 premiers
     px, et son contour d'encre côté gauche. L'ombre floue de 60 px est morte
     avec la peau D : place à l'ombre dure, décalée de 3 px. */
@@ -98,19 +130,16 @@
   position: relative;
   width: 100%;
   max-width: var(--charte-modale-large);
-  max-height: calc(100dvh - 48px);
+  /*  Aucun plafond : la feuille prend la hauteur de son contenu. C'est le
+      VOILE qui ramène l'ensemble à l'écran, en défilant. Un `max-height`
+      ici obligerait à faire défiler l'intérieur — le modèle qui a échoué. */
+  max-height: none;
   margin: auto;
   display: flex;
   flex-direction: column;
   padding-bottom: 14px;
-  /*  « On ne peut même pas scroller dans tes modales » (02/12).
-      `overflow: hidden` ici n'est pas le fautif — c'est ce qui garde le
-      rabat dans son coin. Le fautif est que la FEUILLE se laissait écraser :
-      en colonne flex, un enfant rétrécit, et `flex-shrink` par défaut la
-      ramenait à la hauteur de l'écran au lieu de laisser défiler son
-      contenu. On l'interdit. */
   flex: 0 0 auto;
-  overflow: hidden;
+  overflow: visible;
   overscroll-behavior: contain;
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: 0;
@@ -166,7 +195,8 @@
     côté : une carte qui touche les bords ne se lit plus comme une carte. */
 @media(max-width: 600px) {
   .pw-drawer-layer, .paie-page.pw-drawer-layer { padding: 12px; }
-  .pw-drawer { max-height: calc(100dvh - 24px); box-shadow: 6px 6px 0 0 var(--charte-encre); }
+  /*  Plus de plafond ici non plus : c'est le voile qui défile. */
+  .pw-drawer { max-height: none; box-shadow: 6px 6px 0 0 var(--charte-encre); }
 }
 .paie-page.pw-drawer-layer { background: var(--charte-modale-voile); min-height: 0; }
 /*  LE CARRAN DE DÉFILEMENT. C'est ce bloc qui glisse — pas la fenêtre, pas
@@ -174,12 +204,14 @@
     pour qu'un enfant de flex puisse défiler au lieu de s'étirer ; sans
     `min-height: 0`, il prend la hauteur de son contenu et déborde la
     feuille, qui le rogne. C'était le « on ne peut pas scroller ». */
+/*  LE CONTENU NE DÉFILE PLUS LUI-MÊME.
+    C'est le voile qui défile (voir plus haut). Un carcan intérieur
+    n'aurait plus d'objet : il ne peut pas défiler s'il n'a pas de
+    hauteur plafonnée, et s'il en a une, il recrée le défaut. */
 fieldset.pw-drawer-content {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
-  max-height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
   padding: 0;
   margin: 0;
   border: 0;
@@ -202,11 +234,32 @@ fieldset.pw-drawer-content {
 
 /* Higher specificity than .paie-page, regardless of stylesheet loading order.
    The page theme sets position:relative; a drawer must remain viewport-fixed. */
-.paie-page.pw-drawer-layer { position: fixed; inset: 0; height: 100dvh; width: 100%; margin: 0; display: flex; align-items: center; justify-content: center; padding: 24px; }
-/*  La feuille ne prend plus toute la hauteur : elle prend SA hauteur, dans
-    la limite de la place. Un formulaire court donne donc une carte courte,
-    centrée — plus un panneau qui traverse l'écran. */
-.pw-drawer-layer > .pw-drawer { margin: auto; min-height: 0; display: flex; flex-direction: column; }
+/*  ── LA RÈGLE QUI ÉCRASAIT TOUT (02/12, quatrième tentative) ─────────────
+    Celle-ci a une spécificité SUPÉRIEURE (`.paie-page.pw-drawer-layer`) et
+    elle écrasait silencieusement le voile défini plus haut : elle rétablissait
+    `height: 100dvh`, `align-items: center` et `justify-content: center`.
+
+    C'est ce trio qui interdisait tout défilement. Un conteneur flex qui
+    CENTRE un enfant plus haut que lui déborde des DEUX côtés, et la zone
+    défilable ne va que vers le bas : le haut de la fenêtre devient
+    inatteignable, quelle que soit la moindre valeur de `overflow`.
+
+    Elle défile donc, elle ne centre plus. `margin: auto` sur la feuille fait
+    le centrage quand il y a la place, et tombe à 0 quand il n'y en a pas —
+    la fenêtre se colle en haut et tout se rejoint au défilement. */
+.paie-page.pw-drawer-layer {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  width: 100%;
+  margin: 0;
+  display: flex;
+  padding: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+.pw-drawer-layer > .pw-drawer { margin: auto; flex: 0 0 auto; min-height: 0; display: flex; flex-direction: column; }
 .pw-drawer .pw-action-help { padding: 12px 20px; }
 .pw-action-help p { margin: 0; font-size: 13px; }
 .pw-action-help details { margin-top: 7px; font-size: 12px; }
