@@ -22,7 +22,7 @@ Parcours « contrôler → télécharger → publier », distinction entre brut,
 
 ### Graphiques
 - Brut/net : somme des valeurs `grossSalary` et `netSalary` des bulletins calculés pour la période sélectionnée. Explication et exemple repliables. Longueur proportionnelle au montant, plus grande barre à 100 % : ce n’est pas un taux fiscal. Zéro bulletin avant calcul signifie résultat indisponible.
-- Accueil Préparation : graphique de masse salariale sur six mois se terminant au mois de fin de période sélectionné. Données issues de `employee_payslips`, entreprise et devise explicitement filtrées, bulletins retirés exclus, pagination par 500. Aucune requête sans entreprise/devise.
+- Accueil Préparation : graphique de masse salariale sur 1, 2, 3, 6, 8 ou 12 mois, ancré au mois du bulletin enregistré le plus récent (et non à la période de paie en cours). Données issues de `employee_payslips`, entreprise et devise explicitement filtrées, bulletins retirés exclus, pagination par 500. La publication recharge le graphique, même si les mêmes salariés avaient déjà des fiches envoyées.
 - Vue brut ou brut + cotisations patronales enregistrées. Mois de rattachement = mois de début de période du bulletin, sans proratisation. Des périodes atypiques peuvent donc se regrouper dans un seul mois.
 - Mois sans bulletin = inconnu, pas zéro. Erreur réseau ou montant incomplet = message d’erreur et reprise, pas de total inventé. Les réponses périmées sont ignorées et les requêtes abandonnées au démontage/changement de contexte.
 - Les devises XOF/XAF ne sont jamais mélangées. Les anciens bulletins sans devise ne sont pas inclus.

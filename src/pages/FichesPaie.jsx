@@ -904,7 +904,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     return { totalNet, totalGross, totalCost, totalEmployees, alreadySent, paidCount }
   }, [previewRows, sentSlips, paidSlips])
 
-  const fmt = (amount) => PayrollService.formatMoney(amount, settings.currency)
+  const fmt = (amount) => PayrollService.formatMoney(amount, settings.currency); const payrollCurrency = CurrencyService.resolveCurrency({ enterprise: enterpriseData, settings })
 
   // ═══════════════════════════════════════════════════════════
   // PRÉ-VALIDATION
@@ -1104,7 +1104,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           }
           {taxConfirmation && activeTab === 'preview' && <PaieTaxOverrideDialog rows={taxConfirmation.rows} periodStart={periodStart} periodEnd={periodEnd}
             onCancel={() => setTaxConfirmation(null)} onConfirm={() => { const pending = taxConfirmation; setTaxConfirmation(null); return deliverRows(pending.rows, { ...pending.options, taxOverride: { acknowledged: true, confirmedBy: admin?.id } }) }}/>}
-          {integre && activeTab === 'preparation' && <PaiePayrollChart key={`${enterpriseId}:${settings.currency}:${periodEnd}`} enterpriseId={enterpriseId} currency={settings.currency} end={periodEnd} revision={sentSlips.size}/>}
+          {integre && activeTab === 'preparation' && <PaiePayrollChart key={`${enterpriseId}:${payrollCurrency}`} enterpriseId={enterpriseId} currency={payrollCurrency} revision={sentSlips}/>}
           {integre && activeTab === 'preparation' && <PaiePreparation
             employees={employees} profiles={profiles} previewRows={previewRows}
             currency={settings.currency} start={periodStart} end={periodEnd}
