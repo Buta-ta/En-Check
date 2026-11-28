@@ -1083,3 +1083,159 @@ Playwright dans le sandbox, donc le collage est prouvé par la règle, par les
 carcans absents et par les paliers balayés — pas par une capture. Un défilement
 réel reste à faire sur poste, avec un mois ouvert pour l'étage et un pouce sur
 téléphone pour la gouttière.
+
+## L'image de profil de l'entreprise, aux deux icônes (28 novembre 2026)
+
+La demande, reprise mot pour mot : « fais apparaître l'image profil de
+l'entreprise partout où l'icône de l'entreprise apparaît dans cette page ».
+Dans la page, l'icône de l'entreprise, c'est `Building2` — l'immeuble
+générique de la librairie d'icônes. Il y en avait exactement deux, et ils sont
+tombés tous les deux.
+
+### Où ils étaient, ce qui les remplace
+
+| endroit | avant | après |
+| --- | --- | --- |
+| le cartouche du haut, dans `.rw-entreprise`, à gauche du `select` | `<Building2 size={14}>` | `<PastilleEntreprise taille={20}>` (l. 1045) |
+| la rangée « Entreprise » du seuil, avant le nom | `<Building2 size={12}>` | `<PastilleEntreprise taille={16}>` (l. 1107) |
+
+Le rail de la maison, lui, portait déjà le logo : `SelecteurEntreprise` dessine
+sa propre pastille (`se-rond se-rond--photo se-rond--logo`) et lit la même
+colonne. La page n'avait donc rien à faire dans le rail — elle avait deux
+endroits à elle.
+
+Le composant pris est celui de la paie, `components/paie/PastilleEntreprise.jsx`
+(75 lignes), importé comme à `FichesPaie` et à `PaieFiscalite` — pas une
+réécriture locale. Il ne réinvente rien non plus : l'image passe par
+`PhotoSignee`, le chargeur des avatars, donc la signature de l'adresse privée,
+le cache d'une adresse par bucket+chemin, et le repli sur erreur sont les mêmes
+qu'ailleurs. Deux raisons à le prendre lui plutôt que la pastille du rail : il
+se dimensionne par prop (il fallait 20 et 16, pas un rond à la cote du rail),
+et son repli se donne par `icone=` — la page garde ainsi SON immeuble quand le
+logo manque, au lieu d'inventer une initiale qu'elle n'a jamais montrée.
+
+### Les deux cotes, et pourquoi deux
+
+Le cartouche du haut vit dans une ligne de `--charte-taille-corps` (14 px) à
+côté d'un bouton cadre de 36 px (`--rw-cadre`) : 20 px de rond y tiennent le
+rang sans manger le cartouche. La rangée du seuil est une ligne de 14 px serrée
+à 4 px d'écart (`gap: var(--charte-espace-1)`) : 16 px, pas plus, sinon le rond
+déborde l'interligne. C'est écrit à l'appel, dans la page, et aucune règle n'a
+été ajoutée à la feuille pour ça : `Remunerations.css` n'est pas touché du tout
+(2581 lignes, 317 règles, comme avant la passe), et une loi le punit — la
+feuille de la page ne doit pas contenir `paie-pastille-entreprise` ni
+`object-fit`, le rond est dessiné par le composant partagé ou il n'est pas.
+
+### Le repli reste l'immeuble
+
+`PastilleEntreprise` retombe sur l'initiale quand il n'y a pas de logo. Ici
+`icone={<Building2 size={14|12} aria-hidden="true" />}` lui est passé, donc :
+logo présent → image ; logo absent, ou image morte, ou bucket privé qui
+refuse de signer → exactement ce que la page montrait hier. Un compte sans
+logo d'entreprise ne voit aucune différence, et un logo cassé ne laisse jamais
+un rond vide à côté d'un nom. C'est puni au DOM : sans `logo_url` dans la
+fixture, la loi exige `svg` présent et `img` absent dans les deux pastilles.
+
+### La colonne, lue deux fois — et c'est le fond du sujet
+
+`logo_url` était déjà sélectionné par `chargerEntreprises` (la liste du rail,
+corrigée le 26/11 pour cette raison précise). Mais cette liste est VIDÉE pour
+un compte qui n'est pas `super_admin` : la page ne charge alors que sa propre
+ligne d'entreprise, dans `chargerTout`. Ajouter la pastille sans ajouter la
+colonne à cette requête-là faisait donc apparaître le logo de la rangée du
+seuil… seulement pour les super-administrateurs (le cartouche du haut, lui,
+est déjà gardé par `estSuperAdmin` et ne se pose pas pour les autres comptes).
+La sélection est donc passée de
+
+```js
+.select('id, name, code, currency, country_code')
+```
+
+à
+
+```js
+.select('id, name, code, currency, country_code, logo_url')
+```
+
+et une loi compte les `select` qui portent la colonne : exactement deux, dans
+l'ordre de la page — la liste du rail, puis l'entreprise ouverte.
+
+### Une source, pas deux : `entrepriseSignee`
+
+Deux objets savaient déjà le nom de l'entreprise : `societes` (la liste du
+rail, à jour au clic) et `entreprise` (la ligne posée par `chargerTout`, en
+retard d'une requête). Le logo étant dans les deux, les icônes lisent un objet
+composé (l. 967) :
+
+```js
+const entrepriseSignee = {
+  ...(entreprise?.id === selectedEntId ? entreprise : null),
+  ...(entrepriseActive || null),
+}
+```
+
+L'ordre n'est pas un goût : la liste du rail passe par-dessus parce qu'elle
+suit le clic. Et le garde `entreprise?.id === selectedEntId` est la pièce
+solide — sans lui, entre le clic sur une autre entreprise et la réponse de
+`chargerTout`, `entreprise` contient encore l'entreprise qu'on vient de
+quitter, et la page signerait l'ancien logo sur le nouveau nom. C'est la
+panne du 26/11 (« la réponse en retard écrirait sur la nouvelle ») rejouée à
+l'envers, sur une image au lieu d'un chiffre. Un compte non-`super_admin`,
+lui, n'a qu'une entreprise et ne passe jamais par ce chemin.
+
+Ce qui n'est PAS unifié : `nomEntreprise` (la ligne de texte) garde sa chaîne
+de replis (`societes` → `admin.selectedEnterprise` → `entreprise` → « votre
+entreprise »), parce qu'un compte non-`super_admin` n'a pas de `societes` et
+que c'est `admin.selectedEnterprise` qui lui donne son nom avant la première
+réponse. Le logo, lui, vient une requête plus tard que ce nom-là : pendant ce
+temps, la pastille montre l'immeuble. Volontaire — une initiale ou un rond
+qui apparaît à la deuxième requête est un clin d'œil, pas une panne.
+
+### Ce qui est puni, et comment
+
+Quatre lois de sourçage en §15 du fichier `remunerationsBogolan.test.jsx` :
+deux pastilles et pas une troisième, chacune avec `entrepriseSignee`, avec son
+`icone=` de repli, sans `alt` inventé (l'image est décorative, le nom est écrit
+à côté) et à sa cote ; les deux `select` qui portent `logo_url` ; la
+composition et son garde ; l'interdiction de se refaire un chargeur
+(`createSignedUrl`, `adresseSignee`, `PhotoSignee`, et pas de
+`function PastilleEntreprise` local).
+
+Quatre lois de RENDU en §4 de `remunerationsCout.test.jsx`, jouées sur le DOM
+monté en jsdom et non sur le texte de la source : deux
+`.paie-pastille-entreprise` dans la page, une dans `.rw-entreprise`, une dans
+`.rw-seuil-item`, aux tailles 20/16 ; le `src` des deux `<img>` égal à l'adresse
+de la fixture, l'`alt` vide ; et, `logo_url` retiré, l'`svg` de repli présent
+avec `img` absent. Le rendu est la loi qui compte ici : un composant importé
+qui ne monte pas ne signe rien, et le texte de la source ne le dit pas.
+
+Au crible à mutations, 12 cas écrits sur la page, 12 tués, fichier rendu à
+l'identique après chaque coup : chaque pastille retirée séparément, les deux à
+la même cote, la pastille branchée sur `entreprise` au lieu de
+`entrepriseSignee`, le repli `icone=` supprimé (retour de l'initiale), la
+colonne lâchée par l'une puis l'autre requête, le garde d'identifiant retiré,
+la superposition retournée, un `alt` ajouté, un `adresseSignee` réimporté, une
+troisième pastille glissée dans la rangée « Devise ». Cinq des douze — les deux
+retraits de pastille, la cote unique, le repli devenu initiale, la troisième
+pastille — sont tombés sur les lois de DOM, pas seulement sur le texte de la
+source : c'est ce qu'on cherchait.
+
+### Mesures
+
+`npx vitest run src/services/__tests__/remunerations` : 102/102 (67 + 35),
+soit 8 tests de plus que la veille (63 + 31). Suite complète : 3068/3068 sur
+216 fichiers — la base au point de branche n'a pas été recomptée, le dépôt a
+reçu trois autres PR depuis, je n'attribue donc que les 8 miens.
+`npm run build` : 22,30 s, vert. `npx eslint --config eslint.gate.config.js
+src` : 0 erreur, 6 avertissements, ceux de la base. `npm run charte` : rapport
+identique au caractère près sur deux exécutions, verdict de la maison
+(inchangé : aucune feuille de style touchée).
+
+### Non fait
+
+Toujours pas de Chromium dans le sandbox : le `src` de l'image est vérifié en
+DOM, pas à l'œil — un vrai rendu d'un logo 1:1 dans un rond de 16 px sur le
+fond `--rw-panneau`, personne ne l'a regardé. Un liseré autour du rond
+(1 px de `--rw-ligne`) se discuterait pour les logos blancs qui se perdent
+sur le panneau : il appartient au composant partagé, pas à la feuille de la
+page, et je ne l'ai pas posé.
