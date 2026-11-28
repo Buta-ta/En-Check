@@ -238,8 +238,9 @@ describe('1. une seule page pour les deux lectures', () => {
   })
 
   it('un bandeau sur deux, et les repères', () => {
-    //  celui du haut est tombé avec la couture de pointillés, quand
-    //  l'en-tête est devenu une planche qui se cadre elle-même
+    //  celui du haut est tombé avec la couture de pointillés, et ne revient
+    //  pas : l'en-tête porte déjà son étoffe sur les quatre côtés, un bandeau
+    //  de page par-dessus ferait une double couture
     expect(PAGE).not.toContain('<PageCulturalBand pathname="/remunerations" />')
     expect(PAGE).toContain('<PageCulturalBand pathname="/remunerations" placement="bottom" />')
     //  la bascule de thème et le bandeau de raccourcis sont tombés : le

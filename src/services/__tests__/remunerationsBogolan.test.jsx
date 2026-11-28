@@ -411,10 +411,12 @@ describe('5. la page se monte et se lit', () => {
     expect(hote.querySelector('[data-testid="raccourcis-pages"]')).toBeNull()
     //  et le pied de page en bogolan
     expect(hote.querySelector('.ec-cultural-bottom')).not.toBeNull()
-    //  l'en-tête est une planche entourée d'étoffe, posée DANS la coque
-    const planche = hote.querySelector('.rw-entete')
-    expect(planche.querySelectorAll('.rw-entete-bandeau')).toHaveLength(2)
-    expect(planche.querySelector('.rw-entete-corps')).not.toBeNull()
+    //  l'en-tête est un bloc cerclé d'étoffe, posé DANS la coque. Le tissu est
+    //  peint par la feuille : le DOM du bloc ne porte qu'un seul enfant, son
+    //  corps — pas de span de bandeau à côté, ni de doublure à entretenir
+    const entete = hote.querySelector('.rw-entete')
+    expect(entete.children).toHaveLength(1)
+    expect(entete.firstElementChild.className).toBe('rw-entete-corps')
   })
 
   it('la bande annonce ce qui manque, sans le dire en jargon', async () => {
@@ -880,23 +882,23 @@ describe('11. le brut adouci : l’encre, la bosse et rien d’autre', () => {
   it('aucun contour de un pixel, aucune ombre floue', () => {
     expect(DECL.match(/border[^;:]*:\s*1px/g)).toBeNull()
     expect(DECL).not.toMatch(/box-shadow:[^;]*\d+px \d+px \d+px/)
-    //  les ombres de la page, c'est le jeton, ou rien. Une seule exception
-    //  nommée : le cadre de la planche, qui n'est pas une ombre mais trois
-    //  traits internes rognés par le `clip-path` — et l'exception est tenue
-    //  LITTÉRALEMENT, pour qu'aucun des trois ne change en douce
-    const CADRE_BILLET = 'inset 0 0 0 var(--rw-trait) var(--rw-encre), '
-      + 'inset 0 0 0 calc(var(--rw-filetage) - var(--rw-trait)) var(--rw-panneau), '
-      + 'inset 0 0 0 var(--rw-filetage) var(--rw-ligne)'
+    //  les ombres de la page, c'est le jeton, ou rien — et la liste n'a plus
+    //  AUCUNE exception : la planche rognée emportait avec elle ses trois
+    //  traits internes, le seul `box-shadow` non jeton de la feuille. Tenue
+    //  littéralement, pour qu'aucun flou ne se glisse dans un trou en douce.
     const ombres = [...DECL.matchAll(/box-shadow:\s*([^;]+);/g)]
       .map(m => m[1].replace(/\s+/g, ' ').trim())
     expect(ombres.length).toBeGreaterThan(4)
-    expect(ombres.filter(o => o === CADRE_BILLET)).toHaveLength(1)
     for (const ombre of ombres) {
-      if (ombre === CADRE_BILLET) continue
       expect(ombre, ombre).toMatch(
         /^(var\(--charte-ombre-dure\)|none|inset 0 0 0 var\(--rw-trait\) var\(--rw-[a-z0-9-]+\)|0 0 0 var\(--charte-espace-2\) var\(--rw-[a-z0-9-]+\))$/
       )
     }
+    //  l'ombre du bloc cerclé est le jeton du kit, posé sur le calque du tissu
+    //  une seule fois : pas de seconde chute peinte à la main par-dessus
+    expect(CSS).toMatch(/\.rw-entete::before \{[^}]*box-shadow: var\(--charte-ombre-dure\);/s)
+    expect(CSS).toMatch(/\.rw-entete::after \{[^}]*\}/s)
+    expect(CSS.match(/\.rw-entete[^:]*::after \{[^}]*box-shadow/g)).toBeNull()
   })
 
   it('les rayons, les tailles et les pas viennent du kit', () => {
@@ -952,64 +954,106 @@ describe('11. le brut adouci : l’encre, la bosse et rien d’autre', () => {
   })
 })
 
-describe('12. la planche : la forme du billet, rien de plus', () => {
+// ═══════════════════════════════════════════════════════════
+// 12. L'ENVELOPPE — LE TISSU FAIT LE TOUR DU BLOC
+//     8/12, après la maquette : « quand je disais entourer, je veux que ça
+//     ressemble à ça ». Le mot d'ordre n'est pas deux bandes, c'est un CERCLE.
+// ═══════════════════════════════════════════════════════════
+describe('12. l’enveloppe : le tissu fait le tour du bloc', () => {
   const DECL12 = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
   const regle12 = (selecteur) => {
     const i = DECL12.indexOf(`\n${selecteur} {`)
     if (i < 0) return null
     return DECL12.slice(i, DECL12.indexOf('}', i))
   }
-  const PLANCHE = regle12('.rw-entete')
-  const DESSUS = regle12('.rw-entete::after')
-  const DESSOUS = regle12('.rw-entete::before')
+  const CAGE = regle12('.rw-entete')
+  const TISSU = regle12('.rw-entete::before')
+  const PLAQUE = regle12('.rw-entete::after')
 
-  it('ce n’est plus une barre collée aux bords', () => {
-    expect(PLANCHE, 'la planche est un bloc posé, pas une bande').not.toBeNull()
-    //  plus de filet du bas : c'est le cadre qui ferme le bloc
-    expect(PLANCHE).not.toMatch(/border-bottom/)
-    expect(PLANCHE).toMatch(/margin: [^;]*var\(--charte-espace-\d\) auto/)
-    //  et la planche est posée dans la colonne de la coque, pas collée au bord
-    expect(PLANCHE).toContain('width: var(--rw-colonne)')
-    const d = CSS.indexOf('--rw-colonne:')
-    const colonne = CSS.slice(d, CSS.indexOf(';', d))
-    expect(colonne, 'la colonne se déduit de la largeur de la page').toContain('var(--rw-largeur)')
-    expect(colonne).toContain('var(--charte-espace-5)')
-    expect(colonne).not.toMatch(/\d+px/)
-    //  et le contenant ne peint rien lui-même — sinon il couvrirait sa planche
-    expect(PLANCHE).not.toMatch(/\bbackground/)
-    expect(PLANCHE).toContain('isolation: isolate')
+  it('le bloc est cerclé, pas souligné', () => {
+    expect(CAGE, 'la cage').not.toBeNull()
+    //  posée dans la colonne de la coque, jamais collée aux bords de l'écran
+    expect(CAGE).toContain('width: var(--rw-colonne)')
+    expect(CAGE).toMatch(/margin: [^;]*var\(--charte-espace-\d\) auto/)
+    expect(CAGE).not.toMatch(/border-bottom/)
+    //  LE tissu EST la marge intérieure : une seule cote pour les quatre côtés
+    expect(CAGE).toContain('padding: var(--rw-tissu)')
+    expect(CAGE).not.toMatch(/\bbackground/)
+    //  et la cage ne rogne rien : `.empv3-entete` le dit en toutes lettres,
+    //  un `overflow: hidden` ici couperait l'ombre dure du bloc
+    expect(CAGE).not.toMatch(/overflow:\s*hidden/)
+    //  les deux calques sont dessous le contenu, sinon les boutons disparaissent
+    expect(CAGE).toContain('isolation: isolate')
+    expect(TISSU).toContain('z-index: -2')
+    expect(PLAQUE).toContain('z-index: -1')
     expect(PAGE).toContain('className="rw-entete"')
+    //  et le tissu n'est pas un objet du DOM : un `<span>` de bandeau serait
+    //  un second entourage, posé à côté de celui de la feuille
+    expect(PAGE).not.toContain('rw-entete-bandeau')
+    expect(CSS).not.toContain('rw-entete-bandeau')
   })
 
-  it('les deux calques sont rognes du meme polygone', () => {
-    expect(DESSUS, 'la planche').not.toBeNull()
-    expect(DESSOUS, 'la chute').not.toBeNull()
-    expect(DECL12.match(/clip-path: var\(--rw-billet\)/g)).toHaveLength(2)
-    //  la chute n'est pas une ombre : c'est une copie décalée, et le décalage
-    //  est un jeton, sur les deux axes
-    expect(DESSOUS).toContain('transform: translate(var(--rw-chute), var(--rw-chute))')
-    expect(DESSOUS).toContain('background: var(--rw-boue)')
-    //  les deux sont dessous le contenu, sinon les boutons disparaissent
-    expect(DESSUS).toContain('z-index: -1')
-    expect(DESSOUS).toContain('z-index: -2')
+  it('quatre côtés, pas deux', () => {
+    expect(TISSU, 'le tissu').not.toBeNull()
+    //  une couche par bord : deux horizontales, deux verticales
+    expect(TISSU).toContain('background-repeat: repeat-x, repeat-x, repeat-y, repeat-y')
+    expect(TISSU).toContain('background-position: left top, left bottom, left top, right top')
+    const images = TISSU.slice(TISSU.indexOf('background-image'), TISSU.indexOf('background-repeat'))
+    expect((images.match(/var\(--rw-tissu-haut\)/g) || [])).toHaveLength(2)
+    expect((images.match(/var\(--rw-tissu-filet\)/g) || [])).toHaveLength(2)
+    //  la bande ne flotte pas : elle est à cru sur les quatre bords du bloc
+    const i = TISSU.indexOf('inset')
+    expect(TISSU.slice(i, TISSU.indexOf(';', i))).toBe('inset: 0')
   })
 
-  it('la forme seule, pas le billet décoré', () => {
-    const billet = CSS.slice(CSS.indexOf('--rw-billet: polygon('))
-    const poly = billet.slice(0, billet.indexOf(');'))
-    //  huit points : les quatre coins coupés, et huit retraits du même jeton
-    //  — la coupe est une mesure de la page, pas huit chiffres éparpillés
-    expect(poly.split(',')).toHaveLength(8)
-    expect((poly.match(/var\(--rw-coupe\)/g) || [])).toHaveLength(8)
-    expect(poly).not.toMatch(/\d+px/)
-    //  ni chiffre de valeur, ni numéro de série, ni filigrane : la forme
-    //  seule. Aucun pseudo n'écrit un mot, ils peignent
-    expect(DECL12.match(/content:\s*(["'])[^"']+\1/g), 'un pseudo qui signerait le billet').toBeNull()
-    //  les quatre carrés de cuivre sont le seul ornement, et ils sont peints
-    expect((DESSUS.match(/var\(--rw-coings\)/g) || [])).toHaveLength(4)
-    expect(DESSUS).toContain('background-size: var(--rw-coing) var(--rw-coing)')
-    //  un tampon, pas un dégradé : les deux arrêts sont à zéro
-    expect(CSS).toContain('--rw-coings: linear-gradient(var(--rw-cuivre) 0 0);')
+  it('le motif est celui de la maison, à échelle uniforme', () => {
+    //  les deux fichiers que lit déjà `.e360-tete` de la fiche salarié
+    const fiche = readFileSync('src/pages/Employee360.css', 'utf8')
+    for (const [juron, fichier] of [
+      ['--rw-tissu-haut', 'paie-bogolan-haut.webp'],
+      ['--rw-tissu-filet', 'bogolan-vertical.webp'],
+    ]) {
+      expect(CSS, juron).toContain(`${juron}: url('/images/${fichier}')`)
+      expect(fiche, `${fichier} est le fichier de la maison`).toContain(fichier)
+    }
+    //  C4 : chaque couche est ramenée à la cote sur UN seul axe, `auto` sur
+    //  l'autre — une échelle uniforme, jamais un 100% qui écrase le tissage
+    const taille = TISSU.slice(TISSU.indexOf('background-size'))
+    expect(taille).toContain('auto var(--rw-tissu), auto var(--rw-tissu),')
+    expect(taille).toContain('var(--rw-tissu) auto, var(--rw-tissu) auto')
+    expect(taille).not.toMatch(/100%/)
+    //  et la cote est un pas d'échelle de la maison, pas un chiffre de la page
+    const d = CSS.indexOf('--rw-tissu:')
+    expect(CSS.slice(d, CSS.indexOf(';', d))).toContain('var(--charte-espace-5)')
+  })
+
+  it('les quatre coins sont pleins, et l’ombre est une seule', () => {
+    //  là où les deux fichiers se rejoignent : le fond du bogolan, pas un trou
+    expect(TISSU).toContain('background-color: var(--charte-tissu)')
+    //  le trait dur du kit, à flou zéro — le « double passage de feutre »
+    expect(TISSU).toContain('box-shadow: var(--charte-ombre-dure)')
+    expect(TISSU).not.toMatch(/box-shadow:[^;]*\d+px \d+px [1-9]/)
+    //  une seule ombre pour le bloc : ni seconde chute, ni lavis sous la plaque
+    expect(CSS).not.toContain('--rw-chute')
+    expect(PLAQUE).not.toMatch(/box-shadow|filter:/)
+    expect(PLAQUE).not.toMatch(/translate/)
+  })
+
+  it('la plaque est du papier reculé, pas une planche meublée', () => {
+    expect(PLAQUE, 'la plaque').not.toBeNull()
+    //  `inset` au jeton d'épaisseur : si la bande change de cote, la plaque
+    //  suit seule — quatre marges seraient quatre chiffres à entretenir
+    expect(PLAQUE).toContain('inset: var(--rw-tissu)')
+    expect(PLAQUE).toContain('background: var(--rw-panneau)')
+    //  ni coupe, ni clou, ni trait : le contour du bloc, c'est le tissage
+    expect(PLAQUE).not.toMatch(/clip-path|border:|box-shadow/)
+    for (const tombe of ['--rw-coupe', '--rw-billet', '--rw-coings', '--rw-filetage',
+      '--rw-agrafe', 'clip-path: var(--rw-billet)']) {
+      expect(DECL12, `${tombe} est tombé avec la planche`).not.toContain(tombe)
+    }
+    //  et le rythme du bloc a bien descendu dans le corps, pas sur la cage
+    const corps = regle12('.rw-entete-corps')
+    expect(corps).toContain('padding: var(--charte-espace-4) var(--charte-espace-5)')
   })
 
   it('le cartouche de l’entreprise est entouré, pas barré', () => {
@@ -1023,73 +1067,25 @@ describe('12. la planche : la forme du billet, rien de plus', () => {
     expect(repli.slice(0, repli.indexOf('}', repli.indexOf('.rw-entete-droite'))))
       .toContain('border-left: 0')
   })
+
+  it('sur petit écran, l’étoffe ne maigrit pas', () => {
+    const repli = DECL12.slice(DECL12.indexOf('@media (max-width: 760px)'))
+    const fin = repli.indexOf('}', repli.indexOf('.rw-entete-corps'))
+    expect(repli.slice(0, fin)).toContain('padding: var(--charte-espace-3)')
+    //  aucune règle ne redescend `--rw-tissu` : la bande reste à sa cote
+    expect(repli).not.toMatch(/--rw-tissu:/)
+    expect(repli).not.toMatch(/\.rw-entete \{[^}]*padding:/)
+  })
 })
 
 // ═══════════════════════════════════════════════════════════
-// 13. LE TISSU AUTOUR DU BLOC, ET LE RAIL DE LA MAISON
+// 13. LE RAIL DE LA MAISON
 // ═══════════════════════════════════════════════════════════
-describe('13. le tissu autour du bloc, et le rail de la maison', () => {
-  const DECL13 = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
-  const regle13 = (selecteur) => {
-    const i = DECL13.indexOf(`\n${selecteur} {`)
-    if (i < 0) return null
-    return DECL13.slice(i, DECL13.indexOf('}', i))
-  }
-  const CAGE = regle13('.rw-entete')
-  const BANDE = regle13('.rw-entete-bandeau')
-  const CORPS = regle13('.rw-entete-corps')
-  const RAIL = (() => {
+describe('13. la page est montée dans la fabrique de la maison', () => {
+  const rail = () => {
     const d = PAGE.indexOf('<SidebarUnique')
     return PAGE.slice(d, PAGE.indexOf('/>', d))
-  })()
-
-  it('le bloc est entouré d’étoffe, par deux bandes', () => {
-    //  aiguilles bornées : la classe du BAS est un préfixe de celle du haut,
-    //  une recherche sans borne se satisferait d'une seule des deux
-    expect(PAGE).toContain('className="rw-entete-bandeau"')
-    expect(PAGE).toContain('className="rw-entete-bandeau rw-entete-bandeau--bas"')
-    expect((PAGE.match(/<span className="rw-entete-bandeau/g) || [])).toHaveLength(2)
-    expect(CSS).toContain('.rw-entete-bandeau--bas')
-  })
-
-  it('le tissu est le fichier de la maison, pas une copie', () => {
-    const bande = readFileSync('src/components/PageCulturalBand.css', 'utf8')
-    for (const [juron, fichier] of [
-      ['--rw-tissu-haut', 'paie-bogolan-haut.webp'],
-      ['--rw-tissu-bas', 'paie-bogolan-bas.webp'],
-    ]) {
-      expect(CSS, juron).toContain(`${juron}: url('/images/${fichier}')`)
-      //  le même fichier que le bandeau de page : une seule étoffe sur l'écran
-      expect(bande, fichier).toContain(fichier)
-    }
-    //  les deux bandes ne portent pas la même étoffe : la cadette lit son
-    //  propre jeton, sinon c'est le tissage du haut répété deux fois
-    expect(BANDE).toContain('background-image: var(--rw-tissu-haut)')
-    expect(regle13('.rw-entete-bandeau--bas')).toContain('background-image: var(--rw-tissu-bas)')
-    //  répété à l'horizontale, calé sur la hauteur — jamais étiré (C4)
-    expect(BANDE).toContain('background-repeat: repeat-x')
-    expect(BANDE).toContain('background-size: auto var(--rw-tissu)')
-    expect(BANDE).not.toMatch(/background-size:\s*100%/)
-  })
-
-  it('l’étoffe respire de bord à bord, et la cage ne rogne rien', () => {
-    expect(CAGE, 'la cage').not.toBeNull()
-    expect(CAGE).toContain('padding: 0')
-    //  `.empv3-entete` le dit en toutes lettres : un `overflow: hidden` ici
-    //  couperait ce qui dépasse du bloc — et l'ombre du billet avec
-    expect(CAGE).not.toMatch(/overflow:\s*hidden/)
-    //  le rythme du bloc a descendu d'un cran : c'est le corps qui le porte
-    expect(CORPS).toContain('padding: var(--charte-espace-4) var(--charte-espace-5)')
-    expect(CAGE).not.toMatch(/\bpadding:\s*var\(--charte-espace-4\)/)
-    //  et l'étoffe s'arrête à l'ongle de cuivre, calculé depuis le cadre
-    expect(BANDE).toContain('margin: var(--rw-filetage) var(--rw-agrafe) 0')
-    expect(CSS).toContain('--rw-agrafe: calc(var(--rw-filetage) + var(--rw-coing))')
-    //  descendue dans le gousset du cadre : sinon elle peigne le trait
-    //  d'encre et le contour de la planche s'ouvre en haut comme en bas
-    expect(BANDE).not.toMatch(/margin:\s*0 var\(--rw-agrafe\)/)
-    expect(regle13('.rw-entete-bandeau--bas'))
-      .toContain('margin: 0 var(--rw-agrafe) var(--rw-filetage)')
-  })
+  }
 
   it('la page est montée dans la fabrique de la maison', () => {
     expect(PAGE).toContain('<CoqueAdmin')
@@ -1099,21 +1095,21 @@ describe('13. le tissu autour du bloc, et le rail de la maison', () => {
     expect(PAGE).toContain('sectionsNavAdmin({')
     //  le rail n'a PAS les vues de la page : deux interrupteurs pour la même
     //  lampe, et l'un des deux mentirait (la leçon de `Planning.jsx`)
-    expect(RAIL, 'le rail ne reçoit pas `vues`').not.toMatch(/\bvues=/)
-    expect(RAIL).not.toMatch(/\bvueActive=/)
+    expect(rail(), 'le rail ne reçoit pas `vues`').not.toMatch(/\bvues=/)
+    expect(rail()).not.toMatch(/\bvueActive=/)
   })
 
   it('le rail porte le profil des entreprises', () => {
-    expect(RAIL).toContain('entreprises={societes}')
-    expect(RAIL).toContain('entrepriseActive={entrepriseActive}')
-    expect(RAIL).toContain('surEntreprise={surEntreprise}')
+    expect(rail()).toContain('entreprises={societes}')
+    expect(rail()).toContain('entrepriseActive={entrepriseActive}')
+    expect(rail()).toContain('surEntreprise={surEntreprise}')
     //  la cause de la panne du 26/11 : sans la colonne, la pastille n'a rien
     //  à signer et retombe sur la lettre
     const q = PAGE.indexOf('const chargerEntreprises')
     const requete = PAGE.slice(q, PAGE.indexOf('setSocietes(data', q))
     expect(requete).toContain(".select('id, name, code, logo_url')")
-    //  et le rail passe par le SEUL chemin de la page : il pose l'identifiant,
-    //  et c'est l'effet qui le regarde qui recharge — pas lui
+    //  et le rail passe par le SEUL chemin de la page : l'identifiant, et
+    //  l'effet qui le regarde recharge tout
     expect(PAGE).toContain('if (id === selectedEntId) return')
     expect(PAGE).toContain('setSelectedEntId(id)')
     expect(PAGE).toMatch(/if \(selectedEntId\) chargerTout\(selectedEntId\)/)
@@ -1128,8 +1124,8 @@ describe('13. le tissu autour du bloc, et le rail de la maison', () => {
     //  l'habiller, mais pour brancher la commande du rail. Le verrou du 26/12
     //  tenait autre chose — un SECOND thème entretenu par l'écran.
     expect(PAGE).toContain('const { darkMode, toggleTheme } = useTheme()')
-    expect(RAIL).toContain('darkMode={darkMode}')
-    expect(RAIL).toContain('surTheme={toggleTheme}')
+    expect(rail()).toContain('darkMode={darkMode}')
+    expect(rail()).toContain('surTheme={toggleTheme}')
     const d = PAGE.indexOf('<SidebarUnique')
     const horsRail = PAGE.slice(0, d) + PAGE.slice(PAGE.indexOf('/>', d) + 2)
     //  le seul `toggleTheme` hors du rail est LA déstructure qui l'alimente :

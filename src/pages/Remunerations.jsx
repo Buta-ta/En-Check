@@ -975,9 +975,11 @@ export default function Remunerations() {
 
       {/* ══ L'EN-TÊTE : une planche rognée en billet ══ */}
       <header className="rw-entete">
-        {/*  le tissu bogolan entoure le bloc, comme à la page Employés : deux bandes,
-            une en haut, une en bas, et le cadre rogné les tient par leurs ongles */}
-        <span className="rw-entete-bandeau" aria-hidden="true" />
+        {/*  le tissu fait le TOUR du bloc, mais ce n'est pas un objet du DOM :
+            la bande est peinte par la feuille (`.rw-entete::before`, quatre
+            couches aux quatre bords) et la plaque de papier est reculée de son
+            épaisseur. Rien à poser ici — un `<span>` de plus serait un second
+            entourage, et c'est un seul coup de pinceau. */}
         <div className="rw-entete-corps">
           <button
             type="button"
@@ -1029,10 +1031,8 @@ export default function Remunerations() {
             >
               <RefreshCw size={15} className={rafraichir ? 'rw-tourne' : ''} />
             </button>
-
           </div>
         </div>
-        <span className="rw-entete-bandeau rw-entete-bandeau--bas" aria-hidden="true" />
       </header>
 
       <main className="rw-coque">

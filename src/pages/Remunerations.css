@@ -115,39 +115,28 @@
   /* le lavis de la bande, en haut : la teinte du fond, pas un dégradé */
   --rw-lavis: color-mix(in srgb, var(--rw-cuivre) 10%, var(--rw-nuit));
 
-  /*  LA PLANCHE. L'en-tête n'est plus une barre collée aux bords de la coque
-      ni une bande soulignée d'un filet : c'est une planche posée sur le fond,
-      rognée en biseau à ses quatre coins — la silhouette d'un billet, et rien
-      d'autre du billet. Pas de chiffre, pas de numéro de série, pas de
-      guillochage : la forme seule. `--rw-coupe` est l'onglet, `--rw-filetage`
-      le dégagement où court le second filet, `--rw-coing` le carré de cuivre
-      qui s'y loge aux quatre angles, `--rw-chute` le décalage de l'ombre.
-      L'ombre ne peut pas être un `box-shadow` de la planche : le `clip-path`
-      la rognerait avec tout le reste — c'est une seconde silhouette, rognée
-      du même polygone et décalée, peinte dessous. */
-  /*  le tissu qui entoure la planche : la bande de motif fait 18 px, comme
-      sur la page Employés, et elle s'arrête à l'ongle de cuivre — les quatre
-      carrés du cadre deviennent les agrafes qui tiennent l'étoffe. */
-  --rw-tissu: 18px;
-  --rw-agrafe: calc(var(--rw-filetage) + var(--rw-coing));
+  /*  L'ENVELOPPE. L'en-tête n'est plus une barre collée aux bords de la
+      coque, ni la planche rognée de la passe dernière : c'est un champ de
+      papier CERCLÉ d'étoffe, la treatment du `.e360-tete` de la fiche salarié.
+      Le motif fait le tour — dessus, dessous, deux liserés —, il est à cru
+      sur le bord du bloc, et la plaque de papier est reculée de son
+      épaisseur. Cette épaisseur est UN jeton, `--rw-tissu`, et c'est lui qui
+      devient la marge intérieure du bloc : la même cote aux quatre côtés,
+      jamais quatre chiffres.
+      Le contour, ici, c'est le tissage. Les trois traits d'encre, les carrés
+      de cuivre et les huit onglets de 14 px sont tombés avec la coupe : ils
+      dédoubleraient ce que la bande dit déjà, et la maquette du 8/12 ne les
+      montre pas — la plaque y est un rectangle de papier, adouci, sans bord. */
+  --rw-tissu: var(--charte-espace-5);   /* 24 px, la cote de `.e360-tete` */
   --rw-tissu-haut: url('/images/paie-bogolan-haut.webp');
-  --rw-tissu-bas: url('/images/paie-bogolan-bas.webp');
-
-  --rw-coupe: 14px;
-  --rw-filetage: 10px;
-  --rw-coing: 6px;
-  --rw-coings: linear-gradient(var(--rw-cuivre) 0 0);
-  --rw-chute: 3px;
-  /*  la planche doit être posée dans la même colonne que le seuil et le
-      pagne : la largeur de la coque, moins les gouttières qu'elle se donne */
+  --rw-tissu-filet: url('/images/bogolan-vertical.webp');
+  --rw-rayon-bloc: var(--charte-rayon-champ);    /* 6 : les coins du tissu */
+  --rw-rayon-plaque: var(--charte-rayon-carte);  /* 8 : les coins du papier */
+  /*  le bloc reste posé dans la même colonne que le seuil et le pagne : la
+      largeur de la coque, moins les gouttières qu'elle se donne. C'est la
+      colonne qui est entourée d'étoffe, pas la page entière. */
   --rw-colonne: min(calc(var(--rw-largeur) - 2 * var(--charte-espace-5)),
     calc(100% - 2 * var(--charte-espace-5)));
-  --rw-billet: polygon(
-    var(--rw-coupe) 0, calc(100% - var(--rw-coupe)) 0,
-    100% var(--rw-coupe), 100% calc(100% - var(--rw-coupe)),
-    calc(100% - var(--rw-coupe)) 100%, var(--rw-coupe) 100%,
-    0 calc(100% - var(--rw-coupe)), 0 var(--rw-coupe)
-  );
 
   /*  les dimensions propres à l'écran : la case du kit (36 px) et ce que
       l'écran ajoute — une coche, un sceau, la piste d'un interrupteur.
@@ -178,56 +167,74 @@
 
 /* ── 1. La planche : l'en-tête rogné en billet ──────────── */
 
-/*  Le contenant ne porte aucun fond : il tient la planche à distance des
-      bords de la coque et pose le rythme du bloc. Le cadre, la coupe, la
-      chute vivent sur ses deux pseudos, rognés du même polygone — un
-      `border` ordinaire resterait rectangle et ne suivrait pas les onglets,
-      tandis qu'une ombre interne est coupée net aux quatre coins, ce qui est
-      exactement ce qu'on cherche. */
+/*  Le contenant ne peint pas : il tient le bloc à distance des bords de la
+      coque, et il donne son épaisseur au tissu. C'est `padding`, pas un
+      habillage posé par-dessus — la bande et la marge intérieure sont la même
+      mesure, donc elles ne peuvent plus diverger. Et surtout PAS
+      `overflow: hidden` : `.empv3-entete` le dit en toutes lettres, ça
+      couperait l'ombre dure du bloc. */
 .rw-entete {
   position: relative;
   /*  l'isolation est obligatoire : sans contexte d'empilement propre, les deux
-      pseudos en `z-index` négatif glisseraient sous le fond de la page et la
-      planche disparaîtrait derrière le lavis. */
+      pseudos en `z-index` négatif glisseraient sous le fond de la page et le
+      bloc disparaîtrait derrière le lavis. */
   isolation: isolate;
   display: block;
   width: var(--rw-colonne);
   margin: var(--charte-espace-5) auto var(--charte-espace-4);
-  /*  `padding: 0`, et surtout PAS `overflow: hidden` : le tissu doit toucher
-      les deux traits du cadre, et un rognage ici couperait l'ombre du bloc.
-      Le rognage, c'est le `clip-path` des calques qui le fait, bandeau par
-      bandeau — la leçon est écrite en toutes lettres à `.empv3-entete`. */
-  padding: 0;
+  padding: var(--rw-tissu);
 }
 
-/*  LE TISSU — deux bandes de bogolan, une en haut, une en bas, qui entourent
-      le bloc sans le noyer. Le motif est le même fichier que le bandeau de
-      page (`paie-bogolan-haut/bas.webp`), répété à l'horizontale et calé sur
-      la hauteur de la bande ; il ne remplit pas, il ne s'étire pas (C4).
+/*  LE TISSU — une seule bande, qui fait le tour. Deux couches horizontales
+      (`repeat-x`, calées sur la hauteur) et deux verticales (`repeat-y`,
+      calées sur la largeur), aux quatre bords du bloc : les deux fichiers
+      sont ceux que lit déjà `.e360-tete`, `paie-bogolan-haut.webp` (1536 × 76)
+      à l'horizontale et son jumeau `bogolan-vertical.webp` (76 × 1536) à la
+      verticale. Aucun n'est étiré — chaque couche est ramenée à `--rw-tissu`
+      sur UN seul axe, `auto` sur l'autre, donc l'échelle est uniforme et C4
+      est tenu. Les quatre coins, là où les deux fichiers se rejoignent, sont
+      remplis par `--charte-tissu`, le fond du bogolan : pas de trou, pas de
+      joint, pas de couche de raboutage.
 
-      La bande est DESCENDUE dans le gousset du cadre, de l'épaisseur même du
-      filetage : posée à `top: 0`, elle aurait peint par-dessus le trait
-      d'encre et le contour de la planche se serait ouvert en haut et en bas
-      (C11). Recalée ainsi, l'étoffe est prise DANS le cadre, et les quatre
-      carrés de cuivre — qui sont à `var(--rw-filetage)` du bord — viennent
-      mordre son extrémité comme des agrafes. */
-.rw-entete-bandeau {
-  display: block;
-  height: var(--rw-tissu);
-  margin: var(--rw-filetage) var(--rw-agrafe) 0;
-  background-image: var(--rw-tissu-haut);
-  background-repeat: repeat-x;
-  background-position: center;
-  background-size: auto var(--rw-tissu);
+      L'ombre est là, et nulle part ailleurs : le trait dur du kit, à flou
+      zéro, le « double passage de feutre ». Elle ne peut pas vivre sur la
+      plaque — la plaque est reculée dans l'étoffe, son ombre serait
+      mangée par le tissu. */
+.rw-entete::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: var(--rw-rayon-bloc);
+  background-color: var(--charte-tissu);
+  background-image:
+    var(--rw-tissu-haut), var(--rw-tissu-haut),
+    var(--rw-tissu-filet), var(--rw-tissu-filet);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-position: left top, left bottom, left top, right top;
+  background-size:
+    auto var(--rw-tissu), auto var(--rw-tissu),
+    var(--rw-tissu) auto, var(--rw-tissu) auto;
+  box-shadow: var(--charte-ombre-dure);
+  pointer-events: none;
 }
 
-.rw-entete-bandeau--bas {
-  margin: 0 var(--rw-agrafe) var(--rw-filetage);
-  background-image: var(--rw-tissu-bas);
+/*  LA PLAQUE — le champ de papier, reculé de l'épaisseur exacte de la bande.
+      Pas de bord, pas de coupe, pas de carré de cuivre : le contour du bloc
+      est le tissage, une bordure d'encre le dédoublerait. `inset` au lieu de
+      quatre marges : si la bande change de cote, la plaque suit seule. */
+.rw-entete::after {
+  content: "";
+  position: absolute;
+  inset: var(--rw-tissu);
+  z-index: -1;
+  border-radius: var(--rw-rayon-plaque);
+  background: var(--rw-panneau);
+  pointer-events: none;
 }
 
-/*  ce qui est posé entre les deux bandes : le rythme du bloc, avec ses
-      gouttières à lui — le tissu, lui, respire de bord à bord */
+/*  ce qui est posé sur le papier : le rythme du bloc, avec ses gouttières à
+      lui — l'étoffe, elle, respire de bord à bord */
 .rw-entete-corps {
   display: flex;
   align-items: center;
@@ -236,45 +243,7 @@
   padding: var(--charte-espace-4) var(--charte-espace-5);
 }
 
-/*  la planche elle-même : le fond, les trois traits du double feutre et les
-      quatre carrés de cuivre. Les traits sont des `box-shadow` internes —
-      peintes du plus étroit au plus large, elles laissent 2 px d'encre au
-      bord, un dégagement, puis un filet à 10 px. */
-.rw-entete::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-color: var(--rw-panneau);
-  background-image: var(--rw-coings), var(--rw-coings),
-    var(--rw-coings), var(--rw-coings);
-  background-repeat: no-repeat;
-  background-size: var(--rw-coing) var(--rw-coing);
-  background-position:
-    left var(--rw-filetage) top var(--rw-filetage),
-    right var(--rw-filetage) top var(--rw-filetage),
-    right var(--rw-filetage) bottom var(--rw-filetage),
-    left var(--rw-filetage) bottom var(--rw-filetage);
-  clip-path: var(--rw-billet);
-  box-shadow:
-    inset 0 0 0 var(--rw-trait) var(--rw-encre),
-    inset 0 0 0 calc(var(--rw-filetage) - var(--rw-trait)) var(--rw-panneau),
-    inset 0 0 0 var(--rw-filetage) var(--rw-ligne);
-}
-
-/*  la chute : une copie rognée, décalée, pleine de tissu — la couleur ne
-      s'inverse pas avec le thème, l'ombre reste donc une ombre des deux côtés */
-.rw-entete::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  transform: translate(var(--rw-chute), var(--rw-chute));
-  background: var(--rw-boue);
-  clip-path: var(--rw-billet);
-}
-
-/* ── 2. Ce qui est posé sur la planche ───────────────────── */
+/* ── 2. Ce qui est posé sur la plaque ──────────────────── */
 
 /*  Le carré de l'en-tête : la case du kit, deux pixels d'encre, rien de
       plus. Il s'appelait `rw-bascule` parce qu'il portait aussi la bascule
@@ -2358,11 +2327,8 @@
     padding: var(--charte-espace-3);
   }
 
-  .rw-entete-bandeau {
-    --rw-tissu: var(--rw-filetage); /* 10 px : la bande maigre, lisible au pouce */
-    height: var(--rw-tissu);
-    background-size: auto var(--rw-tissu);
-  }
+  /*  le tissu ne maigrit pas : une bande de billets ne devient pas fine
+      parce que l'écran rétrécit. C'est le rythme du papier qui se serre. */
 
   .rw-entete-droite {
     padding-left: 0;
