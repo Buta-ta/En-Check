@@ -835,6 +835,10 @@ describe('4. le logo de l’entreprise signe la page', () => {
 //     La loi est jouée sur le DOM monté, dans les DEUX vues : la vue coût ne
 //     reçoit du RPC qu'un `employe_id`, et c'est précisément là que le
 //     rapprochement peut mentir sans que le texte de la source le dise.
+//     Le 29/11, la loi se lit AUSSI sur la balise : `loading` à `null` et
+//     `display: none`. `jsdom` ne peint pas, donc `onLoad` n'y sonne jamais —
+//     c'est exactement pour ça que le rendu seul avait laissé passer l'image
+//     qui ne se demandait jamais ; la marque du cache, elle, est visible.
 // ═══════════════════════════════════════════════════════════
 describe('5. le sceau du salarié porte sa photo, dans les deux vues', () => {
   let hote
@@ -897,7 +901,13 @@ describe('5. le sceau du salarié porte sa photo, dans les deux vues', () => {
     expect(img, 'le salarié photographié a son visage dans le sceau').not.toBeNull()
     expect(img.getAttribute('src')).toBe(PHOTO)
     expect(img.getAttribute('alt')).toBe('')
-    expect(img.getAttribute('loading')).toBe('lazy')
+    //  PAS de `loading` : jsdom rend la balise sans la peindre, donc le test
+    //  n'aurait RIEN vu de la panne du 29/11 — c'est la balise elle-même
+    //  qu'il faut regarder. `display: none` est la marque du cache du
+    //  chargeur : il ne se lèvera qu'à la peinture, et une image lazy cachée
+    //  n'est jamais demandée.
+    expect(img.getAttribute('loading')).toBeNull()
+    expect(img.style.display).toBe('none')
 
     //  sans photo : AUCUN `<img>` — pas une image à `src` vide — et les deux
     //  initiales d'avant, telles que la page les calculait

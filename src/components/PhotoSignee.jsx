@@ -15,6 +15,20 @@
 //   · `onError` bascule aussi sur le repli — une image cassée n'est jamais
 //     laissée à l'écran.
 //  Le repli est rendu dans le même cadre, donc l'assiette garde sa taille.
+//
+//  ⚠️ CE QUE CE PROTOCOLE INTERDIT À L'APPELANT — mesuré le 29/11, sur les
+//  sceaux des Rémunérations (« on ne voit pas l'image de profil de chaque
+//  employé qui en a »). Tant qu'elle n'est pas peinte, l'image est
+//  `display: none`. Une image marquée `loading="lazy"` que rien ne rend n'est
+//  JAMAIS demandée : `onLoad` ne vient pas, le cache ne se lève pas, et la
+//  page conclut à l'absence de photo. Un appel différé n'a donc rien de
+//  « prudent » ici — il est bloquant. `decoding="async"` n'est pas concerné :
+//  il reporte le décodage, pas la demande.
+//
+//  Si un jour ce cache doit devenir un `visibility: hidden` (pour rendre le
+//  lazy possible), c'est ICI que ça se règle, et la loi qui défend `loading`
+//  aux pages tombe avec lui — les deux sont écrites l'une en face de l'autre,
+//  dans `remunerationsBogolan.test.jsx`, §16.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
