@@ -23,6 +23,10 @@
 // ⚠️ Fonctions PURES : la règle se vérifie sans base et sans écran.
 // ═══════════════════════════════════════════════════════════════════════════
 
+//  Nommer une semaine (« du 05/10 au 11/10 ») : sans cela, deux messages
+//  portant sur deux semaines différentes semblent se contredire.
+import { jourCourt } from '../utils/jourCourt'
+
 /** Les trois raisons d'un contrôle non fait, en français. */
 export const RAISONS_INDISPONIBLE = {
   aucun_seuil: 'Aucun seuil hebdomadaire choisi par l’entreprise : ce contrôle n’est pas fait.',
@@ -30,6 +34,7 @@ export const RAISONS_INDISPONIBLE = {
   case_decochee: 'L’alerte hebdomadaire n’est pas activée : personne n’a demandé à être prévenu.',
   non_calcule: 'Le calcul de la semaine n’est pas disponible pour cette période.',
   lecture_impossible: 'Le seuil n’a pas pu être lu : ce contrôle n’est pas fait.',
+  regle_sans_verdict: 'Les semaines n’ont pas pu être rattachées à une règle : aucun verdict n’est prononcé.',
   semaine_en_cours: 'La semaine en cours n’est pas terminée : le contrôle se prononcera une fois tous ses jours échus.',
   semaine_a_venir: 'Cette semaine n’a pas encore commencé : il n’y a rien à contrôler.',
   semaine_partielle: 'La semaine n’est couverte que partiellement : « aucun dépassement » ne s’y prononce pas.',
@@ -54,18 +59,47 @@ export function pourquoiControleIndisponible(plafond) {
       (s) => s && (s.a_venir === true || s.partielle === true),
     )
     if (enCours.length === 0) return null
-    if (enCours.some((s) => s.a_venir === true)) {
-      return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.semaine_a_venir }
-    }
-    //  Une semaine partielle ET un dépassement prouvé : l'alerte parle, la
-    //  ligne n'a pas à la contredire. On ne signale que l'absence de verdict.
+    //  Une semaine partielle ET un dépassement prouvé : l'alerte parle de
+    //  cette semaine-là, la ligne n'a pas à la contredire.
     if (enCours.every((s) => s.depasse === true)) return null
-    const toutesEchues = enCours.every((s) => Number(s.joursEchues) < 7)
+
+    //  ⚠️ PLUSIEURS SEMAINES, PLUSIEURS VÉRITÉS. Une carte peut signaler un
+    //  dépassement sur une semaine pendant qu'une AUTRE semaine n'a pas encore
+    //  commencé. Dire « cette semaine n'a pas commencé » sans nommer laquelle
+    //  donne l'impression que le message contredit l'alerte, ou qu'il la
+    //  relativise. On nomme donc la ou les semaines concernées.
+    const nonEvalues = enCours.filter((s) => s.depasse !== true)
+    const nommer = (s) => (s.debut && s.fin ? `du ${jourCourt(s.debut)} au ${jourCourt(s.fin)}` : null)
+
+    if (nonEvalues.some((s) => s.a_venir === true)) {
+      const aVenir = nonEvalues.filter((s) => s.a_venir === true)
+      const ou = aVenir.map(nommer).filter(Boolean)
+      return {
+        etiquette: ETIQUETTE_INDISPONIBLE,
+        raison: ou.length
+          ? `La semaine ${ou.join(' et ')} n’a pas encore commencé : il n’y a rien à contrôler de ce côté-là.`
+          : RAISONS_INDISPONIBLE.semaine_a_venir,
+      }
+    }
+
+    //  ⚠️ « En cours » n'est vrai que si la semaine contient la journée
+    //  d'aujourd'hui. Une semaine PASSÉE que la fenêtre ne couvre qu'en partie
+    //  (mois écourté, lecture bornée) n'est pas « en cours » : elle est
+    //  incomplète. Confondre les deux ferait attendre un verdict qui ne
+    //  viendra jamais.
+    const aujourdHui = plafond.aujourd_hui || null
+    const contientAujourdHui = (s) =>
+      Boolean(aujourdHui) && s.debut && s.fin && s.debut <= aujourdHui && aujourdHui <= s.fin
+    const touteLaSemaineEstEnCours = nonEvalues.every(
+      (s) => Number(s.joursEchues) < 7 && (aujourdHui ? contientAujourdHui(s) : true),
+    )
+    const ou = nonEvalues.map(nommer).filter(Boolean)
+    const suffixe = ou.length ? ` (semaine ${ou.join(', ')})` : ''
     return {
       etiquette: ETIQUETTE_INDISPONIBLE,
-      raison: toutesEchues
+      raison: (touteLaSemaineEstEnCours
         ? RAISONS_INDISPONIBLE.semaine_en_cours
-        : RAISONS_INDISPONIBLE.semaine_partielle,
+        : RAISONS_INDISPONIBLE.semaine_partielle) + suffixe,
     }
   }
 
@@ -78,7 +112,17 @@ export function pourquoiControleIndisponible(plafond) {
   }
 
   //  Le moteur explique son silence ; on traduit son motif, on ne le réécrit pas.
-  const motif = String(plafond.motif_silence || plafond.motif || '')
+  //
+  //  ⚠️ L'ORDRE COMPTE (constat de vérification). `motif_silence` vient du
+  //  chargeur SANS DATE : il décrit l'état « aujourd'hui » du réglage
+  //  d'entreprise, pas la raison pour laquelle les semaines n'ont pas été
+  //  jugées. Quand le moteur a une raison propre — « 5 semaine(s) sans règle
+  //  résolue » —, c'est ELLE qui est vraie.
+  //
+  //  Cas réel : serveur sans les migrations, seuil d'entreprise à 45 h
+  //  enregistré. L'ancien ordre affichait « Aucun seuil hebdomadaire choisi
+  //  par l'entreprise » — faux, et il envoyait chercher un réglage qui existe.
+  const motif = String(plafond.motif || plafond.motif_silence || '')
   if (/désactivée par une décision/i.test(motif)) {
     return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.desactive }
   }
@@ -91,9 +135,19 @@ export function pourquoiControleIndisponible(plafond) {
   if (/lecture/i.test(motif)) {
     return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.lecture_impossible }
   }
+  //  ⚠️ Le moteur n'a jugé AUCUNE semaine faute de règle résolue (migration
+  //  absente, panne de la RPC datée). Le repli final répondait « aucun seuil
+  //  choisi » — faux quand un seuil EST enregistré. On dit ce qui s'est
+  //  réellement passé, sans accuser un réglage qui existe.
+  if (/sans règle résolue|sans regle resolue/i.test(motif)) {
+    return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.regle_sans_verdict }
+  }
 
-  //  Un silence non expliqué ne devient pas un silence rassurant.
-  return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.aucun_seuil }
+  //  Un silence non expliqué ne devient pas un silence rassurant — et il ne
+  //  devient pas non plus une accusation précise. Avant, ce repli rendait
+  //  « Aucun seuil hebdomadaire choisi par l'entreprise » alors qu'il n'en
+  //  savait rien : un motif inconnu n'autorise pas à nommer une cause.
+  return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.regle_sans_verdict }
 }
 
 /**

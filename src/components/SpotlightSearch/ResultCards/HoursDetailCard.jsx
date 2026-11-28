@@ -14,6 +14,7 @@ import {
   DollarSign,
   ChevronRight,
 } from 'lucide-react'
+import { formaterDureeComplete } from '../../../utils/timezoneUtils'
 
 export default function HoursDetailCard({ data, isSelected, onClick }) {
   const {
@@ -30,6 +31,14 @@ export default function HoursDetailCard({ data, isSelected, onClick }) {
   const hasMonthExpected = !!thisMonth?.total_expected
   const hasMonthRate = thisMonth?.rate !== null && thisMonth?.rate !== undefined && hasMonthExpected
   const hasYearAttendanceRate = thisYear?.attendance_rate !== null && thisYear?.attendance_rate !== undefined
+
+  //  Part du mois qui vient d'une sortie ESTIMÉE (badgeage absent), et non
+  //  d'un fait établi. Le moteur la mesure une seule fois, pour les deux
+  //  formes d'estimation (virtuelle et persistée) : la carte ne recalcule
+  //  rien, elle lit `presumed_seconds`. Sans lui, 8 h inventées et 8 h
+  //  badgées se liraient exactement de la même façon.
+  const secondesEstimees = Number(thisMonth?.presumed_seconds) || 0
+  const heuresEstimees = Math.round((secondesEstimees / 3600) * 100) / 100
 
   return (
     <div
@@ -358,6 +367,18 @@ export default function HoursDetailCard({ data, isSelected, onClick }) {
               <span>Total brut</span>
               <strong>{valorization.total_gross.toLocaleString('fr-FR')} {valorization.currency}</strong>
             </div>
+
+            {/*  Un total qui contient des heures estimées n'est pas un montant
+                dû : il doit le dire à l'endroit où le chiffre se lit. On ne
+                donne aucun « hors estimation » : ce second montant demanderait
+                la même logique de valorisation que le premier, et l'inventer
+                ici créerait un chiffre que la paie ne reconnaîtrait pas. */}
+            {heuresEstimees > 0 && (
+              <p className="hours-detail-valorization-mention">
+                Montant indicatif : inclut {formaterDureeComplete(secondesEstimees).replace('h', ' h ')}
+                estimées, non validées. Il ne correspond pas nécessairement au montant payé.
+              </p>
+            )}
           </div>
         </div>
       )}

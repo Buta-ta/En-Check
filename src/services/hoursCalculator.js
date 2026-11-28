@@ -39,6 +39,7 @@ import {
 } from './plafondHebdomadaire'
 import { evaluerReposQuotidien, messageRepos } from './reposQuotidien'
 import { activationAlerte as encheckActivationAlerte, resoudre as resoudreRegleTemps } from './reglesTempsTravail'
+import { lundiDeLaSemaine } from './seuilsHebdoParSemaine'
 
 //  Aucun seuil de pointage n'est plus écrit en dur dans ce moteur : ils viennent
 //  de `encheck_reglages_pointage` (voir src/services/seuilsPointage.js). Les
@@ -193,7 +194,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   //  À 01:00 du matin, la journée de travail en cours est encore celle d'hier
   //  quand la bascule est à 04:00 : le tableau de bord doit montrer la garde en
   //  cours, pas une journée vide.
-  if (plan) todayKey = cleJourDeTravail(ref, plan.bascule)
+  if (plan) todayKey = cleJourDeTravail(ref, plan.bascule, enterprise.timezone || null)
   const scheduleResolved = resolveScheduleLikeRetards(employeeScheduleRow, defaultScheduleRow)
 
   // ── 6) Jours fériés ──────────────────────────────────────────
@@ -299,6 +300,12 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 
   let monthOpenSessionsCount = 0
   let monthVirtualAutoCloseDays = 0
+  //  ⚠️ Les secondes issues d'une sortie PRÉSUMÉE sont comptées à part. Le
+  //  moteur les inclut dans `normal_seconds` (comportement historique, non
+  //  modifié ici) : ce qui change, c'est qu'on peut enfin les SÉPARER. Sans ce
+  //  chiffre, une fiche affichait 8 h pour une entrée seule, sans aucun moyen
+  //  de savoir que ces 8 h étaient inventées.
+  let monthPresumedSeconds = 0
   //  ⚠️ B : toute réparation automatique du mois, avec sa date.
   const monthAnomalies = []
 
@@ -311,6 +318,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     monthWorkedSeconds += s.totalSeconds
     monthOpenSessionsCount += s.openSessionsCount
     if (s.hasAutoCloseVirtual) monthVirtualAutoCloseDays += 1
+    monthPresumedSeconds += Number(s.totalSecondesPresumes) || 0
     for (const a of s.anomalies || []) monthAnomalies.push({ date: d, ...a })
 
     const holiday = holidayMap.get(d) || null
@@ -435,8 +443,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   for (const d of listDaysInclusive(debutSemaines, finSemaines)) {
     secondesParJour[d] = (daySummaries[d] || {}).totalSeconds || 0
   }
-  const plafondHebdo = evaluerSeuilsHebdo({
-    semaines: agregerParSemaine({
+  const semainesAgregees = agregerParSemaine({
       secondesParJour,
       debut: debutSemaines,
       fin: finSemaines,
@@ -444,15 +451,40 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
       //  une semaine entièrement future passait pour « 7 jours couverts » et
       //  rendait « 0 h — rien à signaler » sur des jours pas encore arrivés.
       aujourdHui: todayKey,
-    }),
-    //  Seuils d'HEURES SUPÉRIEURES de l'entreprise (40 h / 48 h). Ce ne sont
-    //  pas des plafonds légaux : aucun texte n'est invoqué ici.
-    //  `null` quand le seuil n'a pas été CHOISI : pas de seuil, pas d'alerte.
-    seuil: seuilsAlerteRegles.seuil,
-    seuilMajeur: seuilsAlerteRegles.seuilMajeur,
-    //  Ce que l'on SAIT de l'origine, jamais davantage (P5). Et surtout : plus de
-    //  condition au module de paie — le contrôle survit à sa désactivation (G6).
-    source: seuilsAlerteRegles.source,
+      //  Et la journée en cours n'est pas révolue tant qu'elle n'est pas finie
+      //  (bascule + fuseau de l'entreprise). Le dimanche à 10 h, la semaine
+      //  n'est PAS terminée.
+      //  ⚠️ `plan.bascule` est déjà en MINUTES. Le repasser dans
+      //  `minutesDeBascule` (qui attend « 04:00 ») donnait 0 : la bascule de
+      //  l'entreprise était silencieusement ignorée.
+      jourEnCours: jourDeTravailEnCours(
+        ref,
+        plan ? Number(plan.bascule) || 0 : 0,
+        enterprise.timezone || null,
+      ),
+  })
+
+  //  Les lundis à résoudre : un par semaine évaluée, plus le lundi de la
+  //  semaine de référence (qui peut précéder la fenêtre).
+  const lundisAEvaluer = [...new Set(
+    semainesAgregees
+      .map((sem) => lundiDeLaSemaine(sem.debut, enterprise.timezone || null))
+      .filter(Boolean),
+  )]
+  const seuilsParLundi = await chargerReglesAlerteParSemaine(
+    employee.enterprise_id,
+    employee.id,
+    lundisAEvaluer,
+  )
+
+  //  ⚠️ UNE SEMAINE, UN PALIER (décision option 3).
+  //  On évalue les semaines PAR TRANCHES : toutes celles qui partagent le même
+  //  lundi-applicable sont jugées ensemble, avec leur propre seuil. Une règle
+  //  prenant effet un mercredi s'applique donc au lundi SUIVANT — on ne coupe
+  //  jamais une semaine entre deux règles.
+  const plafondHebdo = evaluerSemainesParPalier(semainesAgregees, seuilsParLundi, {
+    enterpriseTimezone: enterprise.timezone || null,
+    seuilsFixes: seuilsAlerteRegles,
   })
 
   // ── 11-ter) Repos entre deux journées ────────────────────────
@@ -529,6 +561,10 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 
     openSessionsCount: monthOpenSessionsCount,
     virtualAutoCloseDays: monthVirtualAutoCloseDays,
+    //  Ce que les heures affichées doivent à une ESTIMATION, et non à un
+    //  badgeage. `normal_seconds` les comprend encore : ce champ permet de le
+    //  dire à l'écran au lieu de laisser croire à un fait établi.
+    presumed_seconds: monthPresumedSeconds,
 
     //  ⚠️ B — ce que le moteur a réparé tout seul ce mois-ci.
     anomalies: monthAnomalies,
@@ -546,6 +582,10 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     //  pas un plafond légal — le mot importe.
     plafond_hebdo: {
       ...plafondHebdo,
+      //  La date de référence, exposée pour que l'écran puisse distinguer une
+      //  semaine EN COURS d'une semaine PASSÉE mais mal couverte. Sans elle,
+      //  les deux se ressemblent et le message se trompe.
+      aujourd_hui: todayKey,
       periode: { debut: debutSemaines, fin: finSemaines },
       //  Une valeur non choisie reste VISIBLE ici (pour pré-remplir un écran ou
       //  expliquer le silence), mais n'est jamais brandie comme un seuil.
@@ -742,7 +782,7 @@ function buildDaySummariesStrict({
     const inDate = new Date(inAtt.check_time)
     //  Journée de travail : la bascule de la grille décide où commence la
     //  journée, donc à quelle journée appartient un pointage d'après minuit.
-    const dayKey = cleJourDeTravail(inDate, basculeMinutes)
+    const dayKey = cleJourDeTravail(inDate, basculeMinutes, enterpriseCfg?.timezone || null)
 
     if (dayKey < borneStartDate || dayKey > borneEndDate) return
 
@@ -773,6 +813,22 @@ function buildDaySummariesStrict({
       s.openSessionsCount += 1
       s.hasAutoCloseVirtual = true
     }
+    //  ⚠️ La durée d'une clôture ESTIMÉE est une estimation. Elle reste dans
+    //  `totalSeconds` (comportement historique, non modifié ici : la changer
+    //  modifierait des montants), mais elle est comptée à part pour que
+    //  l'écran puisse la NOMMER. Sans ce chiffre, 8 h inventées et 8 h
+    //  badgées s'affichaient de la même façon.
+    //
+    //  DEUX FORMES, UNE SEULE MESURE. Une estimation arrive soit
+    //  `__virtual` (sortie fabriquée en mémoire, jamais écrite), soit
+    //  persistée avec `is_auto_closed`. La seconde échappait à la mesure :
+    //  une ligne auto-clôturée non validée était valorisée sans que rien ne
+    //  le dise. La doctrine « on invente, on marque, on n'encaisse pas » et la
+    //  borne de non-rétroactivité vivent dans `estEstimationNonValidee` : on
+    //  la réutilise au lieu d'en écrire une seconde, qui divergerait.
+    if (outAtt?.__virtual || estEstimationNonValidee(outAtt)) {
+      s.totalSecondesPresumes = (Number(s.totalSecondesPresumes) || 0) + cappedDuration
+    }
     if (outAtt?.is_auto_closed) {
       s.hasAutoClosedOut = true
     }
@@ -791,7 +847,7 @@ function buildDaySummariesStrict({
   const closeOpenSessionVirtually = (openInAtt) => {
     if (!openInAtt) return
     const inDate = new Date(openInAtt.check_time)
-    const dayKey = cleJourDeTravail(inDate, basculeMinutes)
+    const dayKey = cleJourDeTravail(inDate, basculeMinutes, enterpriseCfg?.timezone || null)
     //  Cascade §5 : la grille EN VIGUEUR CE JOUR-LÀ (dates d'effet) vaut Niveau 1
     //  si elle est personnelle/liée, sinon on redescend au Niveau 3 (grille par
     //  défaut). Le JS reste un moteur D'AFFICHAGE : c'est `encheck_cloturer_pivotable`
@@ -830,8 +886,8 @@ function buildDaySummariesStrict({
         currentIn = att
       } else {
         const diffHours = (new Date(att.check_time) - new Date(currentIn.check_time)) / (1000 * 60 * 60)
-        const inDay = cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes)
-        const attDay = cleJourDeTravail(new Date(att.check_time), basculeMinutes)
+        const inDay = cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes, enterpriseCfg?.timezone || null)
+        const attDay = cleJourDeTravail(new Date(att.check_time), basculeMinutes, enterpriseCfg?.timezone || null)
         const isConsecutiveInSameShift =
           diffHours >= 0 &&
           diffHours <= APPARIEMENT_H &&
@@ -862,7 +918,7 @@ function buildDaySummariesStrict({
     //  Sortie sans entrée en cours : rien à apparier. Aujourd'hui elle
     //  disparaît purement et simplement du total.
     if (att.check_type === 'out' && !currentIn) {
-      noterAnomalie(cleJourDeTravail(new Date(att.check_time), basculeMinutes), 'sortie_orpheline', {
+      noterAnomalie(cleJourDeTravail(new Date(att.check_time), basculeMinutes, enterpriseCfg?.timezone || null), 'sortie_orpheline', {
         heure: att.check_time,
         message: 'Sortie sans entrée correspondante : non comptée',
       })
@@ -878,7 +934,7 @@ function buildDaySummariesStrict({
       // `encheck_nettoyer_rebonds_qr` effaçait aussi les vraies paires courtes, la
       // fonction est donc neutralisée côté base (elle marque, elle ne détruit plus).
       if (diffSeconds >= 0 && diffSeconds < REBOND_S) {
-        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes), 'rebond_ignore', {
+        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes, enterpriseCfg?.timezone || null), 'rebond_ignore', {
           secondes: Math.round(diffSeconds),
           message: 'Double scan rapproché : ignoré',
         })
@@ -891,7 +947,7 @@ function buildDaySummariesStrict({
       } else {
         // OUT trop loin (> appariement_heures) => l'ancien IN était un oubli de
         // dépointage : on le clôture virtuellement (on marque, on n'efface pas).
-        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes), 'sortie_trop_lointaine', {
+        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes, enterpriseCfg?.timezone || null), 'sortie_trop_lointaine', {
           heures_ecart: Math.round(diffHours * 10) / 10,
           message: diffSeconds < 0
             ? 'Sortie antérieure à l’entrée : non comptée'
@@ -1195,12 +1251,51 @@ function minutesDeBascule(valeur) {
 
 //  Le nom de la journée de travail d'un instant : on recule de la bascule, puis
 //  on prend le jour local (dans le fuseau de l'entreprise). Avec une bascule à minuit, c'est le jour local.
-function cleJourDeTravail(date, basculeMinutes = 0) {
+function cleJourDeTravail(date, basculeMinutes = 0, fuseau = null) {
   const bascule = minutesDeBascule(basculeMinutes)
   const d = date instanceof Date ? date : new Date(date)
-  if (!bascule) return jourLocal(d) || toDateKeyLocal(d)
+  //  ⚠️ Le fuseau de l'ENTREPRISE, jamais un réglage global d'application.
+  //  Sans lui, `jourLocal` retombait sur `getActiveTimezone()` (réglage
+  //  d'écran, ou UTC). Le même instant — 23:30 UTC — donnait le 25 à UTC et
+  //  le 26 à Porto-Novo : la journée de travail changeait de date selon
+  //  l'appareil qui regardait. Un employé du Bénin à 00:30 voyait la veille.
+  if (!bascule) return jourLocal(d, fuseau) || toDateKeyLocal(d)
   const decale = new Date(d.getTime() - bascule * 60000)
-  return jourLocal(decale) || toDateKeyLocal(decale)
+  return jourLocal(decale, fuseau) || toDateKeyLocal(decale)
+}
+
+//  La journée de travail est-elle FINIE ?
+//  Une journée n'est pas close à minuit : elle l'est quand son début + une
+//  durée pleine est dépassé, en tenant compte de la bascule (04:00 ⇒ la
+//  journée du lundi court jusqu'à mardi 03:59) et du fuseau de l'entreprise.
+//  Sans cela, un dimanche à 10 h du matin passait pour une semaine révolue.
+function jourDeTravailEnCours(ref, basculeMinutes = 0, fuseau = null) {
+  //  `basculeMinutes` arrive DÉJÀ en minutes (c'est ce que rend
+  //  `resolvePlanForExpected`). On ne le repasse pas dans `minutesDeBascule`,
+  //  qui attend « 04:00 » et rendrait 0 pour 240.
+  const bascule = Math.max(0, Math.min(1439, Number(basculeMinutes) || 0))
+  const d = ref instanceof Date ? ref : new Date(ref)
+  if (Number.isNaN(d.getTime())) return null
+  const cle = cleJourDeTravail(d, bascule, fuseau) || jourLocal(d, fuseau) || toDateKeyLocal(d)
+  if (!cle) return null
+
+  //  Début de cette journée de travail, exprimé en UTC. La bascule est
+  //  l'heure locale à laquelle la journée commence (04:00 ⇒ 4 h, 0 par défaut).
+  const debut = heureLocaleVersUTC(
+    cle,
+    Math.floor(bascule / 60),
+    bascule % 60,
+    0,
+    fuseau,
+  )
+  //  ⚠️ `heureLocaleVersUTC` rend une CHAÎNE ISO, pas un `Date`. Appeler
+  //  `.getTime()` dessus levait un TypeError et faisait tomber tout
+  //  `calculateEmployeeHours` — le parcours complet, pas seulement le calcul.
+  //  On normalise une fois, et on ne suppose plus le type.
+  const debutMs = debut ? new Date(debut).getTime() : NaN
+  if (!Number.isFinite(debutMs)) return null
+  const finMs = debutMs + 24 * 3600 * 1000
+  return d.getTime() < finMs ? cle : null
 }
 
 function grilleValableLe(grille, jour) {
@@ -1286,7 +1381,20 @@ async function loadPlanningsDeLaPeriode({ supabase, employeeId, enterpriseId, st
       ((r.use_custom_hours && r.custom_start_time && r.custom_end_time) ||
         (r.work_schedules && grilleValableLe(r.work_schedules, startDate)))
   )
-  const grillesUtiles = (grilles || []).filter((g) => grilleValableLe(g, startDate))
+  //  ⚠️ Une grille n'a pas besoin d'être valable AU PREMIER JOUR pour servir.
+  //  Filtrer sur `startDate` seul éliminait toute grille entrant en vigueur en
+  //  cours de période : la semaine du 19/10 avec une grille « 8 h jusqu'au 21,
+  //  6 h ensuite » n'attendait plus que 24 h (3 jours), les 2 jours suivants
+  //  passant pour du zéro attendu — 145 % de complétion au lieu de 97 %.
+  //  On retient donc les grilles qui CHEVAUCHENT la période ; le choix
+  //  jour par jour reste fait par `construirePlanningsParJour`.
+  const grillesUtiles = (grilles || []).filter((g) => {
+    const debut = g?.valide_du ? String(g.valide_du).slice(0, 10) : null
+    const fin = g?.valide_au ? String(g.valide_au).slice(0, 10) : null
+    if (debut && endDate && debut > endDate) return false
+    if (fin && startDate && fin < startDate) return false
+    return true
+  })
 
   const employeeScheduleRow = affectationsUtiles[0] || null
   const defaultScheduleRow =
@@ -1501,6 +1609,265 @@ function resolvePlanForExpected(employeeScheduleRow, defaultScheduleRow) {
  * valeurs viennent du réglage d'entreprise, ou de ses défauts, et l'origine est
  * toujours transmise pour que le message ne mente pas (P5).
  */
+/**
+ * Évalue des semaines agrégées contre DES SEUILS QUI CHANGENT DANS LE TEMPS.
+ *
+ * Chaque semaine est jugée avec le palier en vigueur à SON lundi : une règle
+ * prenant effet en milieu de semaine ne s'applique qu'au lundi suivant, et une
+ * semaine passée se relit avec la règle de son époque.
+ *
+ * ⚠️ Aucune valeur n'est inventée. Quand un lundi n'a pas pu être résolu
+ * (panne, règle future), la semaine est marquée `resolution_absente` et
+ * n'affirme AUCUN dépassement ni AUCUNE conformité : le silence n'est pas un
+ * feu vert.
+ *
+ * @param {Array} semaines      sortie d'`agregerParSemaine`
+ * @param {Map} seuilsParLundi  lundi ISO → { seuil, niveau2, activation }
+ * @param {object} options      { enterpriseTimezone, seuilsFixes }
+ */
+function evaluerSemainesParPalier(semaines, seuilsParLundi, { enterpriseTimezone = null, seuilsFixes = {} } = {}) {
+  const tranches = []
+  let trancheCourante = null
+
+  for (const sem of semaines || []) {
+    const lundi = lundiDeLaSemaine(sem.debut, enterpriseTimezone)
+    const brut = lundi ? (seuilsParLundi?.get?.(lundi) ?? null) : null
+    const porte = empreinteDeRegles(brut, seuilsFixes, lundi)
+    const derniere = trancheCourante
+    if (derniere && derniere.porte.cle === porte.cle) {
+      derniere.semaines.push(sem)
+    } else {
+      trancheCourante = { porte, semaines: [sem] }
+      tranches.push(trancheCourante)
+    }
+  }
+
+  const partySemaines = []
+  const porteGlobal = tranches[0]?.porte || null
+  for (const tranche of tranches) {
+    if (!tranche.porte.disponible) {
+      for (const sem of tranche.semaines) {
+        partySemaines.push({
+          ...sem,
+          heures: Math.round((Number(sem.secondes) || 0) / 3600 * 100) / 100,
+          depasse: false,
+          depassement_heures: 0,
+          depassement_niveau_haut_heures: 0,
+          niveau: 'non_evalue',
+          partielle: false,
+          a_venir: false,
+          lundi_regle: tranche.porte.lundi,
+          //  Contrat explicite : une semaine sans verdict n'a AUCUN seuil
+          //  appliqué. `undefined` dirait « on ne sait pas », alors qu'on sait
+          //  exactement ceci : rien n'a été appliqué.
+          seuil_applique: null,
+          seuil_majeur_applique: null,
+          seuil_source: null,
+          regle_resolue: false,
+          motif: tranche.porte.motif,
+        })
+      }
+      continue
+    }
+
+    const evaluation = evaluerSeuilsHebdo({
+      semaines: tranche.semaines,
+      seuil: tranche.porte.seuil,
+      seuilMajeur: tranche.porte.seuilMajeur,
+      source: tranche.porte.source,
+    })
+
+    for (const sem of evaluation.semaines) {
+      partySemaines.push({
+        ...sem,
+        //  Le lundi de CETTE semaine. Le porter depuis la tranche donnait à
+        //  toutes les semaines du même palier la date de la première — une
+        //  semaine de janvier se serait lue « règle du 28 décembre ».
+        lundi_regle: lundiDeLaSemaine(sem.debut, enterpriseTimezone),
+        regle_resolue: true,
+        seuil_applique: tranche.porte.seuil,
+        seuil_majeur_applique: tranche.porte.seuilMajeur,
+        seuil_source: tranche.porte.source,
+      })
+    }
+  }
+
+  const depassees = partySemaines.filter((sem) => sem.depasse)
+  const max = partySemaines.reduce(
+    (acc, sem) => (!acc || sem.secondes > acc.secondes ? sem : acc),
+    null,
+  )
+  const nonResolues = partySemaines.filter((sem) => sem.regle_resolue === false)
+  //  ⚠️ TROIS CAUSES, TROIS PHRASES — et la plus délicate est celle du milieu.
+  //
+  //   · « aucune règle résolue »        : la lecture a échoué (migration, RPC) ;
+  //   · « seuil non confirmé »          : la ligne EXISTE, avec une valeur qui
+  //                                       est celle d'un défaut connu — on ne
+  //                                       sait pas si un humain l'a choisie ;
+  //   · « aucun seuil choisi »          : seule la valeur par défaut du produit
+  //                                       existe, rien n'a été enregistré.
+  //
+  //  Les confondre envoie chercher au mauvais endroit : annoncer « aucun seuil
+  //  choisi » à une entreprise dont la ligne existe, avec 40 h enregistrés,
+  //  lui fait croire qu'il n'y a rien à reconfirmer. C'est exactement le cas
+  //  que les lignes héritées à 40 h ont révélé.
+  //
+  //  Le discriminant est le motif de la SEMAINE, pas une liste de valeurs : on
+  //  ne juge jamais sur le nombre, seulement sur ce que la résolution a dit.
+  const motifs = nonResolues.map((sem) => String(sem.motif || ''))
+  const sansRegle = motifs.filter((m) => /r[eè]gle n.a pu être r[eé]solue/i.test(m)).length
+  const nonConfirmees = motifs.filter((m) => /non confirm[ée]/i.test(m)).length
+
+  const motifAgrege = nonResolues.length === 0
+    ? null
+    : (sansRegle === nonResolues.length
+      ? `${nonResolues.length} semaine(s) sans règle résolue : aucun verdict n'est prononcé pour elles`
+      : nonConfirmees > 0
+        ? `${nonResolues.length} semaine(s) au seuil non confirmé : aucun verdict n'est prononcé pour elles`
+        : `${nonResolues.length} semaine(s) sans seuil choisi : aucun verdict n'est prononcé pour elles`)
+
+  return {
+    disponible: nonResolues.length === 0 && partySemaines.length > 0,
+    motif: motifAgrege,
+    seuil: porteGlobal?.seuil ?? null,
+    seuil_majeur: porteGlobal?.seuilMajeur ?? null,
+    source: porteGlobal?.source ?? null,
+    seuils_par_semaine: partySemaines.map((sem) => ({
+      lundi_regle: sem.lundi_regle ?? null,
+      seuil: sem.seuil_applique ?? null,
+      seuil_majeur: sem.seuil_majeur_applique ?? null,
+      source: sem.seuil_source ?? null,
+      resolu: sem.regle_resolue !== false,
+    })),
+    semaines: partySemaines,
+    nb_depassees: depassees.length,
+    max: max ? { debut: max.debut, fin: max.fin, heures: max.heures } : null,
+  }
+}
+
+/**
+ * Ce qui distingue deux semaines du point de vue de la règle.
+ * Sert à regrouper les semaines consécutives qui partagent le même palier.
+ */
+function empreinteDeRegles(brut, seuilsFixes, lundi) {
+  //  Résolution absente : la semaine ne reçoit AUCUN verdict.
+  if (!brut) {
+    return {
+      cle: `absente:${lundi ?? 'inconnu'}`,
+      disponible: false,
+      motif: 'aucune règle n’a pu être résolue pour ce lundi',
+      lundi: lundi ?? null,
+    }
+  }
+
+  const valeurSeuil = brut.seuil?.valeur !== null && brut.seuil?.valeur !== undefined
+    ? Number(brut.seuil.valeur)
+    : null
+  const valeurNiveau2 = brut.niveau2?.valeur !== null && brut.niveau2?.valeur !== undefined
+    ? Number(brut.niveau2.valeur)
+    : null
+
+  //  Le repli (réglage d'entreprise) ne s'applique QUE si la table versionnée
+  //  ne porte aucune valeur — exactement la règle de `seuilsAlerteHebdo`.
+  const seuil = valeurSeuil !== null ? valeurSeuil : (Number(seuilsFixes.seuil) || null)
+  const seuilMajeur = valeurSeuil !== null
+    ? valeurNiveau2
+    : (Number(seuilsFixes.seuilMajeur) || null)
+
+  const activeVersionnee = brut.activation?.active
+  const alerteActivee = activeVersionnee === true
+    || (activeVersionnee === null || activeVersionnee === undefined
+      ? seuilsFixes.alerteActivee === true
+      : false)
+
+  const source = brut.seuil?.origine === 'aucune' || brut.seuil?.origine === undefined
+    ? (seuilsFixes.source || 'entreprise')
+    : brut.seuil.origine
+
+  //  ⚠️ B — UN SEUIL PROPOSÉ N'EST PAS UN SEUIL APPLIQUÉ.
+  //
+  //  Le réglage d'entreprise fusionne toujours les défauts du produit : sans
+  //  aucune ligne enregistrée, `weekly_threshold` vaut 48. Cette valeur sert à
+  //  PRÉ-REMPLIR un formulaire — elle ne doit jamais servir à comparer des
+  //  heures. Avant ce correctif, une alerte cochée sans seuil enregistré
+  //  produisait un dépassement « contre 48 h » qu'aucun humain n'avait choisi.
+  //
+  //  D'où vient la preuve qu'un seuil a été CHOISI ? De la TABLE VERSIONNÉE.
+  //
+  //  `brut.seuil.valeur` n'est non nul que si une version existe pour ce lundi
+  //  (`normaliserResolution` ramène `null` quand aucune ligne n'est résolue).
+  //  Une version, c'est un acte daté : quelqu'un l'a écrite, on sait quand.
+  //
+  //  À l'inverse, le repli sur le réglage d'entreprise (`seuilsFixes`) est
+  //  TOUJOURS servi, même sans aucune ligne : `getOvertimeSettingsAvecOrigine`
+  //  fusionne les défauts du produit (`weekly_threshold: 48`). Ce repli ne
+  //  prouve donc rien par lui-même. `origineEnregistree` le qualifie :
+  //  `defaut_produit`, `historique_incertain` et `inconnue` disent toutes
+  //  qu'aucune décision n'est établie — une valeur identique à un défaut du
+  //  produit ne prouve rien, c'est exactement ce que `historique_incertain`
+  //  signifie.
+  //
+  //  ⚠️ On ne teste PAS `brut.seuil.origine` : elle vaut `'aucune'` quand la
+  //  table ne rend rien, mais un appelant peut fournir une version sans ce
+  //  champ. La VALEUR est le fait ; l'étiquette n'en est qu'un commentaire.
+  const seuilVientDeLaTable = valeurSeuil !== null
+  const provenance = String(seuilsFixes.origineEnregistree || 'inconnue')
+  const provenanceEtablie = provenance === 'entreprise' || provenance === 'employe'
+  const seuilChoisi = seuilVientDeLaTable || provenanceEtablie
+
+  //  Aucun seuil choisi : la semaine n'est pas évaluée. `disponible: false`
+  //  n'est pas un silence — c'est le constat qu'aucune comparaison n'est
+  //  possible, et le motif le dit.
+  //
+  //  ⚠️ Le motif nomme la VRAIE raison. `defaut_produit` (la valeur n'existe
+  //  qu'en mémoire), `historique_incertain` (une valeur égale à un défaut connu
+  //  a pu être écrite sans décision) et `inconnue` ne se corrigent pas de la
+  //  même façon : annoncer « défaut du produit » à un client dont la ligne
+  //  existe mais n'est pas qualifiable l'enverrait chercher au mauvais endroit.
+  if (!seuilChoisi) {
+    const motif = provenance === 'defaut_produit'
+      ? 'aucun seuil hebdomadaire choisi : seule la valeur par défaut du produit existe, elle ne sert pas à comparer'
+      : provenance === 'historique_incertain'
+        ? 'seuil hebdomadaire non confirmé : sa valeur est celle d’un défaut connu, aucun humain ne l’a validée'
+        : 'seuil hebdomadaire introuvable ou illisible : aucun seuil n’a pu être établi'
+    return {
+      cle: `sans_seuil:${lundi ?? 'inconnu'}`,
+      disponible: false,
+      motif,
+      lundi: lundi ?? null,
+      seuil: null,
+      seuilMajeur: null,
+      source: provenance,
+    }
+  }
+
+  //  Un seuil nul alors qu'une valeur a été choisie : il n'y a rien à comparer.
+  //  Le motif le dit — sans confondre ce cas avec « aucun seuil choisi ».
+  //  L'alerte désactivée est un cas VOULU : le seuil existe, c'est la
+  //  comparaison qui n'a pas lieu. Elle garde son motif connu.
+  if (seuil === null) {
+    return {
+      cle: `sans_seuil:${lundi ?? 'inconnu'}`,
+      disponible: false,
+      motif: 'aucun seuil hebdomadaire valide enregistré : la semaine n’est pas évaluée',
+      lundi: lundi ?? null,
+      seuil: null,
+      seuilMajeur: null,
+      source: provenance,
+    }
+  }
+
+  return {
+    cle: `${seuil}|${seuilMajeur}|${alerteActivee}|${source}`,
+    disponible: true,
+    motif: null,
+    lundi: lundi ?? null,
+    seuil: alerteActivee ? seuil : null,
+    seuilMajeur: alerteActivee ? seuilMajeur : null,
+    source,
+  }
+}
+
 export function seuilsAlerteHebdo(reglageHebdo, reglesAlerte = null) {
   const settings = reglageHebdo?.settings || null
   const origineEnregistree = reglageHebdo?.provenance?.origine || 'inconnue'
@@ -1640,6 +2007,46 @@ async function loadOvertimeContext(enterpriseId) {
 async function activationAlerteRegle(entrepriseId) {
   const etat = await encheckActivationAlerte({ entrepriseId })
   return etat && etat.active !== null ? etat : null
+}
+
+/**
+ * Les règles d'alerte, résolues POUR UN EMPLOYÉ ET POUR DES LUNDIS.
+ *
+ * ⚠️ Décision du fondateur (option 3) : chaque semaine se lit avec la règle en
+ * vigueur LE LUNDI de cette semaine. On interroge donc la RPC datée, lundi par
+ * lundi, au lieu d'une résolution unique « aujourd'hui ».
+ *
+ * Pourquoi la RPC datée plutôt qu'un filtrage des versions côté JS : la
+ * PRIORITÉ d'une règle personnelle VERROUILLÉE sur celle de l'entreprise est
+ * tranchée par Postgres (`encheck_regles_tt_personnelle_verrouillee`). La
+ * refaire en JS, c'est prendre le risque de deux vérités. On lui pose donc la
+ * question à la bonne date, avec le bon employé.
+ *
+ * @param {string} entrepriseId
+ * @param {string|null} employeId
+ * @param {string[]} lundis  dates 'AAAA-MM-JJ', une par semaine à évaluer
+ * @returns {Promise<Map<string, object>>} lundi → règles applicables
+ */
+async function chargerReglesAlerteParSemaine(entrepriseId, employeId, lundis = []) {
+  const dates = [...new Set((lundis || []).filter(Boolean))].sort()
+  if (dates.length === 0) return new Map()
+
+  const resultats = await Promise.all(
+    dates.map(async (date) => {
+      try {
+        const [seuil, niveau2, activation] = await Promise.all([
+          resoudreRegleTemps({ entrepriseId, employeId, cle: 'alerte_hebdo_heures', date }),
+          resoudreRegleTemps({ entrepriseId, employeId, cle: 'alerte_hebdo_niveau2_heures', date }),
+          encheckActivationAlerte({ entrepriseId, date }).catch(() => null),
+        ])
+        return [date, { seuil, niveau2, activation }]
+      } catch {
+        return [date, null]
+      }
+    }),
+  )
+
+  return new Map(resultats)
 }
 
 async function chargerReglesAlerte(entrepriseId) {
@@ -2047,6 +2454,19 @@ function generateAlerts({ today, month, year, hasPlan, seuils, feries }) {
     alerts.push({ type: 'warning', message: `${month.openSessionsCount} session(s) ouverte(s) sur la période (auto-close plafonné)` })
   }
 
+  //  ⚠️ Fait établi ≠ estimation. Un mois dont une partie des heures vient
+  //  d'une sortie PRÉSUMÉE doit le dire : sans ce message, 8 h badgées et 8 h
+  //  inventées se lisent exactement pareil.
+  const presumees = Number(month?.presumed_seconds) || 0
+  if (presumees > 0) {
+    const heures = Math.round((presumees / 3600) * 100) / 100
+    alerts.push({
+      type: 'info',
+      message: `${heures} h de ce mois proviennent d’une sortie présumée (aucun badgeage) — `
+        + 'à confirmer avant paie. Elles ne sont pas un fait établi.',
+    })
+  }
+
   if (month?.anomalies?.length > 0) {
     const plafonnees = month.anomalies.filter(a => a.type === 'session_plafonnee').length
     const detail = plafonnees > 0 ? ` dont ${plafonnees} session(s) plafonnée(s)` : ''
@@ -2200,6 +2620,9 @@ function makeEmptyDaySummary(dateStr) {
     openSessionsCount: 0,
     hasAutoCloseVirtual: false,
     hasAutoClosedOut: false,
+    //  La part des secondes qui vient d'une ESTIMATION, pas d'un badgeage.
+    //  Déclarée ici pour que l'agrégat du mois puisse la séparer sans deviner.
+    totalSecondesPresumes: 0,
     entries: [],
     //  ⚠️ B — un pointage réparé sans trace est invisible à l'inspection.
     //  Chaque réparation laisse une ligne ici, au lieu d'un silence.

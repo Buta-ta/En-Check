@@ -66,8 +66,14 @@ describe('Un contrôle NON fait s’explique, il ne se tait pas', () => {
   it('un motif inconnu ne devient jamais rassurant', () => {
     const e = pourquoiControleIndisponible(nonEvalue(''))
     expect(e.etiquette).toBe(ETIQUETTE_INDISPONIBLE)
-    expect(e.raison).toBe(RAISONS_INDISPONIBLE.aucun_seuil)
     expect(e.raison).not.toMatch(/conforme/)
+    //  ⚠️ Et il ne NOMME pas une cause qu'il ignore. Avant, il répondait
+    //  « Aucun seuil hebdomadaire choisi » alors qu'il n'en savait rien : sur
+    //  un serveur sans migration, un seuil de 45 h enregistré était annoncé
+    //  absent. Le motif inconnu dit désormais qu'aucun verdict n'a pu être
+    //  rendu, ce qui est exactement ce que l'on sait.
+    expect(e.raison).toBe(RAISONS_INDISPONIBLE.regle_sans_verdict)
+    expect(e.raison).not.toMatch(/Aucun seuil/)
   })
 
   it('aucune des raisons ne prétend à une conformité', () => {
