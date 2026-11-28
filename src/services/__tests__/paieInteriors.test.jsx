@@ -35,8 +35,14 @@ it('boucle au clavier entre le premier et le dernier contrôle', async () => {
   vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{ width: 30, height: 30 }])
   await render(<PaieDrawer title="Test" onClose={() => {}}><button>Premier</button><button>Dernier</button></PaieDrawer>)
   const buttons = document.querySelectorAll('.pw-drawer button')
-  buttons[1].focus(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })); expect(document.activeElement).toBe(buttons[0])
-  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })); expect(document.activeElement).toBe(buttons[1])
+  //  Le bouton de fermeture de la tête (02/12) est le PREMIER de la boucle :
+  //  la feuille s'ouvre sur son titre, et le bouton qui la referme est à
+  //  côté. Sans lui, sur téléphone, on ne pouvait fermer qu'en visant le
+  //  fond. La boucle part donc de lui et revient à lui.
+  expect(buttons[0].className).toContain('pw-drawer-fermer')
+  const dernier = buttons[buttons.length - 1]
+  dernier.focus(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })); expect(document.activeElement).toBe(buttons[0])
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })); expect(document.activeElement).toBe(dernier)
 })
 it('conserve le payload de la tranche et fournit un exemple', async () => {
   const save = vi.fn()
@@ -75,4 +81,34 @@ it('annonce le chargement avec une illustration décorative et sans dialogue blo
   expect(host.querySelector('[role="status"]').textContent).toContain('Chargement fiscal');
   expect(host.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
   expect(host.querySelector('[role="dialog"]')).toBeNull();
+})
+
+it('s’ouvre au MILIEU, pas collé sur le côté', async () => {
+  await render(<PaieDrawer title="Prime récurrente" onClose={() => {}}><button>Enregistrer</button></PaieDrawer>)
+  const voile = document.querySelector('.pw-drawer-layer')
+  const feuille = document.querySelector('.pw-drawer')
+
+  //  LE DÉFAUT DU 02/12 : la feuille était `justify-content: flex-end`, donc
+  //  collée au bord droit sur toute la hauteur de l'écran.
+  //
+  //  jsdom ne calcule pas la feuille de style : ces deux règles sont lues
+  //  dans le fichier CSS, comme le fait déjà le test de charte pour les
+  //  couleurs. Ce qui est vérifié ici est la RÈGLE, pas son rendu.
+  const { readFileSync } = await import('node:fs')
+  const css = readFileSync('src/components/PaieInteriors.css', 'utf8')
+
+  //  le voile centre ses enfants, dans les deux axes
+  expect(css).toMatch(/\.pw-drawer-layer \{[^}]*justify-content: center/)
+  expect(css).toMatch(/\.pw-drawer-layer \{[^}]*align-items: center/)
+  //  et il ne reste AUCUN collage à droite sur ce voile
+  expect(css).not.toMatch(/\.pw-drawer-layer \{[^}]*justify-content: flex-end/)
+
+  //  la feuille ne prend plus toute la hauteur : elle prend SA hauteur
+  expect(css).not.toMatch(/\.pw-drawer \{[^}]*height: 100%/)
+  expect(css).toMatch(/\.pw-drawer \{[^}]*max-height: calc\(100dvh - 48px\)/)
+
+  //  et le DOM porte bien la peau et le titre
+  expect(voile.className).toContain('pw-drawer-layer')
+  expect(feuille.className).toContain('pw-drawer')
+  expect(document.querySelector('.pw-drawer-titre').textContent).toBe('Prime récurrente')
 })
