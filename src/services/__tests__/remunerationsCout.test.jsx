@@ -74,7 +74,8 @@ const { etat, appels, toasts } = vi.hoisted(() => ({
   toasts: [],
 }))
 
-const SOCIETE = { id: 'ent1', name: 'Kandi SARL', code: 'KANDI', currency: 'XOF', country_code: 'BJ' }
+const LOGO = 'https://demo.supabase.co/storage/v1/object/public/logos/kandi.png'
+const SOCIETE = { id: 'ent1', name: 'Kandi SARL', code: 'KANDI', currency: 'XOF', country_code: 'BJ', logo_url: LOGO }
 
 const EMPLOYES = [
   { id: 'e1', first_name: 'Kossi', last_name: 'ALABI', matricule: 'E-001', position: 'Chauffeur', department: 'Logistique', contract_type: 'CDI' },
@@ -707,5 +708,115 @@ describe('3. le ton reste professionnel dans la vue coût', () => {
     for (const selecteur of ['.rw-cellule', '.rw-total-bloc', '.rw-part-legende', '.rw-jauge-legende']) {
       expect(regle(selecteur), selecteur).not.toContain('opacity')
     }
+  })
+})
+// ═══════════════════════════════════════════════════════════
+// 4. LE LOGO DE L'ENTREPRISE SIGNE LA PAGE
+//     28/11 : « fais apparaître l'image profil de l'entreprise partout où
+//     l'icône de l'entreprise apparaît dans cette page ». Deux endroits
+//     portaient un `Building2` générique — le cartouche du haut et la rangée
+//     « Entreprise » du seuil. La loi est jouée SUR LE DOMINULE rendu, pas
+//     sur le texte de la source : un composant importé qui ne monte pas ne
+//     signe rien.
+// ═══════════════════════════════════════════════════════════
+describe('4. le logo de l’entreprise signe la page', () => {
+  let hote
+  let racine
+
+  const monter = async (adresse = '/remunerations') => {
+    hote = document.createElement('div')
+    document.body.append(hote)
+    racine = createRoot(hote)
+    await act(async () => {
+      racine.render(
+        <MemoryRouter initialEntries={[adresse]}><Remunerations /></MemoryRouter>
+      )
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600)
+    })
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem('admin', JSON.stringify({ role: 'super_admin' }))
+    etat.profils = profilsDeBase()
+    etat.lignes = []
+    etat.pointages = [{ mois: `${MOIS_PRECEDENT}-01`, nb_pointages: 12 }]
+    etat.projection = null
+    etat.budget = null
+    etat.cotisations = 0
+    etat.erreurPeriode = null
+    etat.erreurProjection = false
+    etat.lent = false
+    SOCIETE.logo_url = LOGO
+  })
+
+  afterEach(async () => {
+    if (racine) await act(async () => racine.unmount())
+    hote?.remove()
+    racine = null
+    vi.useRealTimers()
+  })
+
+  it('les deux icônes portent l’image, à leur cote à chacun', async () => {
+    await monter()
+    const pastilles = [...hote.querySelectorAll('.paie-pastille-entreprise')]
+    expect(pastilles, 'la page ne connaît que deux icônes d’entreprise')
+      .toHaveLength(2)
+    //  le cartouche du haut, dans le `select` d'entreprise, et la rangée du
+    //  seuil — pas trois, pas une seule
+    expect(hote.querySelector('.rw-entreprise .paie-pastille-entreprise')).not.toBeNull()
+    expect(hote.querySelector('.rw-seuil-item .paie-pastille-entreprise')).not.toBeNull()
+    expect(hote.querySelectorAll('.rw-seuil .paie-pastille-entreprise')).toHaveLength(1)
+    //  et la cote suit le lieu : 20 px dans le cartouche, 16 px dans la
+    //  rangée — le composant ne décide pas de la taille, la page si
+    expect(pastilles[0].style.width).toBe('20px')
+    expect(pastilles[0].style.height).toBe('20px')
+    expect(pastilles[1].style.width).toBe('16px')
+    expect(pastilles[1].style.height).toBe('16px')
+  })
+
+  it('l’image est bien celle de l’entreprise ouverte, et muette', async () => {
+    await monter()
+    const imgs = [...hote.querySelectorAll('.paie-pastille-entreprise img')]
+    expect(imgs, 'une image par icône').toHaveLength(2)
+    for (const img of imgs) {
+      expect(img.getAttribute('src')).toBe(LOGO)
+      //  l'image est DÉCORATIVE : le nom est écrit à côté, un `alt` le
+      //  ferait lire deux fois par un lecteur d'écran
+      expect(img.getAttribute('alt')).toBe('')
+    }
+  })
+
+  it('sans logo, c’est l’immeuble qui tient la place — jamais un rond vide', async () => {
+    SOCIETE.logo_url = null
+    await monter()
+    const pastilles = [...hote.querySelectorAll('.paie-pastille-entreprise')]
+    expect(pastilles).toHaveLength(2)
+    for (const p of pastilles) {
+      expect(p.querySelector('img'), 'pas d’image à montrer').toBeNull()
+      expect(p.querySelector('svg'), 'le repli doit être l’icône d’avant, '
+        + 'et pas une lettre inventée dans une page qui n’en a jamais eu')
+        .not.toBeNull()
+    }
+    SOCIETE.logo_url = LOGO
+  })
+
+  it('la page ne se refait pas un chargeur d’image', () => {
+    //  la signature de l'adresse, le cache, le repli sur erreur : tout est
+    //  dans `PhotoSignee`, via `PastilleEntreprise`. Une page qui reprendrait
+    //  `createSignedUrl` aurait deux règles de rafraîchissement à caler.
+    expect(PAGE).not.toMatch(/createSignedUrl|adresseSignee|PhotoSignee/)
+    expect(PAGE).not.toMatch(/function PastilleEntreprise|const PastilleEntreprise/)
+    expect(PAGE).toContain("import PastilleEntreprise from '../components/paie/PastilleEntreprise'")
+    //  et la page ne peaufine pas le rond dans son coin : la feuille ne
+    //  re-stylle PAS le composant partagé. (`pastille` se rencontre déjà dans
+    //  la feuille, pour les filtres ronds — la loi porte donc sur la classe du
+    //  composant, pas sur le mot.)
+    const DECL4 = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(DECL4, 'le rond est dessiné par le composant, pas par la page')
+      .not.toMatch(/paie-pastille-entreprise|object-fit/)
   })
 })

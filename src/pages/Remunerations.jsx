@@ -63,6 +63,7 @@ import SidebarUnique from '../components/SidebarUnique'
 import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import { useTheme } from '../contexts/ThemeContext'
 import RemunerationsLoading from '../components/RemunerationsLoading'
+import PastilleEntreprise from '../components/paie/PastilleEntreprise'
 import {
   BogolanMedaillonSvg, BogolanTeinture, BogolanLosangeSvg, BogolanPanSvg,
 } from '../components/RemunerationsBogolan'
@@ -329,9 +330,14 @@ export default function Remunerations() {
     setLoading(true)
 
     const [resEnt, resEmp, resProf] = await Promise.all([
+      /*  `logo_url` ici aussi. La liste du rail la porte déjà (`chargerEntreprises`),
+          mais elle est VIDE pour un compte qui n'est pas `super_admin` : sans
+          cette colonne dans LA requête de l'entreprise ouverte, la pastille n'a
+          rien à signer et retombe sur l'immeuble — la panne du 26/11, jouée à
+          l'envers. C'est cette ligne qui décide, pour tout le monde. */
       supabase
         .from('enterprises')
-        .select('id, name, code, currency, country_code')
+        .select('id, name, code, currency, country_code, logo_url')
         .eq('id', entId)
         .maybeSingle(),
       supabase
@@ -946,6 +952,22 @@ export default function Remunerations() {
       second chemin, et la réponse en retard de l'entreprise quittée écrirait
       sur la nouvelle. */
   const entrepriseActive = societes.find(e => e.id === selectedEntId) || null
+  /*  L'ASSIETTE DU LOGO — les deux icônes de l'entreprise de la page lisent
+      ICI, jamais leur propre source. Deux objets savaient le nom de
+      l'entreprise : `societes` (le rail, à jour au clic) et `entreprise` (la
+      ligne posée par `chargerTout`, en retard d'une requête). Le logo étant
+      dans les deux, la pastille les superpose : la liste du rail par-dessus,
+      parce qu'elle suit le clic ; la ligne chargée dessous, parce qu'elle
+      porte la devise et le pays.
+
+      ⚠️ Le `entreprise?.id === selectedEntId` n'est pas un ornement : sans
+      lui, entre le clic et la réponse, la page signerait le logo de
+      l'entreprise QU'ELLE VIENT DE QUITTER sur le nom de celle qu'elle
+      rejoint. Même leçon qu'à `surEntreprise`, à l'envers. */
+  const entrepriseSignee = {
+    ...(entreprise?.id === selectedEntId ? entreprise : null),
+    ...(entrepriseActive || null),
+  }
   const surEntreprise = (choix) => {
     const id = typeof choix === 'string' ? choix : choix?.id || null
     if (id === selectedEntId) return
@@ -1015,7 +1037,13 @@ export default function Remunerations() {
           <div className="rw-entete-droite">
             {estSuperAdmin && societes.length > 0 && (
               <div className="rw-entreprise">
-                <Building2 size={14} aria-hidden="true" />
+                {/*  l'image de profil de l'entreprise OUVERTE, à la place de
+                    l'immeuble générique. Le repli reste l'immeuble : sans logo
+                    en base, la page ne se déshabille pas et ne montre jamais
+                    un rond vide — c'est `PastilleEntreprise` qui le tient, la
+                    même fabrique que le rail et que les fiches de paie. */}
+                <PastilleEntreprise entreprise={entrepriseSignee} taille={20}
+                  icone={<Building2 size={14} aria-hidden="true" />} />
                 <select
                   value={selectedEntId || ''}
                   onChange={e => setSelectedEntId(e.target.value || null)}
@@ -1073,7 +1101,11 @@ export default function Remunerations() {
             <div className="rw-seuil-item">
               <span className="rw-seuil-libelle">Entreprise</span>
               <span className="rw-seuil-valeur">
-                <Building2 size={12} aria-hidden="true" />
+                {/*  le même logo, à la cote de la rangée : 16 px pour un corps
+                    de 14. Deux icônes de la même entreprise, deux tailles :
+                    c'est le lieu qui décide, pas le composant. */}
+                <PastilleEntreprise entreprise={entrepriseSignee} taille={16}
+                  icone={<Building2 size={12} aria-hidden="true" />} />
                 {nomEntreprise}
               </span>
             </div>

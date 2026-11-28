@@ -1321,3 +1321,98 @@ describe('14. le bloc est collé en haut, le reste défile dessous', () => {
     expect(regle14(DECL14, '.rw-coque')).toMatch(/padding: [^}]*var\(--charte-espace-5\)/)
   })
 })
+
+// ═══════════════════════════════════════════════════════════
+// 15. LE LOGO DE L'ENTREPRISE, PARTOUT OÙ L'ICÔNE ÉTAIT
+//     28/11 : « fais apparaître l'image profil de l'entreprise partout où
+//     l'icône de l'entreprise apparaît dans cette page ». Ce que la page peut
+//     garantir seule : d'où vient l'adresse, que les DEUX icônes la lisent,
+//     qu'aucune ne s'habille d'un rond vide, et que le logo ne voyage pas
+//     d'une entreprise à l'autre pendant un changement. La fabrication du rond
+//     — signature, repli sur erreur, `object-fit` — appartient à
+//     `PastilleEntreprise` et à `PhotoSignee`, et c'est tant mieux : la page
+//     n'a pas le droit de la refaire.
+// ═══════════════════════════════════════════════════════════
+describe('15. le logo de l’entreprise remplace l’immeuble, aux deux icônes', () => {
+  const APPELS = [...PAGE.matchAll(/<PastilleEntreprise[\s\S]*?\/>/g)].map(m => m[0])
+  //  la rangée du seuil, entre son libellé et le nom qu'elle signe
+  const rangee = () => {
+    const d = PAGE.indexOf('className="rw-seuil-libelle">Entreprise<')
+    return PAGE.slice(d, PAGE.indexOf('</div>', d))
+  }
+
+  it('deux icônes, deux pastilles, pas une troisième', () => {
+    expect(APPELS).toHaveLength(2)
+    //  l'immeuble n'est plus jamais posé seul : les deux `Building2` qui
+    //  restent sont des `icone=` de repli, à l'intérieur de la pastille
+    const batiments = [...PAGE.matchAll(/<Building2[^>]*\/>/g)].map(m => m[0])
+    expect(batiments, 'deux icônes, et seulement en repli').toHaveLength(2)
+    for (const b of batiments) {
+      expect(b, 'un immeuble qui ne serait le repli de rien : ' + b).toContain('aria-hidden')
+    }
+    for (const a of APPELS) {
+      expect(a, 'la pastille lit la source unique de la page').toContain('entreprise={entrepriseSignee}')
+      expect(a, 'et le repli est l’icône d’avant, pas une lettre').toMatch(/icone=\{<Building2/)
+      //  l'image est décorative — le nom est écrit à côté, un `alt` le ferait
+      //  lire deux fois
+      expect(a, 'la page n’invente pas de nom accessible par-dessus le texte').not.toMatch(/\balt=/)
+    }
+    //  la cote vient du lieu : le cartouche du haut est plus grand que la
+    //  rangée du seuil, et c'est écrit à l'appel, pas dans un style
+    expect(APPELS[0]).toMatch(/taille=\{20\}/)
+    expect(APPELS[1]).toMatch(/taille=\{16\}/)
+    expect(rangee()).toContain('taille={16}')
+  })
+
+  it('la colonne est lue par les DEUX requêtes qui peuvent répondre', () => {
+    //  le rail (`chargerEntreprises`) la porte depuis la panne du 26/11 ;
+    //  `chargerTout` est la requête de L'ENTREPRISE OUVERTE, la seule qui
+    //  réponde aussi à un compte qui n'est pas `super_admin`. Sans elle, la
+    //  page n'a de logo que pour les super-administrateurs.
+    const rail = PAGE.indexOf('const chargerEntreprises')
+    const liste = PAGE.slice(rail, PAGE.indexOf('setSocietes(data', rail))
+    expect(liste).toContain(".select('id, name, code, logo_url')")
+    const tout = PAGE.indexOf('const chargerTout')
+    const courante = PAGE.slice(tout, PAGE.indexOf('.maybeSingle()', tout))
+    expect(courante).toContain(".select('id, name, code, currency, country_code, logo_url')")
+    //  et ce sont bien DEUX `select` qui portent la colonne — pas une écriture
+    //  unique que les deux appels croiraient lire
+    const avecLogo = [...PAGE.matchAll(/\.select\('([^']*)'\)/g)]
+      .filter(m => m[1].includes('logo_url')).map(m => m[1])
+    expect(avecLogo, 'les deux requêtes, dans l’ordre de la page').toEqual([
+      'id, name, code, logo_url',
+      'id, name, code, currency, country_code, logo_url',
+    ])
+  })
+
+  it('le logo ne traverse pas d’une entreprise à l’autre', () => {
+    //  `entrepriseSignee` est le SEUL objet que les icônes lisent, et il est
+    //  borné par l'identifiant : la ligne chargée pour l'entreprise quittée
+    //  est écartée tant que `selectedEntId` ne la désigne plus
+    const d = PAGE.indexOf('const entrepriseSignee')
+    expect(d).toBeGreaterThan(-1)
+    const corps = PAGE.slice(d, PAGE.indexOf('\n  }', d))
+    expect(corps).toContain('entreprise?.id === selectedEntId ? entreprise : null')
+    expect(corps).toContain('...(entrepriseActive || null)')
+    //  et la liste du rail passe DESSOUS dans la superposition : c'est elle
+    //  qui suit le clic, la ligne chargée est en retard d'une requête
+    expect(corps.indexOf('entreprise : null')).toBeLessThan(corps.indexOf('entrepriseActive'))
+    expect(PAGE.match(/const entrepriseSignee/g)).toHaveLength(1)
+  })
+
+  it('la page ne se refait pas un chargeur d’image', () => {
+    //  signer, cacher, retomber sur l'initiale : c'est `PhotoSignee`, le même
+    //  que les avatars. Une page qui reprendrait `adresseSignee` aurait deux
+    //  règles de cache à caler l'une contre l'autre.
+    expect(PAGE).not.toMatch(/createSignedUrl|adresseSignee|PhotoSignee/)
+    expect(PAGE).not.toMatch(/function PastilleEntreprise|const PastilleEntreprise/)
+    expect(PAGE).toContain("import PastilleEntreprise from '../components/paie/PastilleEntreprise'")
+    //  le composant est celui de la maison, importé comme à `FichesPaie` et à
+    //  `PaieFiscalite` — pas un copié-collé local qui divergerait
+    const commun = readFileSync('src/components/paie/PastilleEntreprise.jsx', 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(commun).toContain('const logo = entreprise?.logo_url')
+    expect(commun).toMatch(/if \(logo\) \{/)
+    expect(commun).toContain('fallback={repli}')
+  })
+})
