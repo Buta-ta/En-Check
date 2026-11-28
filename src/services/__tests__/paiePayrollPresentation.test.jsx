@@ -6,7 +6,7 @@ const mock = vi.hoisted(() => ({ pages: [], calls: [], dark: false }))
 vi.mock('../../contexts/ThemeContext', () => ({ useTheme: () => ({ darkMode: mock.dark }) }))
 vi.mock('../../lib/supabase', () => ({ supabase: { from(table) {
   const call = { table }; mock.calls.push(call)
-  return { select() { return this }, eq(key, value) { call[key] = value; return this }, gte(key, value) { call[`gte_${key}`] = value; return this }, lt(key, value) { call[`lt_${key}`] = value; return this }, or() { return this }, order() { return this }, range(a, b) { call.range = [a, b]; return this }, abortSignal() { return Promise.resolve(mock.pages.shift() || { data: [], error: null }) } }
+  return { select() { return this }, eq(key, value) { call[key] = value; return this }, gte(key, value) { call[`gte_${key}`] = value; return this }, lt(key, value) { call[`lt_${key}`] = value; return this }, not(key, op, value) { call[`not_${key}`] = [op, value]; return this }, or() { return this }, order(key, options) { call.order = [key, options]; return this }, limit(value) { call.limit = value; return this }, range(a, b) { call.range = [a, b]; return this }, abortSignal() { return Promise.resolve(mock.pages.shift() || { data: [], error: null }) } }
 } } }))
 import { FieldHelp } from '../../components/PaieFiscalChamps'
 import PaiePayrollChart, { payrollMonths, aggregatePayroll } from '../../components/PaiePayrollChart'
@@ -48,27 +48,44 @@ it('aide lisible au clic et fermable à Échap en clair et sombre', async () => 
     expect(host.querySelector('.pw-field-explanation')).toBeNull()
   }
 })
-it('pagine et filtre explicitement l’entreprise et la devise', async () => {
-  mock.pages = [{ data: Array.from({ length: 500 }, (_, i) => slip({ id: String(i) })) }, { data: [slip({ id: 'last' })] }]
-  await render(<PaiePayrollChart enterpriseId="entreprise-a" currency="XOF" end="2026-10-31"/>)
-  expect(mock.calls).toHaveLength(2); expect(mock.calls[0]).toMatchObject({ enterprise_id: 'entreprise-a', currency: 'XOF', range: [0,499] }); expect(mock.calls[1].range).toEqual([500,999])
+it('ancre l’historique au dernier bulletin et pagine les données de l’entreprise et devise choisies', async () => {
+  mock.pages = [{ data: [{ period_start: '2026-10-01' }] }, { data: Array.from({ length: 500 }, (_, i) => slip({ id: String(i) })) }, { data: [slip({ id: 'last' })] }]
+  await render(<PaiePayrollChart enterpriseId="entreprise-a" currency="XOF"/>)
+  expect(mock.calls).toHaveLength(3)
+  expect(mock.calls[0]).toMatchObject({ enterprise_id: 'entreprise-a', currency: 'XOF', limit: 1, order: ['period_start', { ascending: false }] })
+  expect(mock.calls[1]).toMatchObject({ enterprise_id: 'entreprise-a', currency: 'XOF', gte_period_start: '2026-05-01', lt_period_start: '2026-11-01', range: [0,499] })
+  expect(mock.calls[2].range).toEqual([500,999])
   expect(host.textContent).toContain('501 bulletins')
 })
-it('la période d’historique est sélectionnable et recharge la bonne plage', async () => {
-  await render(<PaiePayrollChart enterpriseId="entreprise-a" currency="XOF" end="2026-10-31"/>)
-  expect(host.textContent).toContain('6 mois')
-  expect(mock.calls[0]).toMatchObject({ gte_period_start: '2026-05-01', lt_period_start: '2026-11-01' })
+it('la période d’historique est sélectionnable et recharge la bonne plage depuis le dernier bulletin', async () => {
+  mock.pages = [
+    { data: [{ period_start: '2026-10-01' }] }, { data: [slip({ period_start: '2026-10-01' })] },
+    { data: [{ period_start: '2026-10-01' }] }, { data: [slip({ period_start: '2026-10-01' })] },
+  ]
+  await render(<PaiePayrollChart enterpriseId="entreprise-a" currency="XOF"/>)
+  expect(host.textContent).toContain('6 mois jusqu’au mois du bulletin le plus récent')
+  expect(mock.calls[1]).toMatchObject({ gte_period_start: '2026-05-01', lt_period_start: '2026-11-01' })
   const select = host.querySelector('[aria-label="Période de l’historique"]')
   expect([...select.options].map(option => option.value)).toEqual(['1','2','3','6','8','12'])
   await act(async () => { select.value = '12'; select.dispatchEvent(new Event('change', { bubbles: true })) })
-  expect(host.textContent).toContain('12 mois')
+  expect(host.textContent).toContain('12 mois jusqu’au mois du bulletin le plus récent')
   expect(mock.calls.at(-1)).toMatchObject({ gte_period_start: '2025-11-01', lt_period_start: '2026-11-01' })
+})
+it('recharge l’historique après publication, même pour des salariés déjà envoyés', async () => {
+  mock.pages = [{ data: [] }]
+  await render(<PaiePayrollChart enterpriseId="entreprise-a" currency="XOF" revision={0}/> )
+  expect(host.textContent).toContain('Aucun bulletin publié trouvé')
+  mock.pages = [{ data: [{ period_start: '2026-10-01' }] }, { data: [slip({ period_start: '2026-10-01' })] }]
+  await render(<PaiePayrollChart enterpriseId="entreprise-a" currency="XOF" revision={1}/> )
+  expect(mock.calls).toHaveLength(3)
+  expect(host.textContent).toContain('100 000 XOF')
+  expect(host.textContent).toContain('1 bulletin')
 })
 it('une erreur réseau donne une erreur et un bouton de reprise, pas une masse nulle', async () => {
   mock.pages = [{ data: null, error: { message: 'indisponible' } }]
   await render(<PaiePayrollChart enterpriseId="a" currency="XOF" end="2026-10-31"/>)
   expect(host.querySelector('[role="alert"]')).not.toBeNull(); expect(host.querySelector('.pw-payroll-total')).toBeNull()
-  await act(async () => host.querySelector('button').click()); expect(host.textContent).toContain('Aucun bulletin enregistré')
+  await act(async () => host.querySelector('button').click()); expect(host.textContent).toContain('Aucun bulletin publié trouvé')
 })
 it('ne lance pas de requête sans entreprise ou sans devise', async () => {
   await render(<PaiePayrollChart enterpriseId="" currency="" end="2026-10-31"/>); expect(mock.calls).toHaveLength(0)

@@ -133,6 +133,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
   const [savingImport, setSavingImport] = useState(false)
 
   const [sendingSlips, setSendingSlips] = useState(false)
+  const [publishedRevision, setPublishedRevision] = useState(0)
   // Payé n'est pas envoyé : le hook tient les deux marques.
   const { sentSlips, paidSlips, paiementConnu, recharger: loadSentSlips, marquerEnvoyees, retirerEnvoyee, setPaiement } = usePaiementsFiches()
 
@@ -749,6 +750,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
         isCurrent: () => request === generationRequest.current,
       })
       marquerEnvoyees(ids)
+      setPublishedRevision(revision => revision + 1)
       const text = `${ids.length} fiche(s) ${options.automatic ? 'envoyée(s) automatiquement' : 'envoyée(s)'} dans les espaces salariés.`
       setDeliveryNotice({ error: false, text })
       toast.success(text)
@@ -905,6 +907,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   }, [previewRows, sentSlips, paidSlips])
 
   const fmt = (amount) => PayrollService.formatMoney(amount, settings.currency)
+  const payrollCurrency = CurrencyService.resolveCurrency({ enterprise: enterpriseData, settings })
 
   // ═══════════════════════════════════════════════════════════
   // PRÉ-VALIDATION
@@ -1104,7 +1107,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           }
           {taxConfirmation && activeTab === 'preview' && <PaieTaxOverrideDialog rows={taxConfirmation.rows} periodStart={periodStart} periodEnd={periodEnd}
             onCancel={() => setTaxConfirmation(null)} onConfirm={() => { const pending = taxConfirmation; setTaxConfirmation(null); return deliverRows(pending.rows, { ...pending.options, taxOverride: { acknowledged: true, confirmedBy: admin?.id } }) }}/>}
-          {integre && activeTab === 'preparation' && <PaiePayrollChart key={`${enterpriseId}:${settings.currency}:${periodEnd}`} enterpriseId={enterpriseId} currency={settings.currency} end={periodEnd} revision={sentSlips.size}/>}
+          {integre && activeTab === 'preparation' && <PaiePayrollChart key={`${enterpriseId}:${payrollCurrency}`} enterpriseId={enterpriseId} currency={payrollCurrency} revision={publishedRevision}/>}
           {integre && activeTab === 'preparation' && <PaiePreparation
             employees={employees} profiles={profiles} previewRows={previewRows}
             currency={settings.currency} start={periodStart} end={periodEnd}
