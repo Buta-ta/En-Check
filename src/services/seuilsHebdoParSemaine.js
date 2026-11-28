@@ -19,6 +19,8 @@
 //  n'est modifié ici.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { getPartsLocaux, heureLocaleVersUTC, isValidTimezone } from '../utils/timezoneUtils'
+
 /**
  * Lundi (AAAA-MM-JJ) de la semaine contenant `jour`, exprimé dans `fuseau`.
  *
@@ -228,10 +230,105 @@ function memePalier(a, b) {
     && a.origineSeuil === b.origineSeuil
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  DATE D'EFFET D'UNE CONFIRMATION DE SEUIL — OPTION B0-a
+//
+//  Décision du fondateur : la borne est FIXE à 04:00 locale, indépendante de
+//  toute bascule. L'option « bascule d'entreprise » (B0-b) n'a pas été
+//  retenue : elle aurait fait dépendre un acte d'entreprise d'un réglage
+//  individuel, et il n'existe aucune bascule au niveau de l'entreprise.
+//
+//  LA RÈGLE, en trois lignes :
+//    jour_seuil = (heure locale < 04:00) ? jour_local - 1 : jour_local
+//    lundi      = lundi de la semaine contenant jour_seuil
+//    effet      = (instant == lundi 04:00 local) ? lundi : lundi suivant
+//
+//  ⚠️ CE QUE LE CODE DOIT À LA RÈGLE, et qui a été mesuré par les tests :
+//    · 03:59:59.999 un lundi -> 26/10 (et NON le lundi suivant) : la borne
+//      n'a pas sonné, on est encore le dimanche, dont le lundi suivant est
+//      le lundi courant ;
+//    · 04:00:00.000 pile   -> 26/10 ;
+//    · 04:00:00.001        -> 02/11 ;
+//    · minuit civil et 03:59:59.999 donnent le MÊME effet : la nuit forme
+//      un bloc continu jusqu'à la borne.
+//  La seule discontinuité est donc entre 04:00:00.000 et 04:00:00.001, et
+//  elle vaut une semaine. Elle est VOULUE : c'est la règle.
+//
+//  ⚠️ AUCUN REPLI SILENCIEUX : un fuseau absent ou invalide est REFUSÉ
+//  (`throw`), jamais remplacé par un défaut. `getPartsLocaux` et
+//  `heureLocaleVersUTC` retombent silencieusement sur le fuseau actif de
+//  l'application ; on ne les laisse donc pas décider à notre place.
+//
+//  ⚠️ Ce module ne prend AUCUNE bascule en paramètre : c'est le point de la
+//  décision B0-a. Une signature qui accepterait une bascule rouvrirait B0-b.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** L'heure de la borne, en minutes depuis minuit. Fixe. */
+export const BORNE_DATE_EFFET_MINUTES = 240 // 04:00
+
+/**
+ * Date d'effet d'une confirmation de seuil, au lundi.
+ *
+ * @param {string|Date} instant        l'instant de la confirmation
+ * @param {string} fuseau              fuseau de l'ENTREPRISE (obligatoire)
+ * @returns {string}                   'AAAA-MM-JJ' — toujours un lundi
+ * @throws {Error} si le fuseau est absent, vide ou inconnu
+ * @throws {Error} si l'instant est inexploitable
+ */
+export function dateEffetAuLundi(instant, fuseau) {
+  //  Refus explicite, avant tout calcul : aucun repli silencieux.
+  if (!fuseau || typeof fuseau !== 'string' || !fuseau.trim()) {
+    throw new Error('date d’effet : fuseau de l’entreprise absent — refus')
+  }
+  if (!isValidTimezone(fuseau)) {
+    throw new Error(`date d’effet : fuseau inconnu « ${fuseau} » — refus`)
+  }
+
+  const date = instant instanceof Date ? instant : new Date(instant)
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('date d’effet : instant inexploitable — refus')
+  }
+
+  //  Jour LOCAL et heure LOCALE, dans le fuseau de l'entreprise.
+  const p = getPartsLocaux(date, fuseau)
+  if (!p?.jourISO) {
+    throw new Error('date d’effet : jour local illisible — refus')
+  }
+
+  const minutes = p.heures * 60 + p.minutes
+
+  //  Avant la borne, on est encore la veille : c'est ce qui fait que
+  //  03:59:59.999 un lundi vise la semaine du DIMANCHE précédent.
+  let jourSeuil = p.jourISO
+  if (minutes < BORNE_DATE_EFFET_MINUTES) {
+    const d = new Date(`${p.jourISO}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - 1)
+    jourSeuil = d.toISOString().slice(0, 10)
+  }
+
+  const lundi = lundiDeLaSemaine(jourSeuil, fuseau)
+  if (!lundi) {
+    throw new Error('date d’effet : lundi de la semaine illisible — refus')
+  }
+
+  //  L'instant exact du début de cette semaine : lundi à 04:00 local.
+  const debutISO = heureLocaleVersUTC(lundi, 4, 0, 0, fuseau)
+  if (!debutISO) {
+    throw new Error('date d’effet : début de semaine illisible — refus')
+  }
+  const debut = new Date(debutISO).getTime()
+
+  //  Égalité stricte à la milliseconde : c'est la règle voulue. Après la
+  //  borne, la semaine a déjà commencé sans la nouvelle valeur, on attend.
+  return date.getTime() === debut ? lundi : lundiSuivant(lundi)
+}
+
 export default {
   lundiDeLaSemaine,
   lundiSuivant,
   choisirPalier,
   construirePaliers,
   regrouperParPalier,
+  dateEffetAuLundi,
+  BORNE_DATE_EFFET_MINUTES,
 }
