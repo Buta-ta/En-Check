@@ -35,3 +35,6 @@ essai-adms/config.json
 !essai-adms/config.example.json
 # Copies locales du dossier Drive (la source est sur Google Drive)
 /google_drive/
+
+# Les maquettes servent à choisir une direction, pas à livrer : elles restent hors dépôt.
+maquettes/

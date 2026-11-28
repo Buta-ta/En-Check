@@ -48,7 +48,9 @@ it('ne parle plus de « fiche à 0 » — ce sont des bulletins incomplets', asy
   //  n'ont ni impôt ni cotisations (le service retombe sur un bulletin
   //  marqué `impot_a_verifier`).
   expect(texte).not.toContain('fiche à 0')
-  expect(texte).toContain('4 profils salariaux manquent')
+  //  La phrase est celle du TITRE : le grand chiffre du carré est décoratif,
+  //  il se cumulerait avec celui que lit le lecteur d'écran.
+  expect(document.getElementById('pw-resume-titre').textContent).toContain('4 profils salariaux manquent')
   expect(texte).toContain('ne pourront pas être remis aux salariés')
   expect(texte).toContain('ni l’impôt ni les cotisations sociales')
 })
@@ -57,15 +59,17 @@ it('nomme chacun, et compte à part ceux qui sont prêts', async () => {
   await afficher()
   const lignes = [...document.querySelectorAll('li')]
   expect(lignes).toHaveLength(4)
-  expect(lignes.map((l) => l.textContent)).toEqual([
-    'RECETTE A—Aucun profil salarial',
-    'RECETTE B—Aucun profil salarial',
-    'Hector H—Aucun profil salarial',
-    'ya Ya—Aucun profil salarial',
+  //  Cartouche : le nom, le guide pointillé, puis le tampon « Incomplet ».
+  //  Le motif exact reste accessible par `title` — il ne se devine plus.
+  expect(lignes.map((l) => l.querySelector('strong').textContent)).toEqual([
+    'RECETTE A', 'RECETTE B', 'Hector H', 'ya Ya',
   ])
-  //  Le nom porte le poids, le motif porte la couleur : deux traitements
-  //  distincts là où la capture n'en montrait qu'un.
-  expect(lignes[0].querySelector('strong').textContent).toBe('RECETTE A')
+  lignes.forEach((l) => {
+    expect(l.textContent).toContain('Incomplet')
+    expect(l.querySelector('[title="Aucun profil salarial"]')).toBeTruthy()
+  })
+  //  Le nom porte le poids, le motif est une mention discrète : deux
+  //  traitements distincts là où la capture n'en montrait qu'un.
   expect(document.body.textContent).toContain('2 prêts')
 })
 
@@ -76,7 +80,8 @@ it('offre la réparation, et la met en avant', async () => {
   //  C'est le bouton PLEIN de la modale : celui qui répare, pas celui qui force.
   //  Il porte l'encre pleine, là où l'autre reste en papier contouré.
   expect(reparer.style.backgroundColor).toBe('var(--charte-encre)')
-  expect(reparer.style.color).toBe('var(--charte-blanc)')
+  //  Sur l'encre, le texte prend la surface : elle s'inverse avec le thème.
+  expect(reparer.style.color).toBe('var(--charte-surface)')
   await act(async () => reparer.click())
   expect(actions.onProfils).toHaveBeenCalledTimes(1)
 })
@@ -109,39 +114,39 @@ it('se ferme par Échap, par Annuler et par le fond — jamais par la boîte', a
   expect(actions.onFermer).not.toHaveBeenCalled()
 })
 
-it('se centre vraiment — sans rembourrage qui déplace, sans défilement qui glisse', async () => {
-  await afficher({ zoneHaute: 168, zoneBasse: 0 })
+it('se centre vraiment — sans `safe center`, sans rembourrage qui déplace', async () => {
+  await afficher()
   const fond = document.querySelector('.pw-resume-controles-fond')
 
-  //  LE DÉFAUT DE LA CAPTURE DU 28/11, verrouillé ici.
   //  `safe center` n'est pas reconnu sur `justify-content` : la déclaration
-  //  tombait et la fenêtre partait en haut à gauche.
+  //  tombait et la fenêtre partait en haut à gauche (capture du 28/11).
   expect(fond.style.justifyContent).toBe('center')
   expect(fond.style.alignItems).toBe('center')
 
-  //  Et le voile ne porte AUCUN rembourrage haut ou bas : c'est lui qui
-  //  poussait la fenêtre vers le bas dès que la boîte défilait.
-  expect(fond.style.paddingTop).toBe('')
-  expect(fond.style.paddingBottom).toBe('')
-  expect(fond.style.overflowY).toBe('')
+  //  Le rembourrage est symétrique et sert de marge de respiration ; aucun
+  //  rembourrage ASYMÉTRIQUE qui pousserait la fenêtre vers le bas.
+  expect(fond.style.padding).toBe('28px 24px')
 
-  //  Seul le rembourrage latéral demeure, pour ne pas toucher les bords.
-  expect(fond.style.paddingLeft).toBe('16px')
+  //  Si la fenêtre est plus haute que l'écran, c'est le VOILE qui défile —
+  //  avec `margin: auto` sur la feuille, le haut reste atteignable.
+  expect(fond.style.overflowY).toBe('auto')
+  expect(document.querySelector('.pw-resume-controles').style.margin).toBe('auto')
 })
 
-it('garde sa hauteur dans la place libre, et c’est ELLE qui défile', async () => {
-  await afficher({ zoneHaute: 200, zoneBasse: 72 })
+it('ne peut plus s’effondrer en bande — sa hauteur ne dépend d’aucune mesure', async () => {
+  //  LE DÉFAUT DU 02/12, verrouillé ici : « on ne le voit même plus ».
+  //  Une zone mesurée à l'envers donnait une `max-height` NÉGATIVE, et la
+  //  fenêtre se réduisait à sa bordure. La feuille ne lit plus la zone du
+  //  tout : elle prend sa hauteur pleine.
+  await afficher({ zoneHaute: 168, zoneBasse: 732 })
   const feuille = document.querySelector('.pw-resume-controles')
-  //  200 + 72 + 32 : jamais plus haut que la place réellement libre.
-  expect(feuille.style.maxHeight).toBe('calc(100dvh - 304px)')
-  //  Le débordement se règle dans la feuille, jamais dans le voile : ainsi
-  //  rien ne peut la décaler, et son en-tête reste atteignable.
-  expect(feuille.style.overflow).toBe('auto')
+  expect(feuille.style.maxHeight).toBe('none')
+  expect(feuille.style.height).toBe('')
 })
 
 it('dit la vérité au singulier comme au pluriel', async () => {
   await act(async () => racine.render(<ResumeControles blockers={[QUATRE[0]]} ready={0} onFermer={vi.fn()} />))
-  expect(document.body.textContent).toContain('Un profil salarial manque')
+  expect(document.getElementById('pw-resume-titre').textContent).toContain('Un profil salarial manque')
   expect(document.body.textContent).toContain('Ce bulletin naîtra incomplet')
   expect(bouton('Compléter le profil')).toBeTruthy()
 })
@@ -158,4 +163,21 @@ it('aucune couleur en dur : tout vient des jetons de la charte', async () => {
   //  Et aucun flou, nulle part (peau D, D-016).
   expect(source).not.toContain('blur(')
   expect(source).not.toContain('backdropFilter')
+  //  Et le rabat n'est jamais découpé : il est peint au dégradé.
+  expect(source).not.toContain('clipPath')
+})
+
+it('la page ne peut plus annoncer une zone basse négative — la faute de la bande', async () => {
+  const { readFileSync } = await import('node:fs')
+  const page = readFileSync('src/pages/PaieFiscalite.jsx', 'utf8')
+
+  //  `.pw-fixe` est `position: sticky; top: 0` : il ne colle qu'EN HAUT.
+  //  Tout l'écran sous la barre est du contenu, pas de la barre. Mesurer
+  //  `bas = hauteurEcran − basDeLaBarre` donnait 732 px sur 900, donc une
+  //  `max-height` de −32 px : la fenêtre s'écrasait à sa bordure. C'est la
+  //  bande rayée de la capture du 02/12.
+  expect(page).not.toContain('window.innerHeight || 0) - r.bottom')
+
+  //  La zone basse est donc zéro, et elle est écrite noir sur blanc.
+  expect(page).toMatch(/bas:\s*0/)
 })
