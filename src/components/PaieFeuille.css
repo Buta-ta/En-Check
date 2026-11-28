@@ -1,0 +1,258 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LES FENÊTRES DE LA PAIE — la carte-post-it de la maison
+   ═══════════════════════════════════════════════════════════════════════════
+
+   Sa demande du 28/11 : « Retravaille le en style brut adouci double feutre.
+   Retravaille aussi les autres modales comme ça. »
+
+   « Brut adouci double feutre » n'est pas une invention : c'est la carte-post-it
+   entérinée au dossier identité (`identite/CARTE-POST-IT.md`, 21/11) et déjà
+   portée par la fiche employé et les cinq fenêtres des équipes. On ne réinvente
+   donc RIEN ici : on applique les mêmes règles, mesurées là-bas :
+
+     • coin rayons 0 — `border-radius: 0` SANS UNITÉ, pour ne pas bouger C10 ;
+     • contour d'encre de 2 px (`--charte-trait`) ;
+     • double feutre = DEUX ombres dures empilées (papier par-dessus encre),
+       flou zéro dans les deux — C9 ne bronche pas ;
+     • bande de colle : 14 px en tête, posée en COUCHE (`background-image`) et
+       le papier en `background-color` — le raccourci `background:` effacerait
+       la bande, c'est le piège mesuré sur la fiche ;
+     • rabat au coin bas-droit en pseudo-élément, jamais en `clip-path`
+       (la découpe rognerait l'ombre et le feutre partirait avec le coin) ;
+     • voile espresso 44 % (`--charte-modale-voile`), AUCUN flou (D-016).
+
+   ⚠️ Le rabat mange le coin bas-droit : toute barre de boutons qui descend
+   jusqu'au bord bas doit se retirer de 14 px + 6 px à droite et de 14 px en
+   bas, sinon elle vit SOUS le dos de la feuille. Voir `.pw-feuille-pied`.
+
+   Périmètre : `.pw-feuille` et ses éléments. Rien d'autre page n'est touché.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pw-feuille-voile {
+  --pw-pli: 14px;
+  --pw-colle: calc(var(--pw-pli) + 1px);
+  --pw-decalage: 6px;
+}
+
+/* ── la fenêtre, quand on la pose dans un voile normal ───────────────────── */
+
+.pw-feuille {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--charte-modale-moyenne);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  /* la bande de colle : plus claire sur les 14 premiers px, un filet d'encre
+     à son pied, puis rien. En couche, jamais en raccourci */
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--pw-pli),
+    color-mix(in srgb, var(--charte-encre) 16%, transparent) var(--pw-pli)
+      var(--pw-colle),
+    transparent var(--pw-colle)
+  );
+  /* le double feutre : une seconde feuille décalée en bas à droite. La
+     première ombre (papier, débord 6 px) masque la seconde (encre, débord
+     8 px) partout sauf sur les 2 px du bord. Flou à zéro dans les deux */
+  box-shadow:
+    var(--pw-decalage) var(--pw-decalage) 0 6px
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    var(--pw-decalage) var(--pw-decalage) 0 8px var(--charte-encre);
+  overflow: visible;
+  color: var(--charte-encre);
+}
+
+.pw-feuille--petite { max-width: var(--charte-modale-petite); }
+.pw-feuille--large { max-width: var(--charte-modale-large); }
+
+/* le rabat : le dos de la feuille, 14 px, trait de pliure sur l'hypoténuse */
+.pw-feuille::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--pw-pli);
+  height: var(--pw-pli);
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 60%, var(--charte-surface)) 50%
+  );
+  pointer-events: none;
+}
+
+/* ── la tête ─────────────────────────────────────────────────────────────── */
+
+.pw-feuille-tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4) var(--charte-espace-4) var(--charte-espace-3);
+  border-bottom: 1px solid var(--charte-bordure);
+}
+
+.pw-feuille-tete-bloc {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--charte-espace-3);
+  min-width: 0;
+}
+
+/* la vignette : un carré d'encre, ombre dure de 3 px — comme la fiche */
+.pw-feuille-vignette {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface2);
+  color: var(--charte-texte);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.pw-feuille-titre {
+  margin: 0;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-titre);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* l'étiquette : capitales, 11 px, à la couleur du texte de la charte */
+.pw-feuille-sous-titre {
+  margin: var(--charte-espace-1) 0 0;
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pw-feuille-fermer {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-texte);
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+.pw-feuille-fermer:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+/* ── le corps ────────────────────────────────────────────────────────────── */
+
+.pw-feuille-corps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ── le pied : il se RETIRE du rabat, sinon il vit dessous ──────────────── */
+
+.pw-feuille-pied {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--charte-espace-2);
+  /* 14 px de dos de feuille en bas, 14 + 6 px à droite : le rabat ne mange
+     ni « Annuler » ni le bouton d'action. Même calcul que `.eqm-pied`. */
+  padding: var(--charte-espace-3) calc(var(--pw-pli) + 6px) var(--pw-pli)
+    var(--charte-espace-4);
+  border-top: 1px solid var(--charte-bordure);
+  background: transparent;
+}
+
+/* ── les boutons de la feuille ───────────────────────────────────────────── */
+
+.pw-feuille-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 var(--charte-espace-4);
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  cursor: pointer;
+  /* l'objet se décolle, il ne fond pas : ombre dure, jamais de flou */
+  box-shadow: var(--charte-ombre-dure);
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+.pw-feuille-btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--charte-encre);
+}
+.pw-feuille-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* l'action principale : encre pleine, texte de papier */
+.pw-feuille-btn--plein {
+  background-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+.pw-feuille-btn--plein:hover:not(:disabled) {
+  box-shadow: 4px 4px 0 0 var(--charte-aplat);
+}
+
+/* l'action qui répare : elle est pleine d'encre, comme sur une note on
+   appuie plus fort sur ce qui compte */
+.pw-feuille-btn--accent {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+.pw-feuille-btn:focus-visible,
+.pw-feuille-fermer:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* ── les blocs de la feuille (remplace les cartes arrondies) ────────────── */
+
+.pw-feuille-note {
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  border: 1px solid var(--charte-bordure);
+  border-left: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
+}
+
+/* ── la feuille dans un tiroir : elle prend toute la largeur utile ──────── */
+
+.pw-drawer .pw-feuille {
+  max-width: none;
+  border: 0;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+}
+.pw-drawer .pw-feuille::after { display: none; }

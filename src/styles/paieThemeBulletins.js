@@ -162,14 +162,39 @@ export function stylesBulletins(darkMode = true) {
   tooltip: { position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 8, background: p.surface, border: `1px solid ${p.ambre7}`, borderRadius: 12, padding: '12px 14px', minWidth: 240, maxWidth: 320, zIndex: 999, boxShadow: `0 12px 40px ${p.ombre}` },
   tooltipExample: { background: p.ambre2, border: `1px solid ${p.ambre5}`, borderRadius: 8, padding: '8px 10px', marginTop: 6 },
   tooltipArrow: { position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: 12, height: 12, background: p.surface, borderRight: `1px solid ${p.ambre7}`, borderBottom: `1px solid ${p.ambre7}` },
-  modalOverlay: { position: 'fixed', inset: 0, background: p.ombreForte, backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
-  modalContent: { width: '100%', maxWidth: 520, background: p.fond, border: `1px solid ${p.voile6}`, borderRadius: 22, overflow: 'hidden', boxShadow: `0 24px 60px ${p.ombre}`, maxHeight: '90vh', overflowY: 'auto' },
+  /*  LE VOILE (28/11) — la peau D de la maison : aucun flou (D-016), et
+      l'espresso à 44 % au lieu d'un noir à 85 %. Il assourdit la page, il ne
+      l'efface pas. La colonne et `justify-content` permettent le centrage
+      « safe » : une fenêtre plus haute que l'écran se colle au haut plutôt que
+      de sortir par le haut, où son titre serait injoignable. */
+  modalOverlay: { position: 'fixed', inset: 0, background: 'var(--charte-modale-voile)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', zIndex: 1000, padding: 16, overflowY: 'auto' },
+  /*  LA FEUILLE (28/11) — plus de rayon 22, plus d'ombre floue de 60 px :
+      coin carré, contour d'encre, double feutre en ombre dure, bande de colle
+      de 14 px en tête. C'est la carte-post-it du dossier identité, appliquée
+      aux fenêtres de la page (la classe `pw-feuille` de PaieFeuille.css). */
+  /*  ⚠️ La palette n'a pas de jeton `encre` ni `blanc` : ce sont des noms de
+      la CHARTE CSS (`--charte-encre`, `--charte-blanc`), déclarés dans
+      tokens.css et inversés en thème sombre. On les lit donc en variables —
+      SANS repli en dur : un hex ici ferait échouer le test 34, et un repli
+      n'a aucun sens puisque les jetons sont toujours définis. */
+  modalContent: {
+    position: 'relative', width: '100%', maxWidth: 560,
+    border: 'var(--charte-trait) solid var(--charte-encre)',
+    borderRadius: 0, maxHeight: '100%', overflowY: 'auto',
+    backgroundColor: 'var(--charte-surface)',
+    backgroundImage: 'linear-gradient(to bottom, color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 14px, color-mix(in srgb, var(--charte-encre) 16%, transparent) 14px 15px, transparent 15px)',
+    boxShadow: '6px 6px 0 6px color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)), 6px 6px 0 8px var(--charte-encre)',
+    color: 'var(--charte-encre)',
+  },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '20px 20px 14px', borderBottom: `1px solid ${p.voile5}` },
   modalTitle: { color: p.texte, fontSize: 16, fontWeight: 700, margin: 0 },
   modalSub: { color: p.texteDoux2, fontSize: 12, margin: '4px 0 0 0' },
   modalCloseBtn: { width: 34, height: 34, borderRadius: 10, background: p.voile4, border: `1px solid ${p.voile6}`, color: p.texteFaint, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 },
   modalCancelBtn: { padding: '11px 16px', borderRadius: 12, border: `1px solid ${p.voile7}`, background: p.voile3, color: p.texteDoux, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
-  modalDeleteBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${p.rouge}, ${p.rouge})`, color: p.texte, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' },
+  /*  « Retirer » se lisait rouge sur rouge. L'encre pleine dit l'action
+      irréversible, et le mot dit déjà qu'elle l'est : la couleur n'a pas à
+      porter seule le danger (règle C7). */
+  modalDeleteBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '0 16px', minHeight: 40, borderRadius: 6, border: 'var(--charte-trait) solid var(--charte-encre)', background: 'var(--charte-encre)', color: 'var(--charte-blanc)', fontWeight: 700, boxShadow: '3px 3px 0 0 var(--charte-erreur)', cursor: 'pointer', fontFamily: 'inherit' },
   }
   return cache[cle]
 }

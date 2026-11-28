@@ -14,8 +14,6 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import ResumeControles from '../../components/paie/ResumeControles'
 
-vi.mock('../../contexts/ThemeContext', () => ({ useTheme: () => ({ darkMode: false, toggleTheme: vi.fn() }) }))
-
 const QUATRE = [
   { employeeId: '1', employee: 'RECETTE A', reason: 'Aucun profil salarial' },
   { employeeId: '2', employee: 'RECETTE B', reason: 'Aucun profil salarial' },
@@ -68,7 +66,7 @@ it('nomme chacun, et compte à part ceux qui sont prêts', async () => {
   //  Le nom porte le poids, le motif porte la couleur : deux traitements
   //  distincts là où la capture n'en montrait qu'un.
   expect(lignes[0].querySelector('strong').textContent).toBe('RECETTE A')
-  expect(document.body.textContent).toContain('Les 2 autres sont prêts')
+  expect(document.body.textContent).toContain('2 prêts')
 })
 
 it('offre la réparation, et la met en avant', async () => {
@@ -76,8 +74,8 @@ it('offre la réparation, et la met en avant', async () => {
   const reparer = bouton('Compléter les 4 profils')
   expect(reparer).toBeTruthy()
   //  C'est le bouton PLEIN de la modale : celui qui répare, pas celui qui force.
-  expect(reparer.style.background).toBeTruthy()
-  expect(reparer.style.background).not.toBe('transparent')
+  //  La peau est portée par la feuille (classes), plus par des styles en ligne.
+  expect(reparer.className).toContain('pw-feuille-btn--plein')
   await act(async () => reparer.click())
   expect(actions.onProfils).toHaveBeenCalledTimes(1)
 })
@@ -89,7 +87,7 @@ it('laisse forcer, mais en le nommant et sans le mettre en avant', async () => {
   //  Plus de « Générer quand même » : le libellé dit ce qu'on obtient.
   expect(document.body.textContent).not.toContain('Générer quand même')
   //  Et ce n'est pas le bouton plein — contour seulement.
-  expect(forcer.style.background).toBe('transparent')
+  expect(forcer.className).not.toContain('pw-feuille-btn--plein')
   await act(async () => forcer.click())
   expect(actions.onGenerer).toHaveBeenCalledTimes(1)
 })
@@ -110,13 +108,22 @@ it('se ferme par Échap, par Annuler et par le fond — jamais par la boîte', a
   expect(actions.onFermer).not.toHaveBeenCalled()
 })
 
-it('naît sous la barre figée, pas derrière elle', async () => {
-  await afficher({ hauteurBarre: 168 })
+it('se centre dans la place libre, sous la barre et au-dessus du bas d’écran', async () => {
+  await afficher({ zoneHaute: 168, zoneBasse: 0 })
   const fond = document.querySelector('.pw-resume-controles-fond')
-  //  168 + 16 : la barre mesurée, puis la respiration habituelle. Sans cette
-  //  marge, le haut de la modale passait SOUS la barre — la capture montrait
-  //  le bouton coupé par le bord du bloc collant.
+  //  La zone libre commence au bas de la barre figée : 168 + 16 de respiration.
   expect(fond.style.paddingTop).toBe('184px')
+  //  Et la fenêtre se CENTRE dans ce qui reste — elle n'est plus poussée vers
+  //  le bas par une marge haute qui la décalait (la faute relevée le 28/11).
+  expect(fond.style.justifyContent).toBe('safe center')
+  expect(fond.style.paddingBottom).toBe('16px')
+})
+
+it('garde sa hauteur dans la zone, même quand la barre est haute', async () => {
+  await afficher({ zoneHaute: 200, zoneBasse: 72 })
+  const feuille = document.querySelector('.pw-resume-controles')
+  //  200 + 72 + 32 : jamais plus haut que la place réellement libre.
+  expect(feuille.style.maxHeight).toBe('calc(100dvh - 304px)')
 })
 
 it('dit la vérité au singulier comme au pluriel', async () => {
@@ -126,12 +133,17 @@ it('dit la vérité au singulier comme au pluriel', async () => {
   expect(bouton('Compléter le profil')).toBeTruthy()
 })
 
-it('aucune couleur en dur : tout vient de la palette', async () => {
+it('aucune couleur en dur : tout vient des jetons de la charte', async () => {
   const { readFileSync } = await import('node:fs')
   const source = readFileSync('src/components/paie/ResumeControles.jsx', 'utf8')
   //  La règle de la charte (C1) : un #hex dans un composant, et le compte
   //  global monte. Cette modale ne doit pas l'aggraver.
   expect(source.match(/#[0-9a-fA-F]{3,8}\b/g) || []).toEqual([])
-  expect(source).toContain('palettePaie')
-  expect(source).toContain('encreSurAccent')
+  expect(source).toContain('pw-feuille')
+  //  Et la feuille elle-même ne lit que des jetons : ni hex, ni flou.
+  const feuille = readFileSync('src/components/PaieFeuille.css', 'utf8')
+  expect(feuille).toContain('var(--charte-encre)')
+  expect(feuille.match(/#[0-9a-fA-F]{3,8}\b/g) || []).toEqual([])
+  expect(feuille).not.toContain('backdrop-filter')
+  expect(feuille).not.toContain('blur(')
 })
