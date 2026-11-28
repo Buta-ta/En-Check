@@ -24,7 +24,12 @@ export function culturalMotifForPath(pathname = '') {
   if (page === 'configuration-pointeuse' || page === 'pointeuses') return 'korhogo'
   // Le plateau et les zones ont fusionné : une seule porte dogon.
   if (page === 'geopointage' || page === 'carte-temps-reel') return 'dogon'
-  if (page === 'rapports') return 'nsibidi'
+  // Rapports, 29/11 : « remplace le bandeau motif actuel par le bandeau
+  // bogolan ». La carte est la SEULE source du tissu — bandeaux du haut et du
+  // bas, et toute autre lecture — donc le nsibidi disparaît d'ici et n'y
+  // revient pas par une règle locale. Le blason nsibidi, lui, reste : c'est la
+  // signature du document (en-tête de la page et en-tête du PDF), pas une bande.
+  if (page === 'rapports') return 'bogolan'
   // Annonces, push et courriels ont une seule page : une seule toile.
   //   Sauf l'adresse dédiée aux Annonces d'accueil : elle nourrit l'en-tête
   //   Pointage, qui porte le bogolan (CHARTE §1.2). Une page ne peut pas

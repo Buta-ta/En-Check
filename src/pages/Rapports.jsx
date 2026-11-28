@@ -12,9 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import PageCulturalBand from '../components/PageCulturalBand'
-import RaccourcisPages from '../components/RaccourcisPages'
 import { NsibidiBlasonSvg } from '../components/NsibidiSvg'
-import { useTheme } from '../contexts/ThemeContext'
 import { construirePauses } from '../services/pausesService'
 import { chargerBulletinsPeriode, resumerPaieParEmploye, libelleMoyen } from '../services/paiementBulletins'
 import {
@@ -42,7 +40,7 @@ import {
   ArrowLeft, Calendar, Building2, FileText, Download,
   FileSpreadsheet, Users, Clock, CheckCircle, AlertTriangle,
   Timer, CalendarOff, Sparkles, Eye, RefreshCw, CalendarDays,
-  TrendingUp, Sun, Moon, MapPin, Search, Coffee, Wallet
+  TrendingUp, MapPin, Search, Coffee, Wallet
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import FeatureService from '../services/featureService'
@@ -477,7 +475,14 @@ export default function Rapports() {
   const navigate = useNavigate()
   // Le même thème que le reste de l'application : le choix suit l'admin
   // d'une page à l'autre et se retient d'une visite à l'autre.
-  const { darkMode, toggleTheme } = useTheme()
+  /*  ⚠️ Pas de `useTheme()` ici, et c'est voulu. La page a perdu SON bouton
+      sombre/clair le 29/11 (« enlever les raccourcis, le bouton sombre/clair ») :
+      le thème est une décision du rail, pas d'un écran. Ce que la page perd du
+      même coup, ce n'est pas le thème — c'est la CLASSE qu'elle posait pour
+      l'écrire (`rp-clair` avec sa palette parallèle, 27 hex). Le thème de
+      l'application se lit à la racine (`[data-theme='dark']`, `tokens.css`) :
+      deux thèmes l'un sur l'autre, c'est celui qui gagne par accident. La
+      page ne se branche donc sur rien du tout — elle hérite. */
 
   useEffect(() => {
     const adminData = localStorage.getItem('admin')
@@ -2653,20 +2658,26 @@ export default function Rapports() {
   ]
 
   return (
-    <div className={`rp-page${darkMode ? '' : ' rp-clair'}`}>
+    <div className="rp-page">
+      {/*  le bandeau du haut est au BOGOLAN depuis le 29/11 (« remplace le
+            bandeau motif actuel par le bandeau bogolan ») : la page habille le
+            tissu des registres de paie, puisque c'est lui qui reçoit ses
+            exports. La carte des motifs (`culturalMotif.js`) est la seule
+            source — le blason nsibidi reste sur la plaque et dans le PDF, lui,
+            c'est la signature du document, pas une bande. */}
       <PageCulturalBand pathname="/rapports" />
-      <div className="rp-bordure" aria-hidden="true" />
 
       <header className="rp-entete">
-        <button
-          type="button"
-          className="rp-retour"
-          onClick={() => navigate('/dashboard')}
-          aria-label="Revenir au tableau de bord"
-          title="Tableau de bord"
-        >
-          <ArrowLeft size={16} />
-        </button>
+        <div className="rp-entete-corps">
+          <button
+            type="button"
+            className="rp-retour"
+            onClick={() => navigate('/dashboard')}
+            aria-label="Revenir au tableau de bord"
+            title="Tableau de bord"
+          >
+            <ArrowLeft size={16} />
+          </button>
 
         <NsibidiBlasonSvg size={48} />
 
@@ -2680,25 +2691,13 @@ export default function Rapports() {
           </p>
         </div>
 
-        <div className="rp-entete-droite">
-          <button
-            type="button"
-            className="rp-bascule"
-            role="switch"
-            aria-checked={darkMode}
-            onClick={toggleTheme}
-            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
-            title={darkMode ? 'Thème clair' : 'Thème sombre'}
-          >
-            {darkMode ? <Moon size={14} aria-hidden="true" /> : <Sun size={14} aria-hidden="true" />}
-          </button>
         </div>
       </header>
 
       <main className="rp-coque">
 
         {/* ── Le seuil : l'entreprise, la période, les autres écrans ── */}
-        <section className="rp-seuil" aria-label="Entreprise et accès rapides">
+        <section className="rp-seuil" aria-label="Entreprise et période du rapport">
           <div className="rp-seuil-entreprise">
             <span className="rp-seuil-libelle">Entreprise</span>
             <span className="rp-seuil-nom">{selectedEnterpriseName}</span>
@@ -2713,10 +2712,9 @@ export default function Rapports() {
             {loading && <span className="rp-seuil-fait">Génération en cours…</span>}
           </div>
 
-          <div className="rp-raccourcis">
-            <span className="rp-seuil-libelle">Aller à</span>
-            <RaccourcisPages compact excludePaths={['/rapports']} />
-          </div>
+          {/*  la rangée « Aller à » est tombée le 29/11 : elle disait une
+                seconde fois ce que le rail dit déjà, et 58 px de haut au-dessus
+                du pli. Le seuil ne garde que ce que le rapport compte. */}
         </section>
 
         <div className="rp-atelier">

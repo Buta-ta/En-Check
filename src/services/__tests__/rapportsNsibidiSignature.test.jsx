@@ -1,15 +1,17 @@
 // ═══════════════════════════════════════════════════════════
-// ✍️ LES REGISTRES DE CRAIE — la page Rapports
+// ✍️ LA SIGNATURE NSIBIDI DU DOCUMENT — page Rapports
 //
-// Ce que ces tests gardent :
-//   ① le motif de la page est nsibidi, dessiné en SVG et branché
-//     sur les deux bandeaux comme sur les autres pages ;
-//   ② la page a quitté les styles inline pour une coque dessinée
-//     (en-tête gravé, seuil, cartouche, aperçu, marge, pied) ;
-//   ③ le métier des rapports n'a pas bougé : mêmes requêtes, mêmes
-//     calculs, mêmes trois exports ;
-//   ④ les rubriques sont des sceaux dessinés, pas des cases natives ;
-//   ⑤ la page suit le thème de l'application et tient en poche.
+// 29/11 : la bande de la page est passée au BOGOLAN (« remplace le bandeau
+// motif actuel par le bandeau bogolan »). Ce fichier ne défend plus la peau de
+// l'écran — c'est le procès de `rapportsBogolan.test.jsx` — mais ce qui reste
+// nsibidi malgré tout :
+//   ① le dessin de la maison, intact : frise de neuf tuiles, blason, signes ;
+//   ② le blason en tête de la page ET en tête du PDF : la signature du
+//     document ne se confond pas avec le tissu de la page ;
+//   ③ le métier des rapports, intouchable : mêmes requêtes, mêmes calculs,
+//     mêmes trois exports ;
+//   ④ les rubriques restent des sceaux dessinés, pas des cases natives ;
+//   ⑤ la poche : le pli n'a pas été mangé par l'enveloppe d'étoffe.
 // ═══════════════════════════════════════════════════════════
 
 import { describe, expect, it } from 'vitest'
@@ -31,9 +33,12 @@ const partage = lire('src/components/PageCulturalBand.css')
 // ── 1. Le motif ────────────────────────────────────────────
 
 describe('1. le motif nsibidi', () => {
-  it('devient le motif des Rapports', () => {
-    expect(culturalMotifForPath('/rapports')).toBe('nsibidi')
-    expect(culturalMotifForPath('/rapports?vue=mois')).toBe('nsibidi')
+  it('n’est plus la bande de la page, mais reste le motif dessiné', () => {
+    //  la BANDE est au bogolan (29/11) — la loi en est à `rapportsBogolan` ;
+    //  ce fichier vérifie seulement que le nsibidi n'a pas été effacé du projet
+    expect(culturalMotifForPath('/rapports')).toBe('bogolan')
+    expect(culturalMotifForPath('/rapports?periode=mois')).toBe('bogolan')
+    expect(culturalMotifForPath('/rapports?vue=mois')).toBe('bogolan')
     // les autres pages gardent leur identité
     expect(culturalMotifForPath('/carte-temps-reel')).toBe('dogon')
     expect(culturalMotifForPath('/entreprises')).toBe('korhogo')
@@ -43,8 +48,10 @@ describe('1. le motif nsibidi', () => {
   })
 
   it('est dessiné en SVG, une frise de neuf tuiles', () => {
-    const rendu = renderToStaticMarkup(<PageCulturalBand pathname="/rapports" />)
-    expect(rendu).toContain('data-cultural-motif="nsibidi"')
+    //  le composant de frise se rend toujours, même si plus aucune bande de
+    //  page ne l'appelle : le dessin reste un actif du projet, pas un vestige
+    const rendu = renderToStaticMarkup(<NsibidiFriseSvg />)
+    expect(rendu).toContain('aria-hidden="true"')
     expect(rendu).toContain('<svg')
 
     const friseRendue = renderToStaticMarkup(<NsibidiFriseSvg />)
@@ -75,38 +82,21 @@ describe('1. le motif nsibidi', () => {
     expect(frise).toContain('export function NsibidiFriseSvg')
   })
 
-  it('garde les hauteurs communes à toutes les pages', () => {
+  it('a laissé ses hauteurs de bande dans la feuille partagée', () => {
+    //  la base de toutes les bandes reste 76 / 32 px — le bogolan les prend
+    //  sans rien redéclarer, c'est ce qui a rendu les règles nsibidi inutiles
     expect(partage).toMatch(/\.ec-cultural-band\s*\{[^}]*height:\s*76px/)
     expect(partage).toMatch(/\.ec-cultural-bottom\s*\{\s*height:\s*32px/)
-    expect(partage).toMatch(
-      /\.ec-cultural-top\[data-cultural-motif='nsibidi'\]\s*\{\s*height:\s*76px/,
-    )
-    expect(partage).toMatch(
-      /@media \(max-width: 650px\)\s*\{[^}]*\.ec-cultural-top\[data-cultural-motif='nsibidi'\]\s*\{\s*height:\s*60px/,
-    )
+    //  et la feuille ne traîne plus les quatre règles d'une identité qu'aucune
+    //  route ne demande : un CSS que plus personne ne lit est une dette
+    expect(partage).not.toMatch(/data-cultural-motif='nsibidi'/)
+    expect(partage).toContain('NSIBIDI — la page Rapports a pris le bogolan')
   })
 })
 
 // ── 2. La page ─────────────────────────────────────────────
 
-describe('2. la page', () => {
-  it('tend la bande haute, la bordure et la bande basse', () => {
-    expect(page).toContain('<PageCulturalBand pathname="/rapports" />')
-    expect(page).toContain('<PageCulturalBand pathname="/rapports" placement="bottom" />')
-    expect(page).toContain('className="rp-bordure"')
-    expect(page).toContain('className="rp-pied"')
-  })
-
-  it('a un en-tête gravé, avec son blason et son retour', () => {
-    expect(page).not.toContain('PageHeader')
-    expect(page).toContain('className="rp-entete"')
-    expect(page).toContain('<NsibidiBlasonSvg size={48} />')
-    expect(page).toContain('Les registres de craie')
-    expect(page).toContain('Rapports<span>.</span>')
-    expect(page).toContain('aria-label="Revenir au tableau de bord"')
-    expect(page).toContain("navigate('/dashboard')")
-  })
-
+describe('2. la page : ce que le changement de tissu ne doit pas emporter', () => {
   it('ne pose plus une seule règle de style dans le JSX', () => {
     expect(page).not.toContain('<style>')
     expect(page).not.toMatch(/\bstyle=\{\{/)
@@ -117,23 +107,15 @@ describe('2. la page', () => {
     expect(page).not.toContain('afro-btn')
   })
 
-  it('bat la page en seuil, cartouche, aperçu et marge', () => {
-    for (const classe of [
-      'rp-coque', 'rp-seuil', 'rp-raccourcis', 'rp-cartouche', 'rp-champs',
-      'rp-sceaux', 'rp-sceau', 'rp-exports', 'rp-export', 'rp-apercu',
-      'rp-mesures', 'rp-mesure', 'rp-marge', 'rp-note',
-    ]) {
-      expect(css).toContain(`.${classe}`)
+  it('garde ses libellés, hors des bandeaux', () => {
+    //  le changement de tissu n'a pas fait tourner un mot de la page
+    for (const mot of ['Les registres de craie', 'Composer le rapport',
+      'Aperçu du rapport', 'Ce que contient le rapport',
+      'Télécharger le PDF', 'PDF graphique', 'Télécharger le tableur']) {
+      expect(page).toContain(mot)
     }
-    expect(page).toContain('Composer le rapport')
-    expect(page).toContain('Aperçu du rapport')
-    expect(page).toContain('Ce que contient le rapport')
-  })
-
-  it('donne à la page ses raccourcis, comme les autres coques', () => {
-    expect(page).toContain('RaccourcisPages compact')
-    expect(page).toContain("excludePaths={['/rapports']}")
-    expect(css).toContain('.rp-raccourcis .abs-raccourci')
+    //  et le seuil ne promet plus ce que la passe a enlevé
+    expect(page).toContain('aria-label="Entreprise et période du rapport"')
   })
 })
 
@@ -207,29 +189,17 @@ describe('4. les sceaux de rubrique', () => {
 
 // ── 5. Le thème et la poche ────────────────────────────────
 
-describe('5. le thème et le téléphone', () => {
-  it('prend la bascule clair / sombre de l’application', () => {
-    expect(page).toContain("import { useTheme } from '../contexts/ThemeContext'")
-    expect(page).toContain('const { darkMode, toggleTheme } = useTheme()')
-    expect(page).toContain("className={`rp-page${darkMode ? '' : ' rp-clair'}`}")
-    expect(page).toContain('className="rp-bascule"')
-    expect(page).toContain('role="switch"')
-    expect(page).toContain('aria-checked={darkMode}')
-  })
-
-  it('dessine le jour, pas seulement un bouton', () => {
-    expect(css).toContain('.rp-page.rp-clair')
-    expect(css).toMatch(/\.rp-page\.rp-clair\s*\{[^}]*--rp-panneau:\s*#fbf7ec/)
-    expect(css).toMatch(/\.rp-page\.rp-clair\s*\{[^}]*--rp-craie:\s*#16222c/)
-    expect(css).toMatch(/\.rp-page\.rp-clair\s*\{[^}]*--rp-alerte-texte:\s*#b91c1c/)
-  })
-
-  it('tient dans une poche', () => {
+describe('5. le téléphone', () => {
+  it('tient dans une poche, avec son enveloppe d’étoffe', () => {
     expect(css).toContain('@media (max-width: 720px)')
     expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?font-size:\s*16px/)
     expect(css).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.rp-atelier\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/)
     expect(css).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.rp-apercu\s*\{[^}]*position:\s*static/)
     expect(css).toContain('@media (max-width: 460px)')
+    //  et le cartouche du haut ne se redéclare pas pour la poche : la cote de
+    //  tissu est unique, sinon le tour d'étoffe se défait aux coins
+    const mobile = css.slice(css.indexOf('@media (max-width: 650px)'))
+    expect(mobile).not.toMatch(/--rp-tissu:/)
   })
 
   it('garde la page lisible quand on n’a pas d’aperçu', () => {
