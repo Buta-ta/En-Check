@@ -76,6 +76,10 @@ async function monter(props = {}) {
           entrepriseId="ent-a"
           employeId="emp-1"
           nomEmploye="Emma BAYLE"
+          //  ⚠️ Le fuseau de l'ENTREPRISE est désormais requis pour calculer
+          //  la date d'effet (décision B0-a). Sans lui, l'enregistrement est
+          //  REFUSÉ : c'est le comportement voulu, et un test dédié le vérifie.
+          fuseau="Africa/Porto-Novo"
           {...props}
         />
       </MemoryRouter>,
@@ -326,5 +330,27 @@ describe('Les informations enregistrées', () => {
 
     expect(host.textContent).toContain('Cette fonction n’est pas encore installée sur ce serveur.')
     expect(host.textContent).not.toContain('Règle de l’entreprise')
+  })
+
+  it('sans fuseau d’entreprise, l’enregistrement est REFUSÉ — jamais daté en UTC', async () => {
+    //  ⚠️ Décision B0-a : la date d'effet se calcule dans le fuseau de
+    //  l'entreprise. Sans fuseau, `dateEffetAuLundi` refuse. L'écran doit
+    //  refuser ET le dire, jamais retomber sur la date UTC du jour.
+    await ouvrirRegles({ fuseau: null })
+    await act(async () => host.querySelectorAll('.rtt-action')[1].click())
+
+    const champ = host.querySelector('.rtt-champ input[type="number"]')
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    await act(async () => {
+      setter.call(champ, '52')
+      champ.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    await act(async () => bouton('Enregistrer').click())
+
+    //  Aucune écriture n'est partie.
+    expect(mocks.ecrire).toHaveBeenCalledTimes(0)
+    //  Et le refus est nommé à l'écran.
+    expect(host.textContent).toMatch(/fuseau de l’entreprise absent/i)
   })
 })

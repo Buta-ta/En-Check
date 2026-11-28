@@ -35,9 +35,10 @@ import {
   phraseImpact,
   retourPossible,
 } from '../lib/reglesPersonnelles'
+import { dateEffetAuLundi } from '../services/seuilsHebdoParSemaine'
 import './ReglesTempsTravail.css'
 
-const AUJOURDHUI = () => new Date().toISOString().slice(0, 10)
+//  ⚠️ `AUJOURDHUI()` (date UTC) a été RETIRÉE : voir la décision B0-a.
 
 function jourDuTexte(horodatage) {
   if (!horodatage) return null
@@ -50,7 +51,15 @@ function compterPersonnels(reglages) {
   return reglages.filter((r) => r.etat === 'personnelle' || r.etat === 'personnelle_verrouillee').length
 }
 
-export default function ReglesTempsTravail({ entrepriseId, employeId, nomEmploye = '', superAdmin = false }) {
+export default function ReglesTempsTravail({
+  entrepriseId,
+  employeId,
+  nomEmploye = '',
+  superAdmin = false,
+  //  Le fuseau de l'ENTREPRISE, obligatoire pour calculer une date d'effet.
+  //  Absent : la date est REFUSÉE, jamais remplacée par la date UTC du jour.
+  fuseau = null,
+}) {
   const navigate = useNavigate()
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState('')
@@ -59,10 +68,27 @@ export default function ReglesTempsTravail({ entrepriseId, employeId, nomEmploye
   const [infosErreur, setInfosErreur] = useState('')
   const [ouvert, setOuvert] = useState(false)
   const [selection, setSelection] = useState(null)
-  const [saisie, setSaisie] = useState({ valeur: '', dateEffet: AUJOURDHUI(), verrouille: false })
+  const [saisie, setSaisie] = useState({ valeur: '', dateEffet: null, verrouille: false })
   const [confirmationRetour, setConfirmationRetour] = useState(false)
   const [enCours, setEnCours] = useState(false)
   const [message, setMessage] = useState('')
+
+  //  ── DATE D'EFFET, DÉCISION B0-a ─────────────────────────────
+  //  Le lundi où le réglage commence à gouverner, à 04:00 dans le fuseau de
+  //  l'entreprise. `null` si le fuseau manque ou est inconnu : dans ce cas
+  //  l'enregistrement est REFUSÉ, et le motif est dit.
+  //  ⚠️ Cette fonction ne fait AUCUN setState : elle est appelée pendant le
+  //  rendu (sous-titre). Un setState ici provoquerait une boucle de rendus.
+  //  Elle rend la date et le motif de refus, l'appelant décide quoi en faire.
+  const calculerDateEffet = useCallback(() => {
+    try {
+      return { date: dateEffetAuLundi(new Date(), fuseau), refus: '' }
+    } catch (e) {
+      return { date: null, refus: e?.message || 'La date d’effet ne peut pas être calculée.' }
+    }
+  }, [fuseau])
+
+  const { date: dateEffetAujourdhui, refus: refusDateEffet } = calculerDateEffet()
 
   const boutonFermer = useRef(null)
   const panneau = useRef(null)
@@ -150,7 +176,7 @@ export default function ReglesTempsTravail({ entrepriseId, employeId, nomEmploye
       valeur: reglage.resolution?.valeur === null || reglage.resolution?.valeur === undefined
         ? ''
         : String(reglage.resolution.valeur),
-      dateEffet: AUJOURDHUI(),
+      dateEffet: calculerDateEffet().date,
       verrouille: false,
     })
     setConfirmationRetour(false)
@@ -160,6 +186,11 @@ export default function ReglesTempsTravail({ entrepriseId, employeId, nomEmploye
 
   async function enregistrer() {
     if (!ligneActive || enCours) return
+    //  ⚠️ Une date d'effet REFUSÉE n'est jamais remplacée par un défaut.
+    if (!saisie.dateEffet) {
+      setMessage(refusDateEffet || 'Date d’effet indisponible : enregistrement refusé.')
+      return
+    }
     const valeur = saisie.valeur === '' ? null : Number(saisie.valeur)
     const controle = Regles.validerValeur(ligneActive.cle, valeur)
     if (!controle.ok) {
@@ -190,6 +221,10 @@ export default function ReglesTempsTravail({ entrepriseId, employeId, nomEmploye
 
   async function revenir() {
     if (!ligneActive || enCours) return
+    if (!saisie.dateEffet) {
+      setMessage(refusDateEffet || 'Date d’effet indisponible : enregistrement refusé.')
+      return
+    }
     setEnCours(true)
     setMessage('')
     try {
@@ -237,7 +272,7 @@ export default function ReglesTempsTravail({ entrepriseId, employeId, nomEmploye
                 <h2 className="rtt-titre" id="rtt-titre">Règles de temps de travail</h2>
                 <p className="rtt-sous-titre">
                   {nomEmploye ? `${nomEmploye} · ` : ''}
-                  applicables au {dateEffetCourte(AUJOURDHUI())}
+                  applicables au {dateEffetCourte(dateEffetAujourdhui) || '—'}
                 </p>
               </div>
               <button
@@ -332,7 +367,14 @@ export default function ReglesTempsTravail({ entrepriseId, employeId, nomEmploye
                     </div>
                     <div>
                       <dt>Date d’effet</dt>
-                      <dd>{dateEffetCourte(saisie.dateEffet) || '—'}</dd>
+                      <dd>
+                        {dateEffetCourte(saisie.dateEffet) || '—'}
+                        {!saisie.dateEffet && (
+                          <span className="rtt-note" role="alert">
+                            {' '}{refusDateEffet || 'Date d’effet indisponible.'}
+                          </span>
+                        )}
+                      </dd>
                     </div>
                   </dl>
 

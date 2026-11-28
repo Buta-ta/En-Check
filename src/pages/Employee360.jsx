@@ -926,6 +926,7 @@ suivre('taches',
             employeId={employee?.id}
             nomEmploye={nomComplet}
             superAdmin={admin?.role === 'super_admin'}
+            fuseau={entreprise?.timezone || null}
           />
         )}
 
