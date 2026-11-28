@@ -42,27 +42,42 @@ export default function PaieFiscalite() {
   const [retry, setRetry] = useState(0)
   const [bulletinsBusy, setBulletinsBusy] = useState(false)
   const [fiscalBusy, setFiscalBusy] = useState(false)
-  /*  LA HAUTEUR DE LA BARRE FIGÉE, MESURÉE (28/11)
+  /*  LA ZONE DE CENTRAGE DES FENÊTRES (28/11)
       ─────────────────────────────────────────────────────────────────────
-      Depuis qu'elle colle PARTOUT, la barre recouvre le haut de ce qui est
-      `fixed` : une fenêtre centrée voit son coin haut gauche passer dessous.
-      Sa capture du 28/11 le montrait — le bouton « Générer quand même »
-      était coupé net par le bord de la barre.
+      Deux fautes se sont succédé, et celle-ci les corrige toutes les deux :
 
-      On mesure donc la barre et on publie sa hauteur en `--pw-fixe-hauteur`.
-      Toute fenêtre modale s'en sert comme marge haute : elle naît SOUS la
-      barre, jamais derrière. Repli à 0 si la mesure n'a pas lieu (SSR) ou si
-      la barre n'est pas là (aucun contexte chargé). */
+      1. avant, une modale naissait DERRIÈRE la barre figée — sa capture
+         montrait le bouton « Générer quand même » coupé net ;
+      2. puis je l'ai poussée SOUS la barre avec `paddingTop: hauteur + 16`,
+         pour la sauver. Résultat : elle descendait. Il l'avait vu.
+
+      La bonne réponse n'est ni l'un ni l'autre, c'est de CENTRER la fenêtre
+      dans la place qui reste VRAIMENT libre : ce qui est sous la barre et
+      au-dessus du bord bas de l'écran. On mesure les deux, on publie la zone
+      en variables, et chaque voile s'y centre — la fenêtre ne peut donc plus
+      être ni recouverte ni exilée. Cas dégénéré (fenêtre plus haute que la
+      zone) : elle colle au haut de la zone plutôt que de sortir par le haut,
+      où son en-tête serait injoignable.
+
+      Repli sans mesure (SSR, jsdom, tout premier rendu) : haut = 0, bas = 0,
+      c'est-à-dire un centrage plein écran — le comportement d'avant. */
   const barre = useRef(null)
-  const [hauteurBarre, setHauteurBarre] = useState(0)
+  const [zone, setZone] = useState({ haut: 0, bas: 0 })
   useEffect(() => {
     const noeud = barre.current
     if (!noeud || typeof ResizeObserver === 'undefined') return undefined
-    const mesurer = () => setHauteurBarre(Math.round(noeud.getBoundingClientRect().height))
+    const mesurer = () => {
+      const r = noeud.getBoundingClientRect()
+      setZone({
+        haut: Math.max(0, Math.round(r.bottom)),
+        bas: Math.max(0, Math.round((window.innerHeight || 0) - r.bottom)),
+      })
+    }
     mesurer()
     const observateur = new ResizeObserver(mesurer)
     observateur.observe(noeud)
-    return () => observateur.disconnect()
+    window.addEventListener('resize', mesurer)
+    return () => { observateur.disconnect(); window.removeEventListener('resize', mesurer) }
   }, [context])
 
   const busy = bulletinsBusy || fiscalBusy
@@ -189,7 +204,7 @@ export default function PaieFiscalite() {
     ) : null}
   >
   <div className="paie-page paie-workspace" data-theme={darkMode ? 'dark' : 'light'}>
-    <div className="pw-fixe" ref={barre} style={{ '--pw-fixe-hauteur': `${hauteurBarre}px` }}>
+    <div className="pw-fixe" ref={barre} style={{ '--pw-zone-haut': `${zone.haut}px`, '--pw-zone-bas': `${zone.bas}px` }}>
       <div className="pw-cadre">
         <PageCulturalBand pathname="/paie" placement="cadre" />
         <div className="pw-planche">
@@ -280,7 +295,7 @@ export default function PaieFiscalite() {
           {/* Keep both editors mounted across tabs: drafts and the chosen period survive navigation.
               A new enterprise gets a fresh keyed subtree; stale responses cannot paint into it. */}
           {access.bulletins && (visited[`${enterpriseId}:bulletins`] || !fiscal) && <div hidden={fiscal}>
-            <FichesPaie integre entrepriseIdForce={enterpriseId} hauteurBarre={hauteurBarre} ongletExterne={fiscal ? 'preparation' : tab} onOngletChange={go} onBusyChange={setBulletinsBusy}/>
+            <FichesPaie integre entrepriseIdForce={enterpriseId} zoneHaute={zone.haut} zoneBasse={zone.bas} ongletExterne={fiscal ? 'preparation' : tab} onOngletChange={go} onBusyChange={setBulletinsBusy}/>
           </div>}
           {access.fiscal && (visited[`${enterpriseId}:fiscal`] || fiscal) && <div hidden={!fiscal}>
             {context.admin.role === 'super_admin' && fiscal && tab === 'pays' && <PaieEntreprises entreprises={context.enterprises} entrepriseCouranteId={enterpriseId} darkMode={darkMode} onCopieEffectuee={() => setFiscalRevision(n => n + 1)}/>}

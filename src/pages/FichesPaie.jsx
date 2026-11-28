@@ -52,7 +52,7 @@ import { usePaiementsFiches } from '../hooks/usePaiementsFiches'
 // PAGE PRINCIPALE
 // ═══════════════════════════════════════════════════════════
 
-export default function FichesPaie({ integre = false, ongletExterne = null, entrepriseIdForce = null, onOngletChange = null, onBusyChange = null, hauteurBarre = 0 } = {}) {
+export default function FichesPaie({ integre = false, ongletExterne = null, entrepriseIdForce = null, onOngletChange = null, onBusyChange = null, zoneHaute = 0, zoneBasse = 0 } = {}) {
   const { darkMode } = useTheme()
   const S = stylesBulletins(darkMode)
   const P = palettePaie(darkMode)
@@ -1939,7 +1939,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
           {/* Modale « profils manquants » — dans son composant : la page est au plafond de 2 000 lignes. */}
           {showGenerateConfirm && (
-            <ResumeControles blockers={preCheckResults.blockers} ready={preCheckResults.ready.length} hauteurBarre={hauteurBarre}
+            <ResumeControles blockers={preCheckResults.blockers} ready={preCheckResults.ready.length} zoneHaute={zoneHaute} zoneBasse={zoneBasse}
               onFermer={() => setShowGenerateConfirm(false)} onGenerer={handleGeneratePreview}
               onProfils={() => { setShowGenerateConfirm(false); changerOnglet('profiles') }} />
           )}
