@@ -1,39 +1,48 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  LA MODALE « PROFILS MANQUANTS » — la seule fenêtre en carte-post-it
+//  LA MODALE « PROFILS MANQUANTS » — maquette B, « cartouche »
 // ═══════════════════════════════════════════════════════════════════════════
 //
-//  Trois demandes se sont empilées ici, et cette version garde les trois :
+//  Hors périmètre : les autres fenêtres de la paie. Elles sont restées
+//  exactement à leur état d'avant la 417, et elles n'ont pas été touchées.
 //
-//  · « retravaille ce modal » — le message disait « une fiche à 0 », ce qui
-//    est faux : sans profil, le calcul rend un bulletin SANS impôt ni
-//    cotisations, marqué non remisable. La modale le dit avec ces mots.
+//  ── Ce que cette fenêtre dit ───────────────────────────────────────────────
 //
-//  · « centre le » — puis « tu m'as fait quoi là ? » sur ma première tentative.
-//    Deux fautes expliquaient la capture du 28/11 :
+//  « retravaille ce modal » — le message parlait d'« une fiche à 0 », ce qui
+//  est faux : sans profil, le calcul rend un bulletin SANS impôt ni
+//  cotisations, marqué non remisable. La fenêtre le dit avec ces mots.
 //
-//      1. `justify-content: safe center` n'est PAS reconnu par le moteur
-//         (seule `align-*` l'accepte) ; la déclaration tombait, la fenêtre
-//         partait en haut à gauche ;
-//      2. `paddingTop` ET `overflowY: auto` sur le conteneur : le rembourrage
-//         haut, qui ne se replie jamais, décalait le contenu dès que la boîte
-//         défilait — la fenêtre glissait encore plus bas.
+//  ── Pourquoi elle était illisible (captures des 28/11 et 02/12) ───────────
 //
-//    Le centrage tient maintenant à trois choses simples et sûres :
-//      3. le voile n'a AUCUN rembourrage ni défilement propre : il centre,
-//         point. Seul le `padding` latéral empêche la feuille de toucher les
-//         bords ;
-//      4. la hauteur est une `max-height` en `dvh` moins ce qui est vraiment
-//         pris en haut (la barre figée) et en bas (le bord de l'écran) ;
-//      5. si la feuille est plus haute que la place, c'est ELLE qui défile
-//         (`overflow: auto`) — jamais le voile. Rien ne peut donc la pousser.
+//  1. `justify-content: safe center` n'est pas reconnu par le moteur : la
+//     déclaration tombait, la fenêtre partait dans le coin.
+//  2. `paddingTop` + `overflowY: auto` sur le même conteneur : un rembourrage
+//     haut ne se replie jamais, il chassait le contenu dès que la boîte
+//     défilait.
+//  3. SURTOUT, la faute qui a produit « une bande » : la page mesurait
+//     `zoneBasse = hauteurEcran − bas de la barre`, c'est-à-dire TOUT l'écran
+//     sous une barre qui ne colle qu'en haut. La `max-height` devenait
+//     NÉGATIVE et la fenêtre s'écrasait à la hauteur de sa bordure.
 //
-//  · « style brut adouci double feutre » — la peau de la carte-post-it du
-//    dossier identité, et seulement pour cette modale. Les autres fenêtres de
-//    la paie sont revenues exactement à leur état d'avant : je les avais
-//    touchées sans qu'il l'ait demandé.
+//     Ici je ne dépend PLUS d'une mesure : la fenêtre prend sa hauteur pleine
+//     (`maxHeight: none`) et c'est le voile qui la fait tenir dans l'écran.
+//     Une fenêtre ne peut donc plus s'effondrer, quelle que soit la mesure
+//     qu'on lui passe.
 //
-//  ⚠️ La peau vit ICI, en styles en ligne sur des jetons de charte. Pas de
-//  feuille séparée : le fichier CSS que j'avais ajouté est supprimé.
+//  ── La maquette B, et ce qu'elle change en vrai ────────────────────────────
+//
+//  Feuille à coin carré, contour d'encre 2 px, ombre dure de 8 px, bande de
+//  colle de 14 px, filets du corps, trait de perforation au-dessus du pied.
+//  Deux écarts assumés par rapport à l'image :
+//
+//    · la colle est peinte DANS la feuille (une bande d'encre qui tourne au
+//      sable), pas en rectangle posé par-dessus : un élément débordant aurait
+//      ajouté du défilement et ramené le centrage bancal ;
+//    · les libellés du pied tiennent sur UNE ligne (`white-space: nowrap`,
+//      défilement latéral en dernier recours) — sur la maquette, « Générer
+//      des bulletins incomplets » se coupait sur deux lignes.
+//
+// ⚠️ Aucune couleur en dur : tout passe par les jetons de la charte (C1).
+//    Aucun flou (C9/D-016). Le rabat est peint au dégradé, jamais en clip-path.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useRef } from 'react'
@@ -47,13 +56,17 @@ const SURFACE2 = 'var(--charte-surface2)'
 const BORDURE = 'var(--charte-bordure)'
 const TRAIT = 'var(--charte-trait)'
 const ERREUR = 'var(--charte-erreur)'
+const TEXTE = 'var(--charte-texte)'
 
-/*  La feuille : coin carré, contour d'encre, bande de colle de 14 px, double
-    feutre en deux ombres dures (aucun flou — la peau D de la maison). */
+/*  ── la feuille : le cartouche ───────────────────────────────────────────────
+    Rayon 0, contour d'encre, double ombre DURE, et la bande de colle peinte
+    en haut. L'ordre du `background` est celui de CSS : la colle est déclarée
+    en premier, donc elle passe AU-DESSUS du papier — un dégradé transparent
+    ensuite ne la recouvre pas. */
 const FEUILLE = {
   position: 'relative',
   width: '100%',
-  maxWidth: 'var(--charte-modale-moyenne)',
+  maxWidth: 'var(--charte-modale-large)',
   display: 'flex',
   flexDirection: 'column',
   minHeight: 0,
@@ -61,28 +74,37 @@ const FEUILLE = {
   borderRadius: 0,
   backgroundColor: SURFACE,
   backgroundImage:
-    `linear-gradient(to bottom, color-mix(in srgb, ${BLANC} 45%, transparent) 0 14px,`
-    + ` color-mix(in srgb, ${ENCRE} 16%, transparent) 14px 15px, transparent 15px)`,
-  boxShadow:
-    `6px 6px 0 6px color-mix(in srgb, ${ENCRE} 7%, ${SURFACE}),`
-    + ` 6px 6px 0 8px ${ENCRE}`,
-  overflow: 'auto',
+    // la colle : un filet d'encre, puis le sable qui la déborde vers le bas
+    `linear-gradient(to bottom, ${ENCRE} 0 3px, color-mix(in srgb, ${SURFACE2} 55%, ${SURFACE}) 3px 16px, transparent 16px)`,
+  boxShadow: `8px 8px 0 0 ${ENCRE}`,
   color: ENCRE,
 }
 
+/*  ── les boutons : carrés, contour d'encre, ombre dure de 3 px ───────────────
+    `nowrap` : c'est la correction de la maquette, où le libellé du milieu se
+    cassait sur deux lignes. */
 const BOUTON = {
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-  minHeight: 40, padding: '0 16px',
-  border: `1px solid ${ENCRE}`, borderRadius: 6,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+  minHeight: 40, padding: '0 14px',
+  border: `1px solid ${ENCRE}`, borderRadius: 0,
   backgroundColor: SURFACE, color: ENCRE,
-  fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+  fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700,
+  whiteSpace: 'nowrap',
   boxShadow: '3px 3px 0 0 var(--charte-encre)',
-  cursor: 'pointer', whiteSpace: 'nowrap',
+  cursor: 'pointer',
+}
+
+/*  Le texte lu par un lecteur d'écran mais invisible à l'œil. Il sert au
+    chiffre : il est peint dans le carré, mais la PHRASE doit rester entière
+    pour qui n'a pas les yeux sur l'écran. */
+const LECTEUR_SEUL = {
+  position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+  overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0,
 }
 
 const raisonLisible = (raison) => String(raison || '').trim() || 'Profil à compléter'
 
-export function ResumeControles({ blockers = [], ready = 0, zoneHaute = 0, zoneBasse = 0, onFermer, onGenerer, onProfils }) {
+export function ResumeControles({ blockers = [], ready = 0, onFermer, onGenerer, onProfils }) {
   const boite = useRef(null)
   const premier = useRef(null)
   const nombre = blockers.length
@@ -115,22 +137,19 @@ export function ResumeControles({ blockers = [], ready = 0, zoneHaute = 0, zoneB
 
   if (typeof document === 'undefined') return null
 
-  /*  La hauteur disponible : l'écran moins la barre figée en haut, moins ce
-      qui est déjà pris en bas, moins 32 px de respiration. `dvh` tient compte
-      de la barre d'URL du navigateur mobile, `vh` ne le fait pas. */
-  const disponible = `calc(100dvh - ${zoneHaute + zoneBasse + 32}px)`
-
   return createPortal(
+    /*  LE VOILE PORTE LE FILET DE SÉCURITÉ.
+        Il centre, et si la fenêtre est plus haute que l'écran, il défile —
+        c'est le `margin: auto` qui garde le haut atteignable au lieu de le
+        couper. Un rembourrage vertical fixerait le haut : il n'y en a pas. */
     <div
       className="pw-resume-controles-fond"
       style={{
         position: 'fixed', inset: 0, zIndex: 1200,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        /*  Le voile CENTRE et ne fait rien d'autre. Aucun rembourrage haut ou
-            bas, aucun défilement : c'est ce qui avait poussé la fenêtre en
-            haut à gauche puis vers le bas sur la capture du 28/11. */
-        paddingLeft: 16, paddingRight: 28,
+        padding: '28px 24px',
         background: 'var(--charte-modale-voile)',
+        overflowY: 'auto',
         boxSizing: 'border-box',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onFermer?.() }}
@@ -143,77 +162,91 @@ export function ResumeControles({ blockers = [], ready = 0, zoneHaute = 0, zoneB
         aria-labelledby="pw-resume-titre"
         aria-describedby="pw-resume-texte"
         tabIndex={-1}
-        style={{ ...FEUILLE, maxHeight: disponible }}
+        /*  `maxHeight: none` : la fenêtre prend sa hauteur pleine. C'est le
+            remède au défaut de la « bande » — plus aucune mesure de zone ne
+            peut l'écraser. */
+        style={{ ...FEUILLE, maxHeight: 'none', margin: 'auto', flex: '0 0 auto' }}
       >
-        {/* ── la tête ──────────────────────────────────────────────────── */}
-        <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '16px 16px 12px', borderBottom: `1px solid ${BORDURE}` }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
-            {/* la vignette carrée, ombre dure de 3 px — comme la fiche */}
-            <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', width: 40, height: 40, flex: '0 0 auto', border: `${TRAIT} solid ${ENCRE}`, borderRadius: 0, backgroundColor: SURFACE2, color: ERREUR, boxShadow: '3px 3px 0 0 var(--charte-encre)' }}>
-              <AlertTriangle size={19} />
-            </span>
-            <div style={{ minWidth: 0 }}>
-              <h2 id="pw-resume-titre" style={{ margin: 0, color: ENCRE, fontSize: 18, fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-                {pluriel ? `${nombre} profils salariaux manquent` : 'Un profil salarial manque'}
-              </h2>
-              <p id="pw-resume-texte" style={{ margin: '4px 0 0', color: 'var(--charte-texte)', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                {pluriel ? 'Ces bulletins naîtront incomplets' : 'Ce bulletin naîtra incomplet'}
-                {ready > 0 ? ` · ${ready} prêt${ready > 1 ? 's' : ''}` : ''}
-              </p>
-            </div>
+        {/* ── la tête : le « 4 » en carré, puis la phrase ───────────────── */}
+        <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 16, padding: '24px 24px 16px' }}>
+          {/* le carré chiffré : c'est lui qui commence la phrase */}
+          <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', width: 56, height: 56, flex: '0 0 auto', border: `${TRAIT} solid ${ENCRE}`, borderRadius: 0, backgroundColor: SURFACE, color: ENCRE, fontSize: 30, fontWeight: 700, lineHeight: 1 }}>
+            {pluriel ? nombre : 1}
+          </span>
+
+          <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+            <h2 id="pw-resume-titre" style={{ margin: 0, color: ENCRE, fontSize: 20, fontWeight: 700, lineHeight: 1.25 }}>
+              {/*  Le chiffre est peint dans le carré à gauche : ici il est
+                  seulement LU, pour que la phrase ne perde pas son sujet. */}
+              <span style={LECTEUR_SEUL}>{pluriel ? `${nombre} ` : 'Un '}</span>
+              {pluriel ? 'profils salariaux manquent' : 'profil salarial manque'}
+            </h2>
+            {/*  Le sous-titre a SA ligne : il ne peut plus chevaucher le titre. */}
+            <p id="pw-resume-texte" style={{ margin: '8px 0 0', color: TEXTE, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              {pluriel ? 'Ces bulletins naîtront incomplets' : 'Ce bulletin naîtra incomplet'}
+              {ready > 0 ? ` · ${ready} prêt${ready > 1 ? 's' : ''}` : ''}
+            </p>
           </div>
-          <button type="button" onClick={onFermer} aria-label="Fermer" style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, flex: '0 0 auto', border: `1px solid ${ENCRE}`, borderRadius: 6, background: 'transparent', color: 'var(--charte-texte)', cursor: 'pointer' }}>
+
+          <button type="button" onClick={onFermer} aria-label="Fermer" style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, flex: '0 0 auto', marginLeft: 'auto', border: `1px solid ${ENCRE}`, borderRadius: 0, background: 'transparent', color: TEXTE, cursor: 'pointer' }}>
             <X size={15} />
           </button>
         </header>
 
-        {/* ── le corps ─────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16, overflowY: 'auto', minHeight: 0 }}>
-          {/*  La phrase qui remplace « une fiche à 0 » : la garantie du
-              service, mot pour mot. */}
-          <div style={{ display: 'flex', gap: 10, padding: '12px 14px', border: `1px solid ${BORDURE}`, borderLeft: `${TRAIT} solid ${ERREUR}`, borderRadius: 0, background: `color-mix(in srgb, ${BLANC} 12%, ${SURFACE})` }}>
-            <AlertTriangle size={15} aria-hidden="true" style={{ flex: '0 0 auto', marginTop: 2, color: ERREUR }} />
-            <p style={{ margin: 0, color: 'var(--charte-encre)', fontSize: 12.5, lineHeight: 1.6 }}>
-              Sans profil, le calcul ne peut appliquer ni l’impôt ni les cotisations sociales.
-              {' '}<strong style={{ color: ERREUR }}>Ces bulletins ne pourront pas être remis aux salariés</strong> tant qu’ils ne sont pas complétés.
+        {/* ── le corps : le bloc des concernés ─────────────────────────────── */}
+        <div style={{ padding: '0 24px 16px' }}>
+          <div style={{ border: `1px solid ${ENCRE}`, borderRadius: 0, backgroundColor: SURFACE }}>
+            <p style={{ margin: 0, padding: '9px 14px 7px', borderBottom: `1px dotted ${ENCRE}`, color: TEXTE, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              {pluriel ? 'Concernés' : 'Concerné'}
             </p>
-          </div>
 
-          <div>
-            <p style={{ margin: '0 0 8px', color: 'var(--charte-douce)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              {pluriel ? 'Les salariés concernés' : 'Le salarié concerné'}
-            </p>
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {blockers.map((b, i) => (
                 <li
                   key={b.employeeId || `${b.employee}-${i}`}
-                  style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '9px 12px', border: `1px solid ${BORDURE}`, borderRadius: 0, background: `color-mix(in srgb, ${BLANC} 10%, ${SURFACE})` }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px',
+                    borderTop: i === 0 ? 'none' : `1px solid ${BORDURE}`,
+                  }}
                 >
-                  <strong style={{ flex: '0 1 auto', minWidth: 0, color: ENCRE, fontSize: 13, fontWeight: 700, overflowWrap: 'anywhere' }}>
+                  <strong style={{ flex: '0 1 auto', minWidth: 0, color: ENCRE, fontSize: 15, fontWeight: 700, overflowWrap: 'anywhere' }}>
                     {b.employee || 'Salarié sans nom'}
                   </strong>
-                  <span aria-hidden="true" style={{ color: 'var(--charte-douce)' }}>—</span>
-                  <span style={{ flex: '1 1 auto', minWidth: 0, color: ERREUR, fontSize: 12, lineHeight: 1.45 }}>
-                    {raisonLisible(b.reason)}
+                  {/* le guide pointillé du grand livre */}
+                  <span aria-hidden="true" style={{ flex: '1 1 12px', minWidth: 12, alignSelf: 'flex-end', marginBottom: 5, borderBottom: `1px dotted ${BORDURE}` }} />
+                  <span title={raisonLisible(b.reason)} style={{ flex: '0 0 auto', padding: '3px 7px', border: `1px solid ${BORDURE}`, borderRadius: 0, backgroundColor: `color-mix(in srgb, ${SURFACE} 62%, ${SURFACE2})`, color: TEXTE, fontFamily: 'var(--charte-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    Incomplet
                   </span>
                 </li>
               ))}
             </ul>
+
+            {/*  Ce que les lignes ne disent pas : la conséquence, en une ligne.
+                Uniquement le fait — ni impôt ni cotisations, bulletin non
+                remisable. Pas de phrase que le service ne tiendrait pas. */}
+            <p style={{ margin: 0, padding: '10px 14px 12px', borderTop: `1px solid ${BORDURE}`, color: TEXTE, fontSize: 13, fontStyle: 'italic', lineHeight: 1.5 }}>
+              Sans profil, ni l’impôt ni les cotisations sociales ne peuvent être calculés. Ces bulletins ne pourront pas être remis aux salariés.
+            </p>
           </div>
         </div>
 
-        {/* ── le pied ──────────────────────────────────────────────────────
-            Il se retire du rabat : 14 px de dos de feuille en bas, 14 + 6 px
-            à droite. Sans ça, le dernier bouton vivrait sous le pli. */}
-        <footer style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 8, padding: '12px 20px 14px 16px', borderTop: `1px solid ${BORDURE}` }}>
-          <button type="button" onClick={onFermer} style={{ ...BOUTON, marginRight: 'auto' }}>
+        {/* ── la perforation : le pied se détache comme un talon ───────────── */}
+        <div aria-hidden="true" style={{ padding: '0 24px', borderTop: `1px dashed ${ENCRE}`, height: 0 }} />
+
+        {/* ── le pied ──────────────────────────────────────────────────────── */}
+        <footer style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '16px 24px 20px' }}>
+          {/*  `marginRight: auto` le pousse à gauche sur sa ligne ; quand le
+              pied se replie, il reste seul en haut — les deux actions
+              passent dessous, alignées à droite. Aucun libellé n'est coupé. */}
+          <button type="button" onClick={onFermer} style={{ ...BOUTON, flex: '0 0 auto', marginRight: 'auto' }}>
             Annuler
           </button>
-          <button type="button" onClick={onGenerer} style={BOUTON}>
+          <button type="button" onClick={onGenerer} style={{ ...BOUTON, flex: '0 0 auto' }}>
             <Eye size={15} aria-hidden="true" />
             <span>Générer des bulletins incomplets</span>
           </button>
-          <button type="button" ref={premier} onClick={onProfils} style={{ ...BOUTON, backgroundColor: ENCRE, color: BLANC }}>
+          <button type="button" ref={premier} onClick={onProfils} style={{ ...BOUTON, flex: '0 0 auto', backgroundColor: ENCRE, color: SURFACE }}>
             <UserPlus size={15} aria-hidden="true" />
             <span>{pluriel ? `Compléter les ${nombre} profils` : 'Compléter le profil'}</span>
             <ArrowRight size={14} aria-hidden="true" />
@@ -221,7 +254,7 @@ export function ResumeControles({ blockers = [], ready = 0, zoneHaute = 0, zoneB
         </footer>
 
         {/* le rabat, peint au coin bas-droit — jamais en clip-path */}
-        <span aria-hidden="true" style={{ position: 'absolute', right: 0, bottom: 0, width: 14, height: 14, pointerEvents: 'none', background: `linear-gradient(to top left, transparent 0 44%, ${ENCRE} 44% 50%, color-mix(in srgb, ${BLANC} 60%, ${SURFACE}) 50%)` }} />
+        <span aria-hidden="true" style={{ position: 'absolute', right: 0, bottom: 0, width: 14, height: 14, pointerEvents: 'none', background: `linear-gradient(to top left, transparent 0 44%, ${ENCRE} 44% 50%, color-mix(in srgb, ${SURFACE2} 55%, ${SURFACE}) 50%)` }} />
       </section>
     </div>,
     document.body,

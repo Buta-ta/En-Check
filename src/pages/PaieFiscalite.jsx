@@ -42,25 +42,34 @@ export default function PaieFiscalite() {
   const [retry, setRetry] = useState(0)
   const [bulletinsBusy, setBulletinsBusy] = useState(false)
   const [fiscalBusy, setFiscalBusy] = useState(false)
-  /*  LA ZONE DE CENTRAGE DES FENÊTRES (28/11)
+  /*  LA ZONE DE CENTRAGE DES FENÊTRES — la mesure qui écrasait les modales
       ─────────────────────────────────────────────────────────────────────
-      Deux fautes se sont succédé, et celle-ci les corrige toutes les deux :
+      Une capture du 02/12 montre « Vérifier et calculer » réduit à une BANDE
+      de quelques pixels. La faute est ici, pas dans la fenêtre.
 
-      1. avant, une modale naissait DERRIÈRE la barre figée — sa capture
-         montrait le bouton « Générer quand même » coupé net ;
-      2. puis je l'ai poussée SOUS la barre avec `paddingTop: hauteur + 16`,
-         pour la sauver. Résultat : elle descendait. Il l'avait vu.
+      `.pw-fixe` ne colle QU'EN HAUT (`position: sticky; top: 0`) : il occupe
+      le haut de l'écran, et le reste de l'écran est du contenu, pas de la
+      barre. Or je mesurais :
 
-      La bonne réponse n'est ni l'un ni l'autre, c'est de CENTRER la fenêtre
-      dans la place qui reste VRAIMENT libre : ce qui est sous la barre et
-      au-dessus du bord bas de l'écran. On mesure les deux, on publie la zone
-      en variables, et chaque voile s'y centre — la fenêtre ne peut donc plus
-      être ni recouverte ni exilée. Cas dégénéré (fenêtre plus haute que la
-      zone) : elle colle au haut de la zone plutôt que de sortir par le haut,
-      où son en-tête serait injoignable.
+          bas = hauteurEcran − basDeLaBarre
 
-      Repli sans mesure (SSR, jsdom, tout premier rendu) : haut = 0, bas = 0,
-      c'est-à-dire un centrage plein écran — le comportement d'avant. */
+      c'est-à-dire TOUT l'écran sous la barre. Sur 900 px de haut avec 168 px
+      de barre : `bas = 732`, donc
+
+          max-height = 900 − (168 + 732 + 32) = −32 px
+
+      Une hauteur négative : le navigateur la ramène à zéro, la fenêtre ne
+      garde que sa bordure et son ombre. C'est exactement la bande rayée de
+      la capture.
+
+      La correction tient en une phrase : la barre ne prend que sa hauteur.
+      On ne publie donc QUE `haut`, et `bas` vaut 0 — il n'y a rien en bas.
+      Le voile se centre dans `[basDeLaBarre, hauteurEcran]` et la fenêtre
+      garde sa hauteur pleine.
+
+      Ce que ça change à l'écran : plus rien ne peut rendre la place
+      NÉGATIVE. Si la mesure n'a pas lieu (SSR, jsdom), haut = 0 : centrage
+      plein écran, le comportement d'avant. */
   const barre = useRef(null)
   const [zone, setZone] = useState({ haut: 0, bas: 0 })
   useEffect(() => {
@@ -68,10 +77,11 @@ export default function PaieFiscalite() {
     if (!noeud || typeof ResizeObserver === 'undefined') return undefined
     const mesurer = () => {
       const r = noeud.getBoundingClientRect()
-      setZone({
-        haut: Math.max(0, Math.round(r.bottom)),
-        bas: Math.max(0, Math.round((window.innerHeight || 0) - r.bottom)),
-      })
+      /*  `haut` : jusqu'où la barre descend dans l'écran. `bas` : RIEN. La
+          barre est collée en haut ; il n'y a aucune zone réservée en bas.
+          Ne jamais y remettre `hauteurEcran − r.bottom` : c'est cette
+          valeur-là qui a écrasé la fenêtre. */
+      setZone({ haut: Math.max(0, Math.round(Math.min(r.bottom, window.innerHeight || 0))), bas: 0 })
     }
     mesurer()
     const observateur = new ResizeObserver(mesurer)
